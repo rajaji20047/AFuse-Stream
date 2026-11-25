@@ -85,7 +85,7 @@ void main() {
     );
     await tester.pump();
     await tester.scrollUntilVisible(
-      find.text('Fuse for iOS'),
+      find.text('Fuse for Android'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
@@ -109,7 +109,7 @@ void main() {
     final developer = tester.getTopLeft(find.text('Legion')).dy;
     final credit = tester.getTopLeft(find.text('Based on SkyStream')).dy;
     final telegram = tester.getTopLeft(find.text('Telegram')).dy;
-    final version = tester.getTopLeft(find.text('Fuse for iOS')).dy;
+    final version = tester.getTopLeft(find.text('Fuse for Android')).dy;
     expect(developer, lessThan(credit));
     expect(credit, lessThan(telegram));
     expect(telegram, lessThan(version));

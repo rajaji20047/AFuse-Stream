@@ -68,7 +68,7 @@ void main() {
 
   testWidgets('About has no Open-source licences row (v5)', (tester) async {
     await pumpSettings(tester);
-    final version = find.text('Fuse for iOS');
+    final version = find.text('Fuse for Android');
     await tester.scrollUntilVisible(
       version,
       300,

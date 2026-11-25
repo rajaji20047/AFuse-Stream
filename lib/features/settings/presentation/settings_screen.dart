@@ -470,7 +470,7 @@ class SettingsScreen extends ConsumerWidget {
         SettingsTile(
           reicon: Reicon.infoCircle,
           title: l10n.version,
-          subtitle: 'Fuse for iOS',
+          subtitle: 'Fuse for Android',
           value: versionAsync.when(
             // The version alone ("1.0.0"), never the build suffix.
             data: aboutVersionLabel,
