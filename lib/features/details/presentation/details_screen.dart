@@ -181,8 +181,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
 
     // ── Mobile: "Hero" layout ──
     // A full-bleed banner carrying the source tag, the title and the round
-    // Play button; the back and bookmark buttons float over it and stay put
-    // as the page scrolls.
+    // Download button; the back and bookmark buttons float over it and stay put
+    // as the page scrolls. Play lives in the pill under the hero.
     return Scaffold(
       bottomNavigationBar: selectedEpisodeCount == 0
           ? null
@@ -606,10 +606,17 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
           sourceTag: provider != null && provider.isNotEmpty
               ? DetailsProviderChip(providerName: provider, hero: true)
               : null,
-          // Nothing to play yet: CloudStream hides Play there too.
-          playFab: item.comingSoon
+          // The round button is Download now; Play lives in the pill under
+          // the hero. Nothing to download (a series, a livestream) means no
+          // round button at all — the banner drops its overhang with it.
+          playFab: item.comingSoon ||
+                  !detailsShowDownload(
+                    item: widget.item,
+                    details: details,
+                    isMovie: isMovie,
+                  )
               ? null
-              : DetailsHeroPlayButton(
+              : DetailsHeroDownloadButton(
                   item: widget.item,
                   details: details,
                   itemUrl: widget.item.url,
@@ -632,8 +639,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
-              // Play is the round button on the banner; what stays here is
-              // the watched-so-far bar and Download.
+              // Download is the round button on the banner; what stays here is
+              // the watched-so-far bar and Play.
               if (!item.comingSoon)
                 DetailsActionButtons(
                   item: widget.item,

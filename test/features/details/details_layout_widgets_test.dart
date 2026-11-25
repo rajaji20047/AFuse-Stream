@@ -108,6 +108,7 @@ Future<void> _pumpActionButtons(
   required MultimediaItem item,
   required MultimediaItem? details,
   required bool isMovie,
+  bool showPlay = true,
 }) async {
   final container = ProviderContainer(
     overrides: [
@@ -138,6 +139,7 @@ Future<void> _pumpActionButtons(
             item: item,
             details: details,
             itemUrl: _kUrl,
+            showPlay: showPlay,
           ),
         ),
       ),
@@ -196,6 +198,23 @@ void main() {
       );
 
       expect(find.text('Download'), findsOneWidget);
+    });
+
+    testWidgets('with showPlay false the phone page shows Play, not '
+        'Download', (tester) async {
+      // The phone page's arrangement: Download is the round button on the
+      // banner, so the row under the hero holds Play and no Download.
+      final episodes = [Episode(name: 'E1', url: '$_kUrl/e1', episode: 1)];
+      await _pumpActionButtons(
+        tester,
+        item: _item(episodes: episodes),
+        details: _item(episodes: episodes),
+        isMovie: true,
+        showPlay: false,
+      );
+
+      expect(find.text('Play'), findsOneWidget);
+      expect(find.text('Download'), findsNothing);
     });
 
     testWidgets('a movie listing several mirrors as episodes offers Download', (

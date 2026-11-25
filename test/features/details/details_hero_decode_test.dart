@@ -176,7 +176,7 @@ void main() {
       expect(boxHeight, 440);
       expect(
         tester.getSize(find.byKey(const ValueKey('details-hero-banner'))).height,
-        // A movie's page has the round Play button hanging off the banner.
+        // A movie's page has the round Download button hanging off the banner.
         boxHeight + kDetailsPlayFabOverhang,
       );
       expect(_hero(tester).memCacheWidth, expected);

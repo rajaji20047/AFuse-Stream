@@ -86,6 +86,10 @@ class _FakeDetailsController extends DetailsController {
   final DetailsState _state;
   static final List<String?> played = <String?>[];
 
+  /// Records links-box opens instead of showing the sheet: the episode the
+  /// ask is for.
+  static final List<String?> linksOpened = <String?>[];
+
   @override
   DetailsState build(String itemUrl) => _state;
 
@@ -97,6 +101,15 @@ class _FakeDetailsController extends DetailsController {
     String? overrideUrl,
   }) async {
     played.add(specificEpisode?.url ?? overrideUrl);
+  }
+
+  @override
+  Future<void> openLinksSheet(
+    BuildContext context,
+    MultimediaItem details, {
+    Episode? specificEpisode,
+  }) async {
+    linksOpened.add(specificEpisode?.url);
   }
 }
 
@@ -153,6 +166,7 @@ Future<_Harness> _pumpCards(
   TextDirection textDirection = TextDirection.ltr,
 }) async {
   _FakeDetailsController.played.clear();
+  _FakeDetailsController.linksOpened.clear();
 
   tester.view.devicePixelRatio = 2.0;
   tester.view.physicalSize = logicalSize * 2.0;
@@ -439,6 +453,42 @@ void main() {
         _episode(1).url,
       ], reason: 'a held OK must not play the episode again');
       expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    });
+  });
+
+  group('EpisodeCard double-tap opens the links box', () {
+    testWidgets('double-tapping an episode asks for its links, not its '
+        'play', (tester) async {
+      await _pumpCards(tester);
+
+      await tester.doubleTap(find.byType(EpisodeCard).first);
+      await tester.pump();
+
+      expect(
+        _FakeDetailsController.played,
+        isEmpty,
+        reason: 'a double-tap must not play the episode',
+      );
+      expect(_FakeDetailsController.linksOpened, <String?>[
+        _episode(1).url,
+      ]);
+    });
+
+    testWidgets('double-tapping while episodes are being picked opens '
+        'nothing', (tester) async {
+      await _pumpCards(tester);
+
+      await tester.longPress(find.byType(EpisodeCard).first);
+      await tester.pump();
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+      _FakeDetailsController.linksOpened.clear();
+
+      await tester.doubleTap(find.byType(EpisodeCard).first);
+      await tester.pump();
+
+      expect(_FakeDetailsController.linksOpened, isEmpty);
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget,
+          reason: 'the double-tap must not disturb the selection');
     });
   });
 }

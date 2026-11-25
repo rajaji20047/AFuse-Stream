@@ -234,6 +234,20 @@ class EpisodeCard extends HookConsumerWidget {
           .handlePlayPress(context, parentItem, specificEpisode: episode);
     }
 
+    void handleEpisodeDoubleTap() {
+      // While episodes are being picked, taps belong to selection: a
+      // double-tap must not pop the links box over it.
+      final selectionActive = ref
+          .read(detailsControllerProvider(parentItem.url))
+          .selectedEpisodeKeys
+          .isNotEmpty;
+      if (selectionActive) return;
+
+      ref
+          .read(detailsControllerProvider(parentItem.url).notifier)
+          .openLinksSheet(context, details ?? parentItem, specificEpisode: episode);
+    }
+
     final selectKeyDown = useRef(false);
     final longPressTriggered = useRef(false);
     final showFocus = showFocusIndicator(context, isFocused.value);
@@ -258,6 +272,7 @@ class EpisodeCard extends HookConsumerWidget {
           focusNode: bodyFocusNode,
           onTap: handleEpisodeTap,
           onLongPress: updateSelection,
+          onDoubleTap: handleEpisodeDoubleTap,
           thumbnail: _rowThumbnail(context),
           action: _rowDownloadAction(
             context,
@@ -304,6 +319,7 @@ class EpisodeCard extends HookConsumerWidget {
       child: InkWell(
         onTap: handleEpisodeTap,
         onLongPress: updateSelection,
+        onDoubleTap: handleEpisodeDoubleTap,
         // Deliberately NOT a focus stop; the focusable body is the smaller
         // node inside the header row below. This rect encloses the download
         // button, and directional traversal only considers candidates whose

@@ -1,5 +1,5 @@
 /// The phone details page in the "Hero" layout: a banner with the source tag,
-/// the title and a round Play button, an info strip, a short synopsis and
+/// the title and a round Download button, an info strip, a short synopsis and
 /// episodes as a horizontal row - with everything the page could do before.
 library;
 
@@ -130,6 +130,19 @@ class _FakeController extends DetailsController {
   }) async {
     played.add(specificEpisode?.url ?? overrideUrl ?? 'target');
   }
+
+  /// Records links-box opens instead of showing the sheet: the episode the
+  /// ask is for, or null for the title's target.
+  static final List<String?> linksOpened = <String?>[];
+
+  @override
+  Future<void> openLinksSheet(
+    BuildContext context,
+    MultimediaItem details, {
+    Episode? specificEpisode,
+  }) async {
+    linksOpened.add(specificEpisode?.url);
+  }
 }
 
 List<Episode> _episodes(
@@ -185,6 +198,7 @@ Future<void> _pump(
   DubStatus selectedDub = DubStatus.none,
 }) async {
   _FakeController.played.clear();
+  _FakeController.linksOpened.clear();
   _RecordingLauncher.launched.clear();
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = _kPhone;
@@ -236,11 +250,15 @@ Future<void> _pump(
 }
 
 Finder get _fab => find.byKey(const ValueKey('details-play-fab'));
+Finder get _downloadFab =>
+    find.byKey(const ValueKey('details-download-fab'));
 Finder get _strip => find.byKey(const ValueKey('details-info-strip'));
 Finder get _row => find.byKey(const ValueKey('details-episode-row'));
 
 String _fabLabel(WidgetTester tester) => tester
-    .widget<Tooltip>(find.ancestor(of: _fab, matching: find.byType(Tooltip)))
+    .widget<Tooltip>(
+      find.ancestor(of: _downloadFab, matching: find.byType(Tooltip)),
+    )
     .message!;
 
 Future<void> _reach(WidgetTester tester, Finder finder) async {
@@ -323,27 +341,17 @@ void main() {
     });
   });
 
-  group('the round Play button', () {
-    testWidgets('names the episode it starts and plays it, as the full-width '
-        'button did', (tester) async {
+  group('the round Download button', () {
+    testWidgets('a series keeps Play in the pill under the hero, and the '
+        'round button is gone', (tester) async {
       final eps = _episodes(13);
       await _pump(tester, _show(eps), target: eps.first);
 
-      expect(_fab, findsOneWidget);
-      expect(_fabLabel(tester), 'Play E1');
+      expect(_downloadFab, findsNothing);
+      expect(find.text('Play E1'), findsOneWidget);
       expect(find.bySemanticsLabel('Play E1'), findsOneWidget);
-      expect(tester.getSize(_fab), const Size(56, 56));
-      // Half on the banner, half on the page under it.
-      final banner = tester.getRect(find.byType(DetailsHeroBanner));
-      final fab = tester.getRect(_fab);
-      expect(fab.bottom, banner.bottom);
-      expect(fab.center.dy, banner.bottom - kDetailsPlayFabOverhang);
 
-      // No full-width Play any more.
-      expect(find.text('Play E1'), findsNothing);
-      expect(find.text('Play'), findsNothing);
-
-      await tester.tap(_fab);
+      await tester.tap(find.text('Play E1'));
       await tester.pump();
       expect(_FakeController.played, ['target']);
     });
@@ -358,7 +366,8 @@ void main() {
         target: eps[2],
         positions: {_epUrl(3): 400000},
       );
-      expect(_fabLabel(tester), 'Resume E3');
+      expect(find.text('Resume E3'), findsOneWidget);
+      expect(_downloadFab, findsNothing);
     });
 
     testWidgets('names the season too when the title has several', (
@@ -372,17 +381,18 @@ void main() {
         seasons: {1: one, 2: two},
         target: two[1],
       );
-      expect(_fabLabel(tester), 'Play S2 E2');
+      expect(find.text('Play S2 E2'), findsOneWidget);
+      expect(_downloadFab, findsNothing);
     });
 
     testWidgets('is not there for a title not out yet', (tester) async {
       await _pump(tester, _show(const [], comingSoon: true));
-      expect(_fab, findsNothing);
+      expect(_downloadFab, findsNothing);
       expect(find.byType(ComingSoonLabel), findsOneWidget);
     });
 
-    testWidgets("a movie keeps Download under the strip, and Play is the "
-        "banner's", (tester) async {
+    testWidgets("a movie puts Download on the banner and Play under the "
+        "strip", (tester) async {
       final film = MultimediaItem(
         title: 'A Film',
         url: _kUrl,
@@ -396,8 +406,16 @@ void main() {
       );
       await _pump(tester, film, isMovie: true);
 
-      expect(_fabLabel(tester), 'Play');
-      expect(find.text('Download'), findsOneWidget);
+      expect(_downloadFab, findsOneWidget);
+      expect(_fabLabel(tester), 'Download');
+      expect(tester.getSize(_downloadFab), const Size(56, 56));
+      // Half on the banner, half on the page under it.
+      final banner = tester.getRect(find.byType(DetailsHeroBanner));
+      final fab = tester.getRect(_downloadFab);
+      expect(fab.bottom, banner.bottom);
+      expect(fab.center.dy, banner.bottom - kDetailsPlayFabOverhang);
+      // Play is the pill under the strip now.
+      expect(find.text('Play'), findsOneWidget);
       expect(_row, findsNothing, reason: 'a film has no episode row');
 
       // Year, Runtime, Rating: what a film has.
@@ -412,9 +430,27 @@ void main() {
       expect(find.text('7.8'), findsOneWidget);
       expect(find.text('MOVIE'), findsOneWidget);
 
-      await tester.tap(find.text('Download'));
+      await tester.tap(_downloadFab);
       await tester.pump();
       expect(_RecordingLauncher.launched, [_epUrl(1)]);
+
+      await tester.tap(find.text('Play'));
+      await tester.pump();
+      expect(_FakeController.played, ['target']);
+    });
+
+    testWidgets('holding Play opens the links box', (tester) async {
+      final eps = _episodes(13);
+      await _pump(tester, _show(eps), target: eps.first);
+
+      await tester.longPress(find.text('Play E1'));
+      await tester.pump();
+      expect(_FakeController.linksOpened, [eps.first.url]);
+      expect(
+        _FakeController.played,
+        isEmpty,
+        reason: 'holding Play must not play the episode',
+      );
     });
   });
 

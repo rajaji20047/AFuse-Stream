@@ -310,6 +310,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
 class CustomButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onPressed;
+
+  /// Holding the button: Play opens the links box, where the caller wires
+  /// one. Null keeps the button tap-only.
+  final VoidCallback? onLongPress;
   final bool autofocus;
   final bool isPrimary;
   final bool isOutlined;
@@ -322,6 +326,7 @@ class CustomButton extends StatefulWidget {
     super.key,
     required this.child,
     this.onPressed,
+    this.onLongPress,
     this.autofocus = false,
     this.isPrimary = false,
     this.isOutlined = false,
@@ -377,6 +382,7 @@ class _CustomButtonState extends State<CustomButton> {
         focusNode: _focusNode,
         autofocus: widget.autofocus,
         onPressed: widget.onPressed,
+        onLongPress: widget.onLongPress,
         style: FilledButton.styleFrom(
           backgroundColor: widget.backgroundColor ?? colorScheme.primary,
           foregroundColor: colorScheme.onPrimary,
@@ -402,6 +408,7 @@ class _CustomButtonState extends State<CustomButton> {
       focusNode: _focusNode,
       autofocus: widget.autofocus,
       onPressed: widget.onPressed,
+      onLongPress: widget.onLongPress,
       style: TextButton.styleFrom(
         // A flat button has no fill to put a ring against, so focus also
         // lifts the label to the full foreground colour and lays a neutral

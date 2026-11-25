@@ -16,6 +16,8 @@ import 'package:raja/core/storage/storage_service.dart';
 
 import '../../library/presentation/library_provider.dart';
 import '../../library/presentation/history_provider.dart';
+import '../../addons/presentation/addon_sources_sheet.dart';
+import '../../../core/addons/data/addon_stream_service.dart';
 import 'playback_launcher.dart';
 import '../../../core/services/download_service.dart';
 import '../data/metadata_resolution_service.dart';
@@ -625,5 +627,43 @@ class DetailsController extends _$DetailsController {
             .play(context, ep.url, baseItem: details);
       }
     }
+  }
+
+  /// The links box, as the Stremio section opens it: every installed source
+  /// (plugins, Nuvio providers, Stremio add-ons) asked for this title's
+  /// streams, listed for a pick instead of playing the first answer.
+  /// Reached by holding Play on the details page and by double-tapping an
+  /// episode. [details] is the resolved item; [specificEpisode] narrows the
+  /// ask to one episode, or null for the title's target (movie / next up).
+  Future<void> openLinksSheet(
+    // Only handed on to the sheet, which needs it to show the dialog;
+    // choosing what to ask is the part that belongs here.
+    // ignore: riverpod_lint/avoid_build_context_in_providers
+    BuildContext context,
+    MultimediaItem details, {
+    Episode? specificEpisode,
+  }) async {
+    final type = switch (details.contentType) {
+      MultimediaContentType.movie => 'movie',
+      MultimediaContentType.series || MultimediaContentType.anime => 'series',
+      MultimediaContentType.livestream => 'tv',
+      MultimediaContentType.other => 'other',
+    };
+    await AddonSourcesSheet.open(
+      context,
+      item: details,
+      request: AddonStreamRequest(
+        type: type,
+        contentId: details.url,
+        season: specificEpisode?.season,
+        episode: specificEpisode?.episode,
+        imdbId: details.imdbId,
+        tmdbId: details.tmdbId,
+        title: details.title,
+        year: details.year,
+      ),
+      episode: specificEpisode,
+      merged: true,
+    );
   }
 }

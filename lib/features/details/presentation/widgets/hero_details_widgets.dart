@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// The pieces of the phone details page ("Hero" layout): a full-bleed banner
-/// with the source tag and title on it and a round Play button on its lower
-/// edge, a one-card info strip, a three-line synopsis, and episodes as a
+/// with the source tag and title on it and a round action button on its lower
+/// edge (Download on the plugin page, Play on the add-on and catalogue pages),
+/// a one-card info strip, a three-line synopsis, and episodes as a
 /// horizontal row of thumbnail cards. Shared by the plugin, add-on and
 /// catalogue details screens so the three read as one page.
 
@@ -49,7 +50,8 @@ class DetailsHeroBanner extends StatelessWidget {
   /// A muted line under the title (genres), when the page has one.
   final String? subtitle;
 
-  /// The round Play button, or null when there is nothing to play yet.
+  /// The round button on the banner's edge — Download on the phone details
+  /// page, Play on the add-on and TMDB pages — or null when there is none.
   final Widget? playFab;
 
   final VoidCallback? onTitleLongPress;
@@ -208,9 +210,10 @@ class DetailsSourceTag extends StatelessWidget {
   }
 }
 
-/// The round Play button on the banner's edge. [label] is what a full-width
-/// Play button would have read ("Play E1", "Resume E3"): here it is the
-/// tooltip and what a screen reader says.
+/// The round button on the banner's edge. [label] is what a full-width
+/// button would have read ("Play E1", "Resume E3"): here it is the
+/// tooltip and what a screen reader says. Play since the swap lives in the
+/// pill under the hero; the circle is Download, same shape and slot.
 class DetailsPlayFab extends StatelessWidget {
   const DetailsPlayFab({
     super.key,
@@ -218,6 +221,8 @@ class DetailsPlayFab extends StatelessWidget {
     required this.onPressed,
     this.loading = false,
     this.focusNode,
+    this.icon = Icons.play_arrow_rounded,
+    this.fabKey = const ValueKey('details-play-fab'),
   });
 
   final String label;
@@ -229,6 +234,14 @@ class DetailsPlayFab extends StatelessWidget {
   final bool loading;
 
   final FocusNode? focusNode;
+
+  /// The glyph in the circle: play by default, download for the hero's
+  /// Download button.
+  final IconData icon;
+
+  /// Test hook: 'details-play-fab' for Play, 'details-download-fab' for the
+  /// hero's Download button.
+  final Key fabKey;
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +264,7 @@ class DetailsPlayFab extends StatelessWidget {
       child: Tooltip(
         message: label,
         child: Material(
-          key: const ValueKey('details-play-fab'),
+          key: fabKey,
           color: fill,
           shape: const CircleBorder(),
           elevation: enabled ? 6 : 0,
@@ -274,7 +287,7 @@ class DetailsPlayFab extends StatelessWidget {
                           color: ink,
                         ),
                       )
-                    : Icon(Icons.play_arrow_rounded, size: 32, color: ink),
+                    : Icon(icon, size: 32, color: ink),
               ),
             ),
           ),
@@ -572,6 +585,7 @@ class EpisodeRowCard extends StatelessWidget {
     this.focused = false,
     this.action,
     this.onLongPress,
+    this.onDoubleTap,
     this.focusNode,
   });
 
@@ -606,6 +620,9 @@ class EpisodeRowCard extends StatelessWidget {
 
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+
+  /// Double-tap opens the links box for this episode.
+  final VoidCallback? onDoubleTap;
   final FocusNode? focusNode;
 
   @override
@@ -621,6 +638,7 @@ class EpisodeRowCard extends StatelessWidget {
         focusNode: focusNode,
         onTap: onTap,
         onLongPress: onLongPress,
+        onDoubleTap: onDoubleTap,
         borderRadius: radius,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

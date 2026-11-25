@@ -119,11 +119,43 @@ String detailsPlayLabel(
       : l10n.playEpisode(verb, target.season, target.episode);
 }
 
-/// The phone page's round Play button on the banner's edge. It is the
-/// full-width Play of [DetailsActionButtons] in another shape: the same
-/// label, the same press, the same spinner while links resolve.
-class DetailsHeroPlayButton extends ConsumerWidget {
-  const DetailsHeroPlayButton({
+/// Whether the single-target Download affordance applies to a title: not a
+/// livestream, and a movie or a series with exactly one episode. A movie is
+/// one downloadable title however many entries its provider puts in
+/// `episodes` — some return none at all, some return one per mirror — so the
+/// gate uses the controller's `isMovie` verdict as well as the one-episode
+/// series case. `details` resolves a frame or more after the item is handed
+/// to us, so it falls back to whatever episodes the item already carries.
+/// The hero's Download button and the action row's Download button share
+/// this gate, so the two never disagree.
+bool detailsShowDownload({
+  required MultimediaItem item,
+  required MultimediaItem? details,
+  required bool isMovie,
+}) {
+  final isLivestream = item.contentType == MultimediaContentType.livestream;
+  final episodeList = details?.episodes ?? item.episodes;
+  return !isLivestream &&
+      (isMovie || (episodeList != null && episodeList.length == 1));
+}
+
+/// The url the single-target Download affordance downloads: the first
+/// episode's, or the title's own when there is none.
+String detailsDownloadEpisodeUrl({
+  required MultimediaItem item,
+  required MultimediaItem? details,
+}) =>
+    details?.episodes?.firstOrNull?.url ??
+    item.episodes?.firstOrNull?.url ??
+    item.url;
+
+/// The round Download button on the banner's edge: what Play used to be.
+/// The same three states the pill Download used to have — download, progress,
+/// downloaded — drawn in the circle; tapping does what the pill did. The
+/// caller gates with [detailsShowDownload]: a title with nothing to download
+/// gets no round button at all, and the banner drops its overhang with it.
+class DetailsHeroDownloadButton extends ConsumerWidget {
+  const DetailsHeroDownloadButton({
     super.key,
     required this.item,
     required this.details,
@@ -136,45 +168,46 @@ class DetailsHeroPlayButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final historyRepo = ref.watch(historyRepositoryProvider);
-    final state = ref.watch(
-      detailsControllerProvider(itemUrl).select(
-        (s) => (
-          target: s.targetEpisode,
-          launching: s.isLaunching,
-          isMovie: s.isMovie,
-          singleSeason: s.seasonMap.keys.length <= 1,
-        ),
-      ),
+    final episodeUrl = detailsDownloadEpisodeUrl(
+      item: item,
+      details: details,
     );
-    final target = state.target;
-    final pos = target != null
-        ? historyRepo.getEpisodePosition(
-            target.url,
-            mainUrl: item.url,
-            season: target.season,
-            episode: target.episode,
-          )
-        : historyRepo.getPosition(item.url);
-    final label = detailsPlayLabel(
-      AppLocalizations.of(context)!,
-      resuming: pos > 5000,
-      isMovie: state.isMovie,
-      singleSeason: state.singleSeason,
-      target: target,
-    );
-    final playable =
-        details != null &&
-        details!.episodes != null &&
-        details!.episodes!.isNotEmpty;
+    final activeDownloads = ref.watch(activeDownloadsProvider);
+    final isDownloading = activeDownloads.contains(episodeUrl);
+    final downloadedFile = ref.watch(downloadedFilesProvider)[episodeUrl];
+    final l10n = AppLocalizations.of(context)!;
+
+    void triggerDownload() {
+      if (downloadedFile != null) {
+        DownloadManagementDialog.show(
+          context,
+          details ?? item,
+          downloadedFile,
+          episode: details?.episodes?.firstWhereOrNull(
+            (e) => e.url == episodeUrl,
+          ),
+        );
+      } else if (isDownloading) {
+        DownloadProgressDialog.show(
+          context,
+          details?.title ?? item.title,
+          episodeUrl,
+        );
+      } else {
+        ref
+            .read(downloadLauncherProvider)
+            .launch(context, details ?? item, episodeUrl: episodeUrl);
+      }
+    }
+
     return DetailsPlayFab(
-      label: label,
-      loading: state.launching,
-      onPressed: playable
-          ? () => ref
-                .read(detailsControllerProvider(item.url).notifier)
-                .handlePlayPress(context, details!)
-          : null,
+      label: downloadedFile != null ? l10n.downloaded : l10n.download,
+      icon: downloadedFile != null
+          ? Icons.download_done_sharp
+          : Icons.download_rounded,
+      loading: isDownloading,
+      fabKey: const ValueKey('details-download-fab'),
+      onPressed: triggerDownload,
     );
   }
 }
@@ -185,9 +218,10 @@ class DetailsActionButtons extends HookConsumerWidget {
   final String itemUrl;
   final bool vertical;
 
-  /// False on the phone page, where Play is the round button on the banner
-  /// ([DetailsHeroPlayButton]): what is left here is the watched-so-far bar
-  /// and Download, and nothing at all for a title with neither.
+  /// False on the phone page, where Download is the round button on the
+  /// banner ([DetailsHeroDownloadButton]): what is left here is the
+  /// watched-so-far bar and Play, and nothing at all for a title with
+  /// neither.
   final bool showPlay;
 
   const DetailsActionButtons({
@@ -255,14 +289,16 @@ class DetailsActionButtons extends HookConsumerWidget {
       target: targetEpisode,
     );
 
+    final playable =
+        details != null &&
+        details!.episodes != null &&
+        details!.episodes!.isNotEmpty;
+
     final playBtn = CustomButton(
       isPrimary: true,
       focusNode: playFocusNode,
       autofocus: true,
-      onPressed:
-          (details != null &&
-              details!.episodes != null &&
-              details!.episodes!.isNotEmpty)
+      onPressed: playable
           ? () async {
               await ref
                   .read(detailsControllerProvider(item.url).notifier)
@@ -273,6 +309,17 @@ class DetailsActionButtons extends HookConsumerWidget {
                 playFocusNode.requestFocus();
               }
             }
+          : null,
+      // Holding Play opens the links box instead of playing: the same sheet
+      // the Stremio section opens, every installed source asked at once.
+      onLongPress: playable
+          ? () => ref
+                .read(detailsControllerProvider(item.url).notifier)
+                .openLinksSheet(
+                  context,
+                  details!,
+                  specificEpisode: targetEpisode,
+                )
           : null,
       child: Padding(
         padding: btnPadding,
@@ -305,17 +352,16 @@ class DetailsActionButtons extends HookConsumerWidget {
     // none at all, some return one per mirror - so gate on the controller's
     // `isMovie` verdict as well as the one-episode series case. `details`
     // resolves a frame or more after the item is handed to us, so fall back to
-    // whatever episodes the item already carries.
+    // whatever episodes the item already carries. The hero's Download button
+    // shares this gate ([detailsShowDownload]).
     final isLivestream = item.contentType == MultimediaContentType.livestream;
-    final episodeList = details?.episodes ?? item.episodes;
-    final showDownload =
-        !isLivestream &&
-        (isMovie || (episodeList != null && episodeList.length == 1));
+    final showDownload = detailsShowDownload(
+      item: item,
+      details: details,
+      isMovie: isMovie,
+    );
 
-    final episodeUrl =
-        details?.episodes?.firstOrNull?.url ??
-        item.episodes?.firstOrNull?.url ??
-        item.url;
+    final episodeUrl = detailsDownloadEpisodeUrl(item: item, details: details);
     final activeDownloads = ref.watch(activeDownloadsProvider);
     final isDownloading = activeDownloads.contains(episodeUrl);
     final progressMap = ref.watch(downloadProgressProvider);
@@ -475,11 +521,13 @@ class DetailsActionButtons extends HookConsumerWidget {
     }
 
     if (!showPlay) {
+      // The phone page: Download is the round button on the banner now, so
+      // what stays here is the watched-so-far bar and Play.
       final hasProgress = pos > 0 && dur > 0 && !isLivestream;
-      if (!hasProgress && !showDownload) return const SizedBox.shrink();
+      if (!hasProgress && !playable) return const SizedBox.shrink();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [progressWidget, if (showDownload) downloadBtn],
+        children: [progressWidget, playBtn],
       );
     }
 
