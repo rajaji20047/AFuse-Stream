@@ -8,11 +8,11 @@
 /// appeared at all).
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/account/data/zorox_backup.dart';
+import 'package:raja/features/account/data/raja_backup.dart';
 
 void main() {
   test('empty backup says it has no watch history', () {
-    const report = ZoroxRestoreReport(historyInBackup: 0);
+    const report = RajaRestoreReport(historyInBackup: 0);
     expect(
       report.summary,
       'Import successful — this backup has no watch history.',
@@ -20,7 +20,7 @@ void main() {
   });
 
   test('backup with history already on device says nothing new', () {
-    const report = ZoroxRestoreReport(
+    const report = RajaRestoreReport(
       historyInBackup: 3,
       historySkipped: 3,
     );
@@ -28,7 +28,7 @@ void main() {
   });
 
   test('restored history is counted', () {
-    const report = ZoroxRestoreReport(
+    const report = RajaRestoreReport(
       historyRestored: 2,
       historyInBackup: 2,
     );
@@ -36,9 +36,9 @@ void main() {
   });
 
   test('a real restore is not hidden by an empty history', () {
-    const report = ZoroxRestoreReport(
+    const report = RajaRestoreReport(
       historyInBackup: 0,
-      zoroxPluginsRestored: 2,
+      rajaPluginsRestored: 2,
     );
     expect(report.summary, 'Import successful — restored 2 plugins.');
   });

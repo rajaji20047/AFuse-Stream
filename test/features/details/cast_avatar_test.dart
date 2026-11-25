@@ -6,10 +6,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/models/tmdb_details.dart';
-import 'package:zorox/features/details/data/cast_photo_service.dart';
-import 'package:zorox/features/details/presentation/widgets/cast_avatar.dart';
-import 'package:zorox/features/details/presentation/widgets/movie_cast_list.dart';
+import 'package:raja/core/models/tmdb_details.dart';
+import 'package:raja/features/details/data/cast_photo_service.dart';
+import 'package:raja/features/details/presentation/widgets/cast_avatar.dart';
+import 'package:raja/features/details/presentation/widgets/movie_cast_list.dart';
 
 Finder get _photo => find.byKey(const ValueKey('cast-photo'));
 Finder get _initials => find.byKey(const ValueKey('cast-initials'));

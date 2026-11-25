@@ -5,24 +5,24 @@ import 'package:dio/dio.dart';
 /// Fuse Account works with no setup: this is used whenever the user has not
 /// saved a server of their own under Settings -> Accounts -> Fuse Account ->
 /// "Sync server" (stored in the settings box, see
-/// [ZoroxAccountNotifier.setWorkerUrl]). A saved URL wins over this one, and
+/// [RajaAccountNotifier.setWorkerUrl]). A saved URL wins over this one, and
 /// clearing it comes back here.
 ///
 /// The URL must start with `https://` — the password goes to the server and
 /// nowhere else, and plain HTTP would send it in the clear.
-const String kZoroxSyncWorkerUrl = 'https://zorox-sync.deepace115.workers.dev';
+const String kRajaSyncWorkerUrl = 'https://zorox-sync.deepace115.workers.dev';
 
 /// The sync server to talk to: the user's saved one, else the built-in
 /// default. Trailing slashes are dropped either way.
 String effectiveSyncServerUrl(String? saved) {
   final custom = (saved ?? '').trim().replaceAll(RegExp(r'/+$'), '');
   if (custom.isNotEmpty) return custom;
-  return kZoroxSyncWorkerUrl.replaceAll(RegExp(r'/+$'), '');
+  return kRajaSyncWorkerUrl.replaceAll(RegExp(r'/+$'), '');
 }
 
 /// What the sync server answered with, in the user's words.
-class ZoroxSyncException implements Exception {
-  const ZoroxSyncException(this.message, {this.statusCode});
+class RajaSyncException implements Exception {
+  const RajaSyncException(this.message, {this.statusCode});
 
   final String message;
 
@@ -40,10 +40,10 @@ class ZoroxSyncException implements Exception {
 ///
 /// A fresh [Dio] of its own — not the app's shared client — so account calls
 /// never pick up a plugin's cookies or DNS overrides. Throws
-/// [ZoroxSyncException] with a readable message for anything the server or
+/// [RajaSyncException] with a readable message for anything the server or
 /// the network reports.
-class ZoroxSyncClient {
-  ZoroxSyncClient({Dio? dio})
+class RajaSyncClient {
+  RajaSyncClient({Dio? dio})
     : _dio =
           dio ??
           Dio(
@@ -59,12 +59,12 @@ class ZoroxSyncClient {
 
   static void checkBaseUrl(String baseUrl) {
     if (baseUrl.isEmpty) {
-      throw const ZoroxSyncException(
+      throw const RajaSyncException(
         'Cloud sync is not set up yet — set the sync server URL first, or use Export/Import.',
       );
     }
     if (!baseUrl.startsWith('https://')) {
-      throw const ZoroxSyncException(
+      throw const RajaSyncException(
         'The sync server URL must start with https://',
       );
     }
@@ -88,7 +88,7 @@ class ZoroxSyncClient {
     return _tokenFrom(body);
   }
 
-  /// Uploads [backup] (a [ZoroxBackup.toJson] map). Returns the server's
+  /// Uploads [backup] (a [RajaBackup.toJson] map). Returns the server's
   /// `updatedAt` (unix milliseconds).
   ///
   /// With [profileId] the backup is written to that profile's key
@@ -128,17 +128,17 @@ class ZoroxSyncClient {
       );
       final body = response.data ?? const {};
       if (body['ok'] != true) {
-        throw ZoroxSyncException(_serverMessage(body));
+        throw RajaSyncException(_serverMessage(body));
       }
       final backup = body['backup'];
       if (backup is! Map) return null;
       return Map<String, dynamic>.from(backup);
-    } on ZoroxSyncException {
+    } on RajaSyncException {
       rethrow;
     } on DioException catch (e) {
       // A 404 here is not an error: it means "no backup saved yet".
       if (e.response?.statusCode == 404) return null;
-      throw ZoroxSyncException(
+      throw RajaSyncException(
         _dioMessage(e),
         statusCode: e.response?.statusCode,
       );
@@ -167,13 +167,13 @@ class ZoroxSyncClient {
       );
       final data = response.data ?? const {};
       if (data['ok'] != true) {
-        throw ZoroxSyncException(_serverMessage(data));
+        throw RajaSyncException(_serverMessage(data));
       }
       return data;
-    } on ZoroxSyncException {
+    } on RajaSyncException {
       rethrow;
     } on DioException catch (e) {
-      throw ZoroxSyncException(
+      throw RajaSyncException(
         _dioMessage(e),
         statusCode: e.response?.statusCode,
       );
@@ -183,7 +183,7 @@ class ZoroxSyncClient {
   static String _tokenFrom(Map<String, dynamic> body) {
     final token = body['token'];
     if (token is! String || token.isEmpty) {
-      throw const ZoroxSyncException('The server did not return a session.');
+      throw const RajaSyncException('The server did not return a session.');
     }
     return token;
   }

@@ -23,7 +23,7 @@ import '../../../shared/widgets/text_input_dialog.dart';
 import '../../../shared/focus/app_focus.dart';
 import '../../settings/presentation/widgets/settings_widgets.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Whether [installed] came from the repository at [repositoryUrl]. An
 /// install from before addresses were kept came from none that can be told.
@@ -567,7 +567,7 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
             vertical: LayoutConstants.spacingSm,
           ),
           child: Text(
-            l10n.noZoroxReposYet,
+            l10n.noRajaReposYet,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),

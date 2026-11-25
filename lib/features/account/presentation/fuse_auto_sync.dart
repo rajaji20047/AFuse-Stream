@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
-import '../data/zorox_account_notifier.dart';
+import '../data/raja_account_notifier.dart';
 
 /// Starts the Fuse account's automatic sync (v9): once on cold start and
 /// again each time the app returns to the foreground.
@@ -36,7 +36,7 @@ class _FuseAutoSyncState extends ConsumerState<FuseAutoSync>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
-        ref.read(zoroxAccountProvider);
+        ref.read(rajaAccountProvider);
       } catch (_) {
         // The account must never keep the app from starting.
       }
@@ -64,7 +64,7 @@ class _FuseAutoSyncState extends ConsumerState<FuseAutoSync>
     try {
       unawaited(
         ref
-            .read(zoroxAccountProvider.notifier)
+            .read(rajaAccountProvider.notifier)
             .autoSync(playerOnTop: _playerOnTop),
       );
     } catch (_) {

@@ -9,11 +9,11 @@ import 'dart:async';
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/logger/app_logger.dart';
-import 'package:zorox/features/player/domain/qoe_log.dart';
-import 'package:zorox/features/player/presentation/vlc/ended_card.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/logger/app_logger.dart';
+import 'package:raja/features/player/domain/qoe_log.dart';
+import 'package:raja/features/player/presentation/vlc/ended_card.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'fake_vlc_engine.dart';

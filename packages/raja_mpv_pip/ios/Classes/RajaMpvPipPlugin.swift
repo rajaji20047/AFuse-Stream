@@ -30,7 +30,7 @@ private final class PipHostView: UIView {
 /// a second renderer for PiP is impossible. This plugin therefore taps the
 /// frames the forked `media_kit_video` software renderer already produces:
 /// `TextureSW` posts every completed frame on the
-/// `ZoroXMpvRenderedFrame` notification (see `packages/media_kit_video/
+/// `RajaMpvRenderedFrame` notification (see `packages/media_kit_video/
 /// FORK.md`), this plugin copies the frame synchronously into its own pool
 /// — the renderer's pool has only 3 buffers — wraps it as a
 /// `CMSampleBuffer`, and enqueues it into an `AVSampleBufferDisplayLayer`
@@ -123,26 +123,26 @@ private final class PipHostView: UIView {
 /// layer-flush theory (the window never went black) or the gate
 /// (proven open by the burned-in subtitle).
 ///
-/// Own channel `dev.toji.zorox.player/pip_mpv_ios` — deliberately NOT
-/// `dev.toji.zorox.player/pip`, which the libVLC side already uses;
+/// Own channel `dev.rajaji.raja.player/pip_mpv_ios` — deliberately NOT
+/// `dev.rajaji.raja.player/pip`, which the libVLC side already uses;
 /// reusing that name would replace its handler.
-public class ZoroxMpvPipPlugin: NSObject, FlutterPlugin,
+public class RajaMpvPipPlugin: NSObject, FlutterPlugin,
   AVPictureInPictureControllerDelegate,
   AVPictureInPictureSampleBufferPlaybackDelegate
 {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(
-      name: "dev.toji.zorox.player/pip_mpv_ios",
+      name: "dev.rajaji.raja.player/pip_mpv_ios",
       binaryMessenger: registrar.messenger()
     )
-    let instance = ZoroxMpvPipPlugin(channel: channel)
+    let instance = RajaMpvPipPlugin(channel: channel)
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
   /// The notification the forked media_kit_video software renderer posts
   /// with each completed frame (`CVPixelBuffer` as the object).
   private static let frameNotification = Notification.Name(
-    "ZoroXMpvRenderedFrame"
+    "RajaMpvRenderedFrame"
   )
 
   private let channel: FlutterMethodChannel
@@ -1093,7 +1093,7 @@ public class ZoroxMpvPipPlugin: NSObject, FlutterPlugin,
     guard pipActivity == nil else { return }
     pipActivity = ProcessInfo.processInfo.beginActivity(
       options: [.userInitiated, .latencyCritical],
-      reason: "ZoroX PiP"
+      reason: "Raja PiP"
     )
   }
 
@@ -1173,7 +1173,7 @@ public class ZoroxMpvPipPlugin: NSObject, FlutterPlugin,
   ) {
     assert(
       Thread.isMainThread,
-      "ZoroxMpvPipPlugin.enqueue must run on the main queue"
+      "RajaMpvPipPlugin.enqueue must run on the main queue"
     )
     guard let layer = layer else {
       if live { noteLiveDrop() }
@@ -1187,7 +1187,7 @@ public class ZoroxMpvPipPlugin: NSObject, FlutterPlugin,
     // layerFailed grows in diag() and the next round recreates it.
     if layer.status == .failed {
       if let err = layer.error {
-        NSLog("ZoroX PiP: layer failed: \(err)")
+        NSLog("Raja PiP: layer failed: \(err)")
       }
       layer.flush()
       lock.lock()

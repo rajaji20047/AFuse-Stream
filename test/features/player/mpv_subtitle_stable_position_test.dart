@@ -17,10 +17,10 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:zorox/features/player/presentation/mpv/golden_drawer.dart';
-import 'package:zorox/features/player/presentation/mpv/golden_player_controls.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_subtitle_style.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/player/presentation/mpv/golden_drawer.dart';
+import 'package:raja/features/player/presentation/mpv/golden_player_controls.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_subtitle_style.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 void main() {
   const settings = PlayerSettings();

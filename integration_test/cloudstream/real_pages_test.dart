@@ -1,5 +1,5 @@
 /// Real extensions' pages in their own screens (the spec's §9; the part 5 research found 8 sign-in pages and 12
-/// manual Cloudflare pages behind a tap): each is installed, its screen opened in ZoroX's sheet, the tap path to
+/// manual Cloudflare pages behind a tap): each is installed, its screen opened in Raja's sheet, the tap path to
 /// its page followed, and the page shown, then kept on screen for 8 s (the device run takes a screenshot on the
 /// `CS3-REAL-PAGE … shown` line). On the JVM its page must have loaded (a title, or a URL); on Android its own WebView
 /// is lent to the sheet, and must stay put (the same platform view throughout: no flicker). One `CS3-REAL-PAGE` line
@@ -18,11 +18,11 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_pages.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_page_view.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_pages.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_page_view.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 

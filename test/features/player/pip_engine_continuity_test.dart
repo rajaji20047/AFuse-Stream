@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/providers/device_memory.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/providers/device_memory.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 /// Entering picture-in-picture must not restart the film.
@@ -34,7 +34,7 @@ import 'package:vlc_player/vlc_player.dart';
 /// the id - so the test knows which event channel to speak on. The
 /// platform-view path takes its id from Flutter's process-global registry and
 /// publishes it nowhere.
-const MethodChannel _pip = MethodChannel('dev.toji.zorox.player/pip');
+const MethodChannel _pip = MethodChannel('dev.rajaji.raja.player/pip');
 const MethodChannel _vlc = MethodChannel('vlc_player');
 
 /// The screen asks before each open whether the device is on Wi-Fi, for the

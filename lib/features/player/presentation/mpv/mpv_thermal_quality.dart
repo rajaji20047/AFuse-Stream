@@ -1,7 +1,7 @@
 /// Thermal-aware quality: when the phone is hot, drop a heavy stream to a
 /// lighter one, and come back when it cools.
 ///
-/// The mechanism (user report 2026-11-15): 4K plays smooth in ZoroX
+/// The mechanism (user report 2026-11-15): 4K plays smooth in Raja
 /// until the phone heats up, then it gets laggy and never recovers —
 /// Nuvio does not do this. The likely cause is the VideoToolbox session
 /// being invalidated under thermal pressure: without

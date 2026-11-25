@@ -1,11 +1,11 @@
 import '../models/addon_manifest.dart';
 
-/// Add-ons ZoroX can fall back to without the user installing anything.
+/// Add-ons Raja can fall back to without the user installing anything.
 ///
 /// Catalog-only add-ons are extremely common — the Streaming Catalogs add-on
 /// (Netflix/Disney+/Prime rows), Trakt lists, RPDB catalogs — and none of them
 /// implement `meta`. In Stremio those work because Cinemeta is always
-/// installed. ZoroX keeps the same guarantee by consulting Cinemeta as a
+/// installed. Raja keeps the same guarantee by consulting Cinemeta as a
 /// fallback: still pure add-on protocol, just not something the user had to
 /// add, and only used when no installed add-on can answer.
 class BuiltInAddons {
@@ -52,7 +52,7 @@ class BuiltInAddons {
     for (var year = DateTime.now().year; year >= oldest; year--) '$year',
   ];
 
-  /// A copy of the catalogs in Cinemeta's live manifest that ZoroX uses.
+  /// A copy of the catalogs in Cinemeta's live manifest that Raja uses.
   ///
   /// Only `top` takes a `search`; `imdbRating` (Cinemeta names it
   /// "Featured" - it is not sorted by rating) and `year` ("New", whose

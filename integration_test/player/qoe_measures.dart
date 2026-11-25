@@ -15,7 +15,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:zorox/core/network/probe_answer.dart';
+import 'package:raja/core/network/probe_answer.dart';
 
 /// One reading of the decoder's count of video pictures, at [t] on the
 /// trace's clock, with the position then.

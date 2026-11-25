@@ -2,11 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/theme/olympus.dart';
-import 'package:zorox/features/home/presentation/widgets/continue_watching_card.dart';
-import 'package:zorox/shared/widgets/cards_wrapper.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/theme/olympus.dart';
+import 'package:raja/features/home/presentation/widgets/continue_watching_card.dart';
+import 'package:raja/shared/widgets/cards_wrapper.dart';
 
 /// The two footprints the rail actually hands the card
 /// (continue_watching_section.dart: 360x200 on tablet/TV, 280x150 on phone).

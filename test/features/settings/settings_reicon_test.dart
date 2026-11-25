@@ -5,8 +5,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/icons/reicon_icon.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_widgets.dart';
+import 'package:raja/core/icons/reicon_icon.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_widgets.dart';
 
 /// Pictographs, dingbats, arrows, geometric shapes, enclosed letters and
 /// the joiners/selectors that build emoji sequences.

@@ -27,7 +27,7 @@ NuvioRuntime nuvioRuntime(Ref ref) {
 ///
 /// Nuvio wraps a scraper in `module/exports`, then calls
 /// `getStreams(tmdbId, mediaType, season, episode)` and JSON-serialises the
-/// result. ZoroX does the same on QuickJS, behind the environment in
+/// result. Raja does the same on QuickJS, behind the environment in
 /// [nuvioPolyfillSource]: fetch/XHR, timers, URL, Buffer, TextEncoder,
 /// WebCrypto + CryptoJS, localStorage, cheerio and `require`.
 ///

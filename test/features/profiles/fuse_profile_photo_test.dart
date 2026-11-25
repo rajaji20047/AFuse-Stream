@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:zorox/features/profiles/data/fuse_profile.dart';
-import 'package:zorox/features/profiles/data/fuse_profile_photo_store.dart';
-import 'package:zorox/features/profiles/data/fuse_profile_photos_notifier.dart';
-import 'package:zorox/features/profiles/presentation/fuse_profile_avatar.dart';
+import 'package:raja/features/profiles/data/fuse_profile.dart';
+import 'package:raja/features/profiles/data/fuse_profile_photo_store.dart';
+import 'package:raja/features/profiles/data/fuse_profile_photos_notifier.dart';
+import 'package:raja/features/profiles/presentation/fuse_profile_avatar.dart';
 
 /// A 1x1 transparent PNG, so the avatar can really decode a photo.
 const _onePxPng =

@@ -1,4 +1,4 @@
-/// MegaRepo in ZoroX: added by its shortcode, its plugin installed, CloudStream's community
+/// MegaRepo in Raja: added by its shortcode, its plugin installed, CloudStream's community
 /// list applied (each repository on it joins the list, unless the user removed it), a removed one
 /// staying removed when the plugin runs again, and CloudStream's other ways of naming a
 /// repository. Takes the device's setup as it finds it and puts it back afterwards. Prints what
@@ -14,10 +14,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/models/extension_update_report.dart';
-import 'package:zorox/core/network/dio_client_provider.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/models/extension_update_report.dart';
+import 'package:raja/core/network/dio_client_provider.dart';
 
 import 'support.dart';
 

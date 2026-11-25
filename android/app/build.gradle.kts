@@ -10,7 +10,7 @@ plugins {
 }
 
 android {
-    namespace = "com.toji.zorox"
+    namespace = "com.raja.fuse"
     compileSdkVersion(rootProject.extra["projectCompileSdk"] as String)
     // See the projectNdk comment in the root build.gradle.kts for why this is
     // pinned instead of following flutter.ndkVersion.
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.toji.zorox"
+        applicationId = "com.raja.fuse"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

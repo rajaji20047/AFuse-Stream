@@ -3,7 +3,7 @@
 // tags (`v1.1`, `v2`) as newer.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:version/version.dart';
-import 'package:zorox/core/services/update_service.dart';
+import 'package:raja/core/services/update_service.dart';
 
 void main() {
   final app = parseReleaseVersion('1.0.0');

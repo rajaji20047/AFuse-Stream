@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/services/notification_service.dart';
-import 'package:zorox/core/storage/secure_token_storage.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/features/settings/presentation/account_settings_screen.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/tracking/data/wetrakr_service.dart';
-import 'package:zorox/features/tracking/presentation/tracking_auth_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/services/notification_service.dart';
+import 'package:raja/core/storage/secure_token_storage.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/features/settings/presentation/account_settings_screen.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/tracking/data/wetrakr_service.dart';
+import 'package:raja/features/tracking/presentation/tracking_auth_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'account_settings_tracking_login_test.dart'
     show NoTokens, QuietSettings, RecordingNotifications;

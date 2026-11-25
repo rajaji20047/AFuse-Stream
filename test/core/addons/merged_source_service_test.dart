@@ -7,14 +7,14 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_stream_service.dart';
-import 'package:zorox/core/addons/data/merged_source_service.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/core/addons/data/addon_stream_service.dart';
+import 'package:raja/core/addons/data/merged_source_service.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
 
 class _Plugin extends SkyStreamProvider {
   _Plugin(

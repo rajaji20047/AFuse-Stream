@@ -10,22 +10,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/dio_client_provider.dart';
-import 'package:zorox/core/services/download_service.dart';
-import 'package:zorox/core/services/local_proxy_service.dart';
-import 'package:zorox/features/player/domain/media_options.dart'
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/dio_client_provider.dart';
+import 'package:raja/core/services/download_service.dart';
+import 'package:raja/core/services/local_proxy_service.dart';
+import 'package:raja/features/player/domain/media_options.dart'
     show kLiveDelayMs;
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_row.dart';
-import 'package:zorox/features/player/presentation/vlc/source_check_provider.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart'
+import 'package:raja/features/player/presentation/vlc/panel/player_panel.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_row.dart';
+import 'package:raja/features/player/presentation/vlc/source_check_provider.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart'
     show openingOverlayKey;
-import 'package:zorox/features/player/presentation/widgets/player_stream_widgets.dart'
+import 'package:raja/features/player/presentation/widgets/player_stream_widgets.dart'
     show PlayerBufferingIndicator;
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart' show VlcPlayerController;
 
 import 'fake_vlc_engine.dart';
@@ -73,7 +73,7 @@ class _Playlists implements HttpClientAdapter {
         },
       );
     }
-    // ZoroX's own proxy, for a stream whose headers libVLC cannot send:
+    // Raja's own proxy, for a stream whose headers libVLC cannot send:
     // answered as the address it stands for.
     final proxied =
         options.uri.host == '127.0.0.1' && options.uri.path == '/proxy';
@@ -763,7 +763,7 @@ void main() {
     );
   });
 
-  group("a stream ZoroX's own proxy serves", () {
+  group("a stream Raja's own proxy serves", () {
     setUpAll(LocalProxyService.instance.startServer);
     tearDownAll(LocalProxyService.instance.shutdown);
 

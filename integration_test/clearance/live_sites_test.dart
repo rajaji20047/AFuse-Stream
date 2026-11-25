@@ -1,4 +1,4 @@
-/// Bot checks on live sites, through ZoroX's own clearance layer: the
+/// Bot checks on live sites, through Raja's own clearance layer: the
 /// app's shared Dio with its clearance interceptor, requests sent the way JS
 /// extensions send them, and the solver's hidden pages.
 ///
@@ -35,16 +35,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/extensions/engine/js_engine.dart';
-import 'package:zorox/core/network/clearance/challenge_triage.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_interceptor.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/core/network/clearance/widget_tap.dart';
-import 'package:zorox/core/network/dio_client_provider.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
+import 'package:raja/core/extensions/engine/js_engine.dart';
+import 'package:raja/core/network/clearance/challenge_triage.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_interceptor.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/core/network/clearance/widget_tap.dart';
+import 'package:raja/core/network/dio_client_provider.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
 
 import '../cloudstream/support.dart' show whilePumping;
 

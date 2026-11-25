@@ -14,14 +14,14 @@ Fuse adds its own design, branding and features on top. See `LICENSE` and
 ## Identity
 
 - App name: Fuse
-- Android applicationId: `com.toji.zorox`
+- Android applicationId: `com.raja.fuse`
 - In-app update checks read the latest release of `github.com/techforfriend/Fuse_android`
   (`lib/core/services/update_service.dart`). A release tag such as `v2` is
   read as 2.0.0; the Android updater needs an APK asset whose name contains
   `android`.
 
-The Dart package is still named `zorox` and some internal identifiers
-(method channels, the Android namespace, the `zorox_mpv_pip` package) keep
+The Dart package is still named `raja` and some internal identifiers
+(method channels, the Android namespace, the `raja_mpv_pip` package) keep
 that name. They are internal only and are not shown to users.
 
 ## Layout
@@ -31,7 +31,7 @@ that name. They are internal only and are not shown to users.
   `packages/cs3_engine/README.md`).
 - `packages/` — other local packages the app depends on
   (`challenge_browser`, `flutter_js_ng`, `flutter_torrent_server`,
-  `media_kit_video`, `vlc_player`, `zorox_mpv_pip`).
+  `media_kit_video`, `vlc_player`, `raja_mpv_pip`).
 - `android/` — platform shell (Android-only copy; no `ios/`).
 - `assets/`, `test/` — bundled assets and tests.
 

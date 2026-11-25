@@ -1,16 +1,16 @@
-/// A CloudStream provider's pure parts: how episode data travels through ZoroX, how links are
-/// labelled, how CloudStream's types map to ZoroX's, and the provider ids.
+/// A CloudStream provider's pure parts: how episode data travels through Raja, how links are
+/// labelled, how CloudStream's types map to Raja's, and the provider ids.
 library;
 
 import 'package:cs3_engine/cs3_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/utils/stream_quality_sorter.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/utils/stream_quality_sorter.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 void main() {
   group('episode tokens', () {
@@ -50,7 +50,7 @@ void main() {
     });
   });
 
-  test('CloudStream types map to ZoroX content types', () {
+  test('CloudStream types map to Raja content types', () {
     expect(CloudStreamProvider.contentType('TvSeries'), MultimediaContentType.series);
     expect(CloudStreamProvider.contentType('AsianDrama'), MultimediaContentType.series);
     expect(CloudStreamProvider.contentType('Anime'), MultimediaContentType.anime);

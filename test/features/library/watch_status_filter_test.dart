@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/features/library/presentation/widgets/watch_status_tab.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/features/library/presentation/widgets/watch_status_tab.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 HistoryItem _entry(String url, int position, int duration) => HistoryItem(
   item: MultimediaItem(

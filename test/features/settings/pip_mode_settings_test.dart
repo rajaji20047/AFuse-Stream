@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_screen.dart';
-import 'package:zorox/features/settings/presentation/widgets/fuse_segmented_control.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_screen.dart';
+import 'package:raja/features/settings/presentation/widgets/fuse_segmented_control.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// The Picture-in-Picture section on the Player settings screen (iOS only):
 /// the mpv / iOS mode segment and the Enable PiP switch.

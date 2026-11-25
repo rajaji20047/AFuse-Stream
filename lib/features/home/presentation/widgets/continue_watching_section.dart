@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:zorox/core/theme/olympus.dart';
-import 'package:zorox/core/utils/responsive_breakpoints.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
+import 'package:raja/core/theme/olympus.dart';
+import 'package:raja/core/utils/responsive_breakpoints.dart';
+import 'package:raja/core/utils/layout_constants.dart';
 
-import 'package:zorox/features/home/presentation/widgets/continue_watching_card.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/shared/widgets/desktop_scroll_wrapper.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/core/services/notification_service.dart';
+import 'package:raja/features/home/presentation/widgets/continue_watching_card.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/shared/widgets/desktop_scroll_wrapper.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/core/services/notification_service.dart';
 
 class ContinueWatchingSection extends ConsumerStatefulWidget {
   final String title;

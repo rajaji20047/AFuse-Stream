@@ -22,7 +22,7 @@ import 'general_settings_provider.dart';
 import 'app_version_provider.dart';
 import 'developer_options_provider.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/router/app_router.dart';

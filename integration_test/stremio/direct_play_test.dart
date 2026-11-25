@@ -28,16 +28,16 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart'
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_meta.dart'
     show kAddonItemSource;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/core/storage/episode_watch_repository.dart';
-import 'package:zorox/features/home/presentation/widgets/continue_watching_card.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/shared/widgets/custom_widgets.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/core/storage/episode_watch_repository.dart';
+import 'package:raja/features/home/presentation/widgets/continue_watching_card.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/shared/widgets/custom_widgets.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import '../cloudstream/support.dart';

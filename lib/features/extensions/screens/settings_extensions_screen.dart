@@ -30,7 +30,7 @@ import '../widgets/skystream_extensions_tab.dart';
 /// SkyStream is the .sky extension system ([SkyStreamExtensionsTab]),
 /// CloudStream is the .cs3 repository store
 /// ([CloudStreamInstalledSection] + [CloudStreamRepositoriesSection]
-/// with the owner's TojiX repo in its own [FuseRepositorySection]),
+/// with the owner's RajajiX repo in its own [FuseRepositorySection]),
 /// Nuvio is [NuvioPluginsView], Stremio is [AddonManageView].
 class SettingsExtensionsScreen extends ConsumerStatefulWidget {
   /// Which tab opens first (0 SkyStream, 1 CloudStream, 2 Nuvio,
@@ -116,7 +116,7 @@ class _ExtensionsTab {
 }
 
 /// The CloudStream tab: only the .cs3 store. Installed CloudStream
-/// plugins, the owner's Fuse (TojiX) repository in its own section, and
+/// plugins, the owner's Fuse (RajajiX) repository in its own section, and
 /// every other CloudStream repository — each with its own add / remove /
 /// refresh. Pulling the list down refreshes the installed plugins'
 /// repositories for newer versions.

@@ -104,7 +104,7 @@ class AppTheme {
   /// page keeps showing the entry without it.
   ///
   /// The app's own licence is registered here too, for the same reason:
-  /// Flutter lists only what dependencies declare. ZoroX is GPL-3.0, which
+  /// Flutter lists only what dependencies declare. Raja is GPL-3.0, which
   /// asks an interactive program to show where its licence is.
   static bool _fontLicenceRegistered = false;
 
@@ -121,7 +121,7 @@ class AppTheme {
     });
   }
 
-  // Premium Colors — ZoroX Gold & Black (see ZOROX_DESIGN_SPEC.md).
+  // Premium Colors — Raja Gold & Black (see RAJA_DESIGN_SPEC.md).
   static const Color background = Color(0xFF0A0A0B); // Obsidian
   static const Color surface = Color(0xFF161618); // Cards
   static const Color surfaceHighlight = Color(0xFF26262A);
@@ -235,13 +235,13 @@ class AppTheme {
   static ThemeData createDarkTheme(
     ColorScheme? dynamicScheme, {
     Color seedColor = const Color(0xFF66BB6A),
-    ZoroxThemeVariant variant = ZoroxThemeVariant.arenaGold,
+    RajaThemeVariant variant = RajaThemeVariant.arenaGold,
   }) {
     _registerFontLicence();
     final palette = switch (variant) {
-      ZoroxThemeVariant.midnight => _midnightPalette,
-      ZoroxThemeVariant.liquidGlass => _liquidGlassPalette,
-      ZoroxThemeVariant.obsidian => _obsidianPalette,
+      RajaThemeVariant.midnight => _midnightPalette,
+      RajaThemeVariant.liquidGlass => _liquidGlassPalette,
+      RajaThemeVariant.obsidian => _obsidianPalette,
       // Arena Gold, and Frost (light-only — see above).
       _ => _arenaGoldPalette,
     };
@@ -487,7 +487,7 @@ class AppTheme {
       // off it (the glass nav reads `isGlass`). Every variant carries
       // the extension; only Liquid Glass sets it.
       extensions: <ThemeExtension<dynamic>>[
-        ZoroxThemeExtension(isGlass: variant == ZoroxThemeVariant.liquidGlass),
+        RajaThemeExtension(isGlass: variant == RajaThemeVariant.liquidGlass),
       ],
     );
   }
@@ -501,7 +501,7 @@ class AppTheme {
   static ThemeData createLightTheme(
     ColorScheme? dynamicScheme, {
     Color? accent,
-    ZoroxThemeVariant variant = ZoroxThemeVariant.arenaGold,
+    RajaThemeVariant variant = RajaThemeVariant.arenaGold,
   }) {
     _registerFontLicence();
     var colorScheme = const ColorScheme.light(
@@ -535,7 +535,7 @@ class AppTheme {
     // blue-grey paper instead of Frost's warm sand - the light
     // counterpart of the cool dark Liquid Glass surfaces. Every colour
     // is opaque, like the other variants.
-    if (variant == ZoroxThemeVariant.liquidGlass) {
+    if (variant == RajaThemeVariant.liquidGlass) {
       colorScheme = colorScheme.copyWith(
         surface: liquidGlassLightBackground,
         onSurface: const Color(0xFF141821),
@@ -785,7 +785,7 @@ class AppTheme {
       // Which variant this theme is — see [createDarkTheme]. The palette
       // here is always Frost; only the glass flag follows the variant.
       extensions: <ThemeExtension<dynamic>>[
-        ZoroxThemeExtension(isGlass: variant == ZoroxThemeVariant.liquidGlass),
+        RajaThemeExtension(isGlass: variant == RajaThemeVariant.liquidGlass),
       ],
     );
   }

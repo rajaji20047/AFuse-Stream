@@ -4,20 +4,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/shared/focus/app_focus.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/shared/focus/app_focus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zorox/features/extensions/screens/extensions_screen.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/core/extensions/models/extension_repository.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/shared/widgets/cards_wrapper.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/features/nuvio/presentation/nuvio_plugins_screen.dart';
+import 'package:raja/features/extensions/screens/extensions_screen.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/extensions/models/extension_repository.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/shared/widgets/cards_wrapper.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/features/nuvio/presentation/nuvio_plugins_screen.dart';
 
 class _NoNuvio extends NuvioRepository {
   @override
@@ -28,7 +28,7 @@ class _NoNuvio extends NuvioRepository {
 /// loading in the harness (its SharedPreferences / engine-host work has no
 /// test backing), so its section shows the endlessly-morphing loading
 /// spinner and pumpAndSettle never completes. The tests below are about the
-/// ZoroX extension system's UI and focus, not the CloudStream load.
+/// Raja extension system's UI and focus, not the CloudStream load.
 class _LoadedCloudStream extends CloudStreamRepository {
   @override
   CloudStreamState build() => const CloudStreamState(isLoading: false);
@@ -205,7 +205,7 @@ void main() {
       find.text('Fuse Repo, CloudStream (.cs3), Nuvio & Stremio'),
       findsOneWidget,
     );
-    expect(find.textContaining('TojiX'), findsNothing);
+    expect(find.textContaining('RajajiX'), findsNothing);
     expect(find.byKey(installedKey), findsOneWidget);
     expect(find.byKey(addKey), findsOneWidget);
     expect(
@@ -256,7 +256,7 @@ void main() {
                 CsRepository(
                   url:
                       'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json',
-                  name: 'TojiX Repo',
+                  name: 'RajajiX Repo',
                 ),
               ],
             ),
@@ -1057,7 +1057,7 @@ void _tvDeadEndTests() {
     await tester.pumpAndSettle();
     expectFocusInBody(tester);
 
-    // The ZoroX section's add row is the one control that opens a new
+    // The Raja section's add row is the one control that opens a new
     // view (the add-repository dialog); opening it must carry focus
     // into the dialog, not drop it.
     final add = find.widgetWithText(ListTile, 'Add Repository');

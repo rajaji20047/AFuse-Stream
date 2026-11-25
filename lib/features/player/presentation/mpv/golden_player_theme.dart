@@ -2,7 +2,7 @@
 ///
 /// Black surfaces, Netflix-inspired. The mockup the user sent
 /// ("CineStream — Premium Movie & Series Player") is the layout/style
-/// reference; the ZoroX name and branding stay.
+/// reference; the Raja name and branding stay.
 ///
 /// The player's accent is NOT a hardcoded gold: it follows the accent
 /// the user picked in Settings → Appearance, read live from the theme

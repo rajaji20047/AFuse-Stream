@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_progress_bar.dart';
-import 'package:zorox/features/player/presentation/widgets/player_stream_widgets.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_progress_bar.dart';
+import 'package:raja/features/player/presentation/widgets/player_stream_widgets.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'fake_vlc_engine.dart';

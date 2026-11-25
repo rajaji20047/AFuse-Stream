@@ -5,7 +5,7 @@
 /// `hwdec-software-fallback: 300` on iOS, with the comment that iOS can
 /// invalidate the VideoToolbox session — e.g. Notification Center during
 /// PiP — and FFmpeg recreates it at the next frames; keep hardware
-/// decoding meanwhile. ZoroX copied the 300 (+40), but mpv's manual
+/// decoding meanwhile. Raja copied the 300 (+40), but mpv's manual
 /// says the default is 3 and a higher number is harmful: the fallback
 /// only triggers after N consecutive failed frames, so 300 tolerates
 /// ~12 s of failed decoding before falling back to software — and when
@@ -72,7 +72,7 @@
 /// Deliberately NOT here: `video-sync` (heat-irrelevant),
 /// `hdr-compute-peak` (blacks the video with `vo=libmpv`, proven in
 /// v20+1 — media_kit forces peak compute off), and Nuvio's `vo=gpu-next`
-/// + MoltenVK native path (a redesign: ZoroX renders through media_kit's
+/// + MoltenVK native path (a redesign: Raja renders through media_kit's
 /// Flutter texture). `tone-mapping` itself is NOT peak compute: it only
 /// picks the mapping curve, and `clip` is the cheapest one; peak compute
 /// stays off.

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/details/domain/season_download.dart';
-import 'package:zorox/features/details/presentation/season_download_controller.dart';
-import 'package:zorox/features/details/presentation/widgets/season_download_widgets.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/details/domain/season_download.dart';
+import 'package:raja/features/details/presentation/season_download_controller.dart';
+import 'package:raja/features/details/presentation/widgets/season_download_widgets.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 final MultimediaItem _item = MultimediaItem(
   title: 'A Show',

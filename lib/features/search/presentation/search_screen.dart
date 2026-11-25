@@ -869,7 +869,7 @@ List<(ProviderSearchResult, List<MultimediaItem>)> orderSearchSections(
   List<(ProviderSearchResult, List<MultimediaItem>)> sections,
 ) {
   bool isPlugin((ProviderSearchResult, List<MultimediaItem>) entry) =>
-      entry.$1.kind == SearchSourceKind.zorox ||
+      entry.$1.kind == SearchSourceKind.raja ||
       entry.$1.kind == SearchSourceKind.cloudstream;
   return [...sections.where(isPlugin), ...sections.where((e) => !isPlugin(e))];
 }

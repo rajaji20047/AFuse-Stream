@@ -1765,7 +1765,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'No SkyStream repos yet'**
-  String get noZoroxReposYet;
+  String get noRajaReposYet;
 
   /// Helper text under the Add Repository URL field on the Extensions screen.
   ///

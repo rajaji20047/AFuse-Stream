@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/features/home/presentation/home_row_prefs.dart';
-import 'package:zorox/features/home/presentation/home_row_prefs_provider.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/features/home/presentation/home_row_prefs.dart';
+import 'package:raja/features/home/presentation/home_row_prefs_provider.dart';
 
 /// Home rows customise (v7): order, hide, unknown rows, reset, per source.
 

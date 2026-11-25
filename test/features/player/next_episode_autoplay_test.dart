@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/next_episode_autoplay.dart';
+import 'package:raja/features/player/domain/next_episode_autoplay.dart';
 
 void main() {
   test('the countdown is five seconds', () {

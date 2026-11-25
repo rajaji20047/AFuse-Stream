@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/search/presentation/search_category.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
-import 'package:zorox/features/search/presentation/widgets/search_category_chips.dart';
+import 'package:raja/features/search/presentation/search_category.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/widgets/search_category_chips.dart';
 
 /// The chips, without a search behind them: tapping a chip is a filter
 /// choice, and the choice is the provider's state.

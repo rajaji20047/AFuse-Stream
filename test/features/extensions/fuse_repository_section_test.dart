@@ -1,4 +1,4 @@
-/// The owner's repo as its own "Fuse" section: the same TojiX repo.json,
+/// The owner's repo as its own "Fuse" section: the same RajajiX repo.json,
 /// shown as "Fuse Repo" above the "Fuse (SkyStream)" section — and NOT in
 /// the CloudStream section, which keeps only the official repository.
 /// The repo stays in the CloudStream store (the .cs3 install / update
@@ -13,17 +13,17 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
-import 'package:zorox/features/extensions/screens/extensions_screen.dart';
-import 'package:zorox/features/extensions/widgets/cloudstream_plugin_section.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/features/extensions/screens/extensions_screen.dart';
+import 'package:raja/features/extensions/widgets/cloudstream_plugin_section.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
-const String _tojiXUrl =
+const String _rajajiXUrl =
     'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json';
 const String _officialUrl =
     'https://raw.githubusercontent.com/recloudstream/extensions/master/repo.json';
@@ -87,7 +87,7 @@ void main() {
   group('displayNameFor', () {
     test('the owner repo is "Fuse Repo", not its manifest name', () {
       expect(
-        CloudStreamRepository.displayNameFor(_repo(_tojiXUrl, 'TojiX Repo')),
+        CloudStreamRepository.displayNameFor(_repo(_rajajiXUrl, 'RajajiX Repo')),
         'Fuse Repo',
       );
     });
@@ -109,7 +109,7 @@ void main() {
     });
 
     test('isFuseRepository only matches the owner URL', () {
-      expect(CloudStreamRepository.isFuseRepository(_tojiXUrl), isTrue);
+      expect(CloudStreamRepository.isFuseRepository(_rajajiXUrl), isTrue);
       expect(CloudStreamRepository.isFuseRepository(_officialUrl), isFalse);
       expect(CloudStreamRepository.isFuseRepository(_otherUrl), isFalse);
     });
@@ -122,7 +122,7 @@ void main() {
           const FuseRepositorySection(),
           CloudStreamState(
             isLoading: false,
-            repositories: [_repo(_tojiXUrl, 'TojiX Repo')],
+            repositories: [_repo(_rajajiXUrl, 'RajajiX Repo')],
           ),
         ),
       );
@@ -130,7 +130,7 @@ void main() {
 
       expect(find.text('Fuse'), findsOneWidget);
       expect(find.text('Fuse Repo'), findsOneWidget);
-      expect(find.text('TojiX Repo'), findsNothing);
+      expect(find.text('RajajiX Repo'), findsNothing);
     });
 
     testWidgets('hides entirely when the repository is not stored', (
@@ -159,7 +159,7 @@ void main() {
           CloudStreamState(
             isLoading: false,
             repositories: [
-              _repo(_tojiXUrl, 'TojiX Repo'),
+              _repo(_rajajiXUrl, 'RajajiX Repo'),
               _repo(_officialUrl, 'CloudStream Repo'),
             ],
           ),
@@ -170,12 +170,12 @@ void main() {
       // The section header plus the official repository's card.
       expect(find.text('CloudStream'), findsNWidgets(2));
       expect(find.text('Fuse Repo'), findsNothing);
-      expect(find.text('TojiX Repo'), findsNothing);
+      expect(find.text('RajajiX Repo'), findsNothing);
     });
   });
 
   testWidgets(
-    'Extensions screen: Fuse Repo above Fuse (SkyStream), TojiX gone',
+    'Extensions screen: Fuse Repo above Fuse (SkyStream), RajajiX gone',
     (tester) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -200,7 +200,7 @@ void main() {
                 const CloudStreamState(
                   isLoading: false,
                   repositories: [
-                    CsRepository(url: _tojiXUrl, name: 'TojiX Repo'),
+                    CsRepository(url: _rajajiXUrl, name: 'RajajiX Repo'),
                   ],
                 ),
               ),
@@ -221,7 +221,7 @@ void main() {
 
       expect(find.text('Fuse Repo'), findsOneWidget);
       expect(find.text('Fuse (SkyStream)'), findsOneWidget);
-      expect(find.text('TojiX Repo'), findsNothing);
+      expect(find.text('RajajiX Repo'), findsNothing);
       // No .sky repositories stored: the SkyStream section's empty state
       // names SkyStream now, not Fuse (the Fuse Repo sits above it).
       expect(find.text('No SkyStream repos yet'), findsOneWidget);

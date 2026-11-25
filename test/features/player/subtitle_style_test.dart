@@ -6,8 +6,8 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/subtitle_style.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/player/domain/subtitle_style.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 void main() {

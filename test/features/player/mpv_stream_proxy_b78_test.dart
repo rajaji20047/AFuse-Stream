@@ -2,9 +2,9 @@
 // that keeps buffering through the proxy back to its host.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/services/stream_cache/stream_cache_proxy.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_stream_proxy.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/services/stream_cache/stream_cache_proxy.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_stream_proxy.dart';
 
 const int mib = 1024 * 1024;
 

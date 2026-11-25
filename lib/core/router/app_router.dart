@@ -4,19 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/features/home/presentation/home_screen.dart';
-import 'package:zorox/features/search/presentation/search_screen.dart';
-import 'package:zorox/features/library/presentation/library_screen.dart';
-import 'package:zorox/features/addons/presentation/addons_screen.dart';
-import 'package:zorox/features/addons/presentation/addon_detail_screen.dart';
-import 'package:zorox/features/addons/presentation/addon_catalog_screen.dart';
-import 'package:zorox/features/settings/presentation/settings_screen.dart';
+import 'package:raja/features/home/presentation/home_screen.dart';
+import 'package:raja/features/search/presentation/search_screen.dart';
+import 'package:raja/features/library/presentation/library_screen.dart';
+import 'package:raja/features/addons/presentation/addons_screen.dart';
+import 'package:raja/features/addons/presentation/addon_detail_screen.dart';
+import 'package:raja/features/addons/presentation/addon_catalog_screen.dart';
+import 'package:raja/features/settings/presentation/settings_screen.dart';
 // The player route reads the Player Engine setting once when the player
 // opens and shows the matching screen: MpvPlayerScreen (the Golden player)
 // for libmpv, VlcPlayerScreen for libVLC. See _PlayerEngineScreen below.
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_player_screen.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_player_screen.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 import '../../features/extensions/screens/extensions_screen.dart';
 import '../../features/extensions/screens/settings_extensions_screen.dart';
 import '../../shared/widgets/branch_cross_fade.dart';
@@ -31,7 +31,7 @@ import '../../features/browse/presentation/browse_screen.dart';
 import '../../features/details/presentation/tmdb_movie_details_screen.dart';
 import '../../features/explore/presentation/view_all_screen.dart';
 import '../domain/entity/multimedia_item.dart';
-import 'package:zorox/shared/widgets/app_scaffold.dart';
+import 'package:raja/shared/widgets/app_scaffold.dart';
 import '../../core/storage/settings_repository.dart';
 import 'route_transitions.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -50,11 +50,11 @@ part 'app_router.g.dart';
     TypedStatefulShellBranch<SearchBranchData>(
       routes: [TypedGoRoute<SearchRoute>(path: '/search')],
     ),
-    // ZoroX (approved design preview): the bottom nav is EXACTLY
+    // Raja (approved design preview): the bottom nav is EXACTLY
     // Home / Search / Plugins / Library / Browse, as the user asked
     // ("neeche home search plugin library detail sab esa hi" in v3, then
     // "ye section hatake browse dalo" for v4 — Detail out, Browse in).
-    // Plugins = the Extensions screen (TojiX repo + providers).
+    // Plugins = the Extensions screen (RajajiX repo + providers).
     // Browse = the world's movies: the Explore/discover page when a TMDB
     // key is set, the active provider's home page otherwise — so the tab
     // is never an empty screen. Explore is no longer a tab. Settings stays
@@ -708,8 +708,8 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// Branch roots the shell can start on. `/stream` no longer exists, so a
 /// preference saved by an older build has to be migrated instead of handing
 /// GoRouter an unknown initial location. Same for `/explore` (the Explore
-/// tab was replaced by Plugins in ZoroX v3) and `/detail` (the Detail tab
-/// was replaced by Browse in ZoroX v4).
+/// tab was replaced by Plugins in Raja v3) and `/detail` (the Detail tab
+/// was replaced by Browse in Raja v4).
 const List<String> kShellBranchRoutes = [
   '/home',
   '/search',

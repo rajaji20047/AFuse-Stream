@@ -4,9 +4,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/secure_token_storage.dart';
-import 'package:zorox/features/tracking/data/wetrakr_service.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/secure_token_storage.dart';
+import 'package:raja/features/tracking/data/wetrakr_service.dart';
 
 /// WeTrakr, asserted against the wire: which requests the service makes,
 /// with which headers and bodies, and what it does with each answer.

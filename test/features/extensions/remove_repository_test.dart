@@ -18,19 +18,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/core/extensions/models/extension_repository.dart';
-import 'package:zorox/core/extensions/providers.dart';
-import 'package:zorox/core/extensions/services/plugin_storage_service.dart';
-import 'package:zorox/core/extensions/services/repository_service.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/extensions/models/extension_repository.dart';
+import 'package:raja/core/extensions/providers.dart';
+import 'package:raja/core/extensions/services/plugin_storage_service.dart';
+import 'package:raja/core/extensions/services/repository_service.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
 
-const String _zoro = 'https://zoro.test/repo.json';
-const String _zoroMirror = 'https://cdn.test/zoro/repo.json';
+const String _raja = 'https://raja.test/repo.json';
+const String _rajaMirror = 'https://cdn.test/raja/repo.json';
 const String _stars = 'https://stars.test/repo.json';
 
 ExtensionPlugin _plugin(String name, String repositoryId, {int version = 1}) =>
@@ -108,8 +108,8 @@ class _NoopExtensionManager extends ExtensionManager {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  final alpha = _plugin('Alpha', 'com.zoro');
-  final bravo = _plugin('Bravo', 'com.zoro');
+  final alpha = _plugin('Alpha', 'com.raja');
+  final bravo = _plugin('Bravo', 'com.raja');
   final charlie = _plugin('Charlie', 'com.stars');
 
   Future<ProviderContainer> open({
@@ -146,18 +146,18 @@ void main() {
   test('takes the plugins installed from it, and only those', () async {
     final disk = _Disk(<ExtensionPlugin>[alpha, bravo, charlie]);
     final container = await open(
-      saved: <String>[_zoro, _stars],
-      ids: <String, String>{_zoro: 'com.zoro', _stars: 'com.stars'},
+      saved: <String>[_raja, _stars],
+      ids: <String, String>{_raja: 'com.raja', _stars: 'com.stars'},
       disk: disk,
-      // Zoro lists Charlie too, but Charlie came from Stars.
+      // Raja lists Charlie too, but Charlie came from Stars.
       listings: <String, List<ExtensionPlugin>>{
-        _zoro: <ExtensionPlugin>[alpha, bravo, _plugin('Charlie', 'com.zoro')],
+        _raja: <ExtensionPlugin>[alpha, bravo, _plugin('Charlie', 'com.raja')],
       },
     );
 
     await container
         .read(extensionsControllerProvider.notifier)
-        .removeRepository(_zoro);
+        .removeRepository(_raja);
 
     expect(disk.deleted, <String>['com.example.alpha', 'com.example.bravo']);
     expect(installedNames(container), <String>['Charlie']);
@@ -169,11 +169,11 @@ void main() {
   test('drops the updates it was offering for them', () async {
     final disk = _Disk(<ExtensionPlugin>[alpha, charlie]);
     final container = await open(
-      saved: <String>[_zoro, _stars],
-      ids: <String, String>{_zoro: 'com.zoro', _stars: 'com.stars'},
+      saved: <String>[_raja, _stars],
+      ids: <String, String>{_raja: 'com.raja', _stars: 'com.stars'},
       disk: disk,
       listings: <String, List<ExtensionPlugin>>{
-        _zoro: <ExtensionPlugin>[_plugin('Alpha', 'com.zoro', version: 2)],
+        _raja: <ExtensionPlugin>[_plugin('Alpha', 'com.raja', version: 2)],
         _stars: <ExtensionPlugin>[_plugin('Charlie', 'com.stars', version: 2)],
       },
     );
@@ -184,7 +184,7 @@ void main() {
       unorderedEquals(<String>['com.example.alpha', 'com.example.charlie']),
     );
 
-    await controller.removeRepository(_zoro);
+    await controller.removeRepository(_raja);
 
     expect(
       container.read(extensionsControllerProvider).availableUpdates.keys,
@@ -197,14 +197,14 @@ void main() {
     () async {
       final disk = _Disk(<ExtensionPlugin>[alpha, bravo]);
       final container = await open(
-        saved: <String>[_zoro, _zoroMirror],
-        ids: <String, String>{_zoro: 'com.zoro', _zoroMirror: 'com.zoro'},
+        saved: <String>[_raja, _rajaMirror],
+        ids: <String, String>{_raja: 'com.raja', _rajaMirror: 'com.raja'},
         disk: disk,
       );
 
       await container
           .read(extensionsControllerProvider.notifier)
-          .removeRepository(_zoro);
+          .removeRepository(_raja);
 
       expect(disk.deleted, isEmpty);
       expect(installedNames(container), <String>['Alpha', 'Bravo']);
@@ -218,14 +218,14 @@ void main() {
     final fromFile = _plugin('Delta', 'Local');
     final disk = _Disk(<ExtensionPlugin>[fromFile, charlie]);
     final container = await open(
-      saved: <String>[_zoro, _stars],
-      ids: <String, String>{_zoro: 'Local', _stars: 'com.stars'},
+      saved: <String>[_raja, _stars],
+      ids: <String, String>{_raja: 'Local', _stars: 'com.stars'},
       disk: disk,
     );
 
     await container
         .read(extensionsControllerProvider.notifier)
-        .removeRepository(_zoro);
+        .removeRepository(_raja);
 
     expect(disk.deleted, isEmpty);
     expect(installedNames(container), <String>['Delta', 'Charlie']);
@@ -237,14 +237,14 @@ void main() {
       undeletable: <String>{'com.example.alpha'},
     );
     final container = await open(
-      saved: <String>[_zoro],
-      ids: <String, String>{_zoro: 'com.zoro'},
+      saved: <String>[_raja],
+      ids: <String, String>{_raja: 'com.raja'},
       disk: disk,
     );
 
     await container
         .read(extensionsControllerProvider.notifier)
-        .removeRepository(_zoro);
+        .removeRepository(_raja);
 
     expect(disk.deleted, <String>['com.example.bravo']);
     // Still on disk, so still listed: the user can see it and uninstall it.

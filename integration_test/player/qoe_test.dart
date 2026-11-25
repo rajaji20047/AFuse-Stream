@@ -25,18 +25,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_torrent_server/flutter_torrent_server.dart';
 import 'package:http/http.dart' as http;
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/features/player/domain/live_window.dart';
-import 'package:zorox/features/player/domain/media_options.dart';
-import 'package:zorox/features/player/domain/qoe_log.dart';
-import 'package:zorox/features/player/presentation/player_debug_flags.dart';
-import 'package:zorox/features/player/presentation/vlc/ended_card.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_row.dart';
-import 'package:zorox/features/player/presentation/vlc/player_startup_view.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/features/player/domain/live_window.dart';
+import 'package:raja/features/player/domain/media_options.dart';
+import 'package:raja/features/player/domain/qoe_log.dart';
+import 'package:raja/features/player/presentation/player_debug_flags.dart';
+import 'package:raja/features/player/presentation/vlc/ended_card.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_row.dart';
+import 'package:raja/features/player/presentation/vlc/player_startup_view.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -733,7 +733,7 @@ void _liveScenario(
     _scenario('$name@$ms', (tester) async {
       PlayerDiagnostics.environment = {
         ...Platform.environment,
-        'ZOROX_LIVE_DELAY_MS': '$ms',
+        'RAJA_LIVE_DELAY_MS': '$ms',
       };
       try {
         await body(tester, '$name@$ms');

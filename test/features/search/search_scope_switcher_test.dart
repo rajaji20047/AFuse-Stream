@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/explore/presentation/widgets/hover_border_gradient.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
-import 'package:zorox/features/search/presentation/widgets/search_header_bar.dart';
+import 'package:raja/features/explore/presentation/widgets/hover_border_gradient.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/widgets/search_header_bar.dart';
 
 void main() {
   Widget host(Widget child, {required MediaQueryData media}) {

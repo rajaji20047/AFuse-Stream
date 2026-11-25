@@ -6,13 +6,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_metrics.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_row.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_shell.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_subtitle_style_page.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_metrics.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_row.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_shell.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_subtitle_style_page.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'vlc_screen_harness.dart';
 

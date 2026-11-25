@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:zorox/features/tracking/domain/sync_progress_item.dart';
+import 'package:raja/features/tracking/domain/sync_progress_item.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/shared/widgets/cards_wrapper.dart';
-import 'package:zorox/shared/widgets/thumbnail_error_placeholder.dart';
-import 'package:zorox/core/utils/image_fallbacks.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/shared/widgets/cards_wrapper.dart';
+import 'package:raja/shared/widgets/thumbnail_error_placeholder.dart';
+import 'package:raja/core/utils/image_fallbacks.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zorox/features/tracking/data/sync_manager.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/core/services/notification_service.dart';
+import 'package:raja/features/tracking/data/sync_manager.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/core/services/notification_service.dart';
 
 class SyncedProgressCard extends ConsumerWidget {
   final SyncProgressItem item;

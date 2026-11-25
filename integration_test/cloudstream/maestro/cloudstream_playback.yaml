@@ -1,7 +1,7 @@
-# CloudStream in ZoroX on a phone, through the UI (use on release builds, which
+# CloudStream in Raja on a phone, through the UI (use on release builds, which
 # `flutter test` cannot run): add the official repository, install Internet Archive,
 # search, open a film, play it, and screenshot the player twice, 15 s apart.
-#   (cd OUT_DIR && maestro test -e APP_ID=com.toji.zorox PATH_TO/cloudstream_playback.yaml)
+#   (cd OUT_DIR && maestro test -e APP_ID=com.raja.fuse PATH_TO/cloudstream_playback.yaml)
 appId: ${APP_ID}
 ---
 - launchApp:

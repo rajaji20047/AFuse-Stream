@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart'
     show ProviderListenable;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/player/domain/playback_progress.dart';
-import 'package:zorox/features/player/domain/playback_tracker.dart';
-import 'package:zorox/core/storage/episode_watch_repository.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/features/tracking/data/sync_manager.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/player/domain/playback_progress.dart';
+import 'package:raja/features/player/domain/playback_tracker.dart';
+import 'package:raja/core/storage/episode_watch_repository.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/features/tracking/data/sync_manager.dart';
 
 /// Records dispatches instead of writing to anyone's account.
 class _RecordingSync extends SyncManager {

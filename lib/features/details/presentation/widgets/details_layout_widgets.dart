@@ -9,15 +9,15 @@ import 'package:collection/collection.dart';
 
 import '../downloaded_file_provider.dart';
 
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
-import 'package:zorox/shared/widgets/custom_widgets.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/utils/layout_constants.dart';
+import 'package:raja/shared/widgets/custom_widgets.dart';
 
 import '../details_controller.dart';
 
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/services/download_service.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/services/download_service.dart';
 
 import '../download_launcher.dart';
 import 'download_progress_dialog.dart';
@@ -29,9 +29,9 @@ import '../../../home/presentation/widgets/home_provider_chip.dart'
     show cleanPluginName;
 import '../../../../shared/focus/app_focus.dart';
 
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/utils/responsive_breakpoints.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/utils/responsive_breakpoints.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// A season chip's label: the extension's own name for the season when it
 /// gave one (CloudStream's `SeasonData`), else "Season N".

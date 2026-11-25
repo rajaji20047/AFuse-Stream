@@ -99,7 +99,7 @@ class RepositoryService {
       return _address(fixedUrl);
     }
 
-    // Custom scheme used by share links: zorox://host/path.
+    // Custom scheme used by share links: raja://host/path.
     final scheme = RegExp(
       r'^[a-zA-Z][a-zA-Z0-9+.-]*://(.+)$',
     ).firstMatch(fixedUrl);

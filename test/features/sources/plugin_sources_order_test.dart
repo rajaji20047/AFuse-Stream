@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/features/sources/presentation/plugin_sources_sheet.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/features/sources/presentation/plugin_sources_sheet.dart';
 
 void main() {
   NuvioStreamResult row(String scraper, String title) =>

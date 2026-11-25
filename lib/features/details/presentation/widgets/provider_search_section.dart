@@ -5,10 +5,10 @@ import '../../../../core/router/app_router.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/utils/image_fallbacks.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/utils/image_fallbacks.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
 
 import '../../../../shared/widgets/cards_wrapper.dart';
 
@@ -17,7 +17,7 @@ import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../../shared/widgets/thumbnail_error_placeholder.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../search/presentation/widgets/check_section.dart';
 import 'source_section_card.dart';

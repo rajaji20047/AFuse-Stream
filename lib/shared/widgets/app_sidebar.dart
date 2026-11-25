@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/core/utils/layout_constants.dart';
 
 import '../focus/app_focus.dart';
 
@@ -135,7 +135,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     // Watch the global D-pad mode provider
     final isDpadMode = ref.watch<bool>(isDpadActiveProvider);
 
-    // ZoroX (approved design preview): the nav is exactly
+    // Raja (approved design preview): the nav is exactly
     // Home / Search / Plugins / Library / Browse. Settings is a 6th
     // shell branch (reachable from the Home AppBar gear), so it is
     // not one of the 5 sidebar destinations.

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/notification_service.dart';
-import '../../account/data/zorox_account_notifier.dart';
+import '../../account/data/raja_account_notifier.dart';
 import '../data/fuse_profile.dart';
 
 /// The §9-case-3 prompt (Build 2): the account has profiles and this
@@ -49,14 +49,14 @@ class _LegacyMoveDialogState extends ConsumerState<_LegacyMoveDialog> {
       _error = null;
     });
     final ok = await ref
-        .read(zoroxAccountProvider.notifier)
+        .read(rajaAccountProvider.notifier)
         .moveLegacyDataIntoFuseProfile(widget.targetProfile.id);
     if (!mounted) return;
     if (!ok) {
       setState(() {
         _busy = false;
         _error =
-            ref.read(zoroxAccountProvider).error ??
+            ref.read(rajaAccountProvider).error ??
             'Could not move the data. Try again.';
       });
       return;

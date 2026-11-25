@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/player/presentation/player_platform_service.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/player/presentation/player_platform_service.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
 
 import 'vlc_screen_harness.dart';
 

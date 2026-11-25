@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/utils/title_quality.dart';
+import 'package:raja/core/utils/title_quality.dart';
 
 void main() {
   group('statedQualityBadges', () {

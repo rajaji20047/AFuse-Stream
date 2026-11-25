@@ -22,9 +22,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:zorox/features/search/presentation/widgets/search_result_section.dart';
-import 'package:zorox/shared/widgets/custom_widgets.dart';
-import 'package:zorox/shared/widgets/multimedia_card.dart';
+import 'package:raja/features/search/presentation/widgets/search_result_section.dart';
+import 'package:raja/shared/widgets/custom_widgets.dart';
+import 'package:raja/shared/widgets/multimedia_card.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'support.dart';

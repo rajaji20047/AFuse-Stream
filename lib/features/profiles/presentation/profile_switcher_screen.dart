@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/widgets/matte_glass_pill.dart';
-import '../../account/data/zorox_account_notifier.dart';
+import '../../account/data/raja_account_notifier.dart';
 import '../data/fuse_profile.dart';
 import '../data/fuse_profiles_notifier.dart';
 import 'manage_profiles_screen.dart';
@@ -75,7 +75,7 @@ class _FuseProfileSwitchDialogState
   /// full-screen page above the dialog. On unlock the PIN route and
   /// the dialog both close; Back returns to the dialog list.
   Future<void> _openPin(FuseProfile profile) async {
-    final account = ref.read(zoroxAccountProvider);
+    final account = ref.read(rajaAccountProvider);
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => FuseProfilePinScreen(
@@ -88,7 +88,7 @@ class _FuseProfileSwitchDialogState
             if (account.loggedIn) {
               unawaited(
                 ref
-                    .read(zoroxAccountProvider.notifier)
+                    .read(rajaAccountProvider.notifier)
                     .syncActiveFuseProfile(),
               );
             }

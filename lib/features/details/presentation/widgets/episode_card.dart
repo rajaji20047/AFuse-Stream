@@ -7,11 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:background_downloader/background_downloader.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/storage/episode_watch_repository.dart';
-import 'package:zorox/core/services/download_service.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/storage/episode_watch_repository.dart';
+import 'package:raja/core/services/download_service.dart';
+import 'package:raja/core/utils/layout_constants.dart';
 
 import '../../../../shared/widgets/thumbnail_error_placeholder.dart';
 import '../../../library/presentation/history_provider.dart';

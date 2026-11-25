@@ -4,8 +4,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/extensions/models/extension_repository.dart';
-import 'package:zorox/core/extensions/services/repository_service.dart';
+import 'package:raja/core/extensions/models/extension_repository.dart';
+import 'package:raja/core/extensions/services/repository_service.dart';
 
 /// The web as Dio sees it: [routes] by address, anything else a 404. Records
 /// every request.
@@ -30,7 +30,7 @@ class _Net implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-/// A shortener with ZoroX's `sky-universe` in lower case, and a
+/// A shortener with Raja's `sky-universe` in lower case, and a
 /// stranger's bare `Universe` - as cutt.ly has them: its codes are
 /// case-sensitive, and anyone can register one. Records every lookup.
 class _Shortener extends RepositoryService {
@@ -195,7 +195,7 @@ void main() {
 
     test('accepts a custom scheme share link', () async {
       expect(
-        await service.parseRepoUrl('zorox://example.com/repo.json'),
+        await service.parseRepoUrl('raja://example.com/repo.json'),
         'https://example.com/repo.json',
       );
     });
@@ -385,8 +385,8 @@ void main() {
   });
 
   // Plugins come from the lists a repository names. A list written into the
-  // manifest itself is not read: no repository publishes one - ZoroX's
-  // CLI writes pluginLists only - and ZoroX no longer supports them.
+  // manifest itself is not read: no repository publishes one - Raja's
+  // CLI writes pluginLists only - and Raja no longer supports them.
   test('a manifest\'s own plugins list is not read', () async {
     final repo = ExtensionRepository.fromJson(<String, dynamic>{
       'name': 'A',
@@ -433,11 +433,11 @@ void main() {
   });
 
   // Codes are case-sensitive, and a television keyboard or a phone's may
-  // capitalise the first letter: "Universe" found nothing. ZoroX's own
+  // capitalise the first letter: "Universe" found nothing. Raja's own
   // codes come first in either case - the bare code as typed is anyone's,
   // and cutt.ly/Universe is a stranger's form.
   group('a shortcode', () {
-    test('typed with capitals finds ZoroX\'s code in lower case before '
+    test('typed with capitals finds Raja\'s code in lower case before '
         'anyone\'s bare one', () async {
       final shortener = _Shortener();
 
@@ -451,7 +451,7 @@ void main() {
       ]);
     });
 
-    test('is looked up in ZoroX\'s codes, then bare, each as typed and '
+    test('is looked up in Raja\'s codes, then bare, each as typed and '
         'then in lower case', () async {
       final shortener = _Shortener();
 

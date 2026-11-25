@@ -9,13 +9,13 @@ import 'package:cs3_engine/cs3_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_pages.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_ui_session.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_settings_flow.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_pages.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_ui_session.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_settings_flow.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../core/cloudstream/extension_ui/fake_page_browser.dart';
 

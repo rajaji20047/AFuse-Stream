@@ -7,7 +7,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/hls_fmp4_detection.dart';
+import 'package:raja/features/player/domain/hls_fmp4_detection.dart';
 
 /// Nebula's The Odyssey master, verbatim: two variants, no CODECS, and
 /// the variant URIs disguised as .jpg.

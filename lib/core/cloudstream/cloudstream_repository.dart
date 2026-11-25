@@ -96,9 +96,9 @@ class CloudStreamState {
 
 /// CloudStream extension repositories and installed plugins.
 ///
-/// Like Nuvio and Stremio, this sits beside ZoroX's own plugin system and is managed
-/// separately. Unlike them, its providers join ZoroX's provider list, so their home pages,
-/// search, details and streams go through the same screens as ZoroX plugins.
+/// Like Nuvio and Stremio, this sits beside Raja's own plugin system and is managed
+/// separately. Unlike them, its providers join Raja's provider list, so their home pages,
+/// search, details and streams go through the same screens as Raja plugins.
 @Riverpod(keepAlive: true)
 class CloudStreamRepository extends _$CloudStreamRepository {
   static const String _source = 'cloudstream';
@@ -108,7 +108,7 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   static const String _homeKey = 'cloudstream_home_provider_v1';
 
   /// The repository URLs the user removed, so a plugin that adds repositories (MegaRepo's) does
-  /// not bring them back - as ZoroX's collections do not.
+  /// not bring them back - as Raja's collections do not.
   static const String removedReposKey = 'cloudstream_removed_repos_v1';
 
   /// Where repositories were kept before `repositories.json`: SharedPreferences rewrites all it
@@ -225,36 +225,36 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     _host.setSwitchedOff(!state.enabled);
     _publish();
     _syncRepositories();
-    // ZoroX: first launch with no repositories yet - pre-add the owner's
+    // Raja: first launch with no repositories yet - pre-add the owner's
     // repository, so its plugins are there from the start.
     unawaited(_seedDefaultRepository());
   }
 
-  /// ZoroX's default CloudStream repositories: the owner's own repo (TojiX)
+  /// Raja's default CloudStream repositories: the owner's own repo (RajajiX)
   /// and the official CloudStream providers repository. Each is seeded once,
   /// on a launch where it is not stored yet. Never re-added after the user
   /// removed it (see [removedReposKey]), and retried on the next launch if
   /// the network was down when first tried.
   ///
   /// The owner's repo moved from `sezkc16/katdrama` to `sezkc16/TojiX`
-  /// (the old address still serves the same list); [_legacyTojiXRepositoryUrl]
+  /// (the old address still serves the same list); [_legacyRajajiXRepositoryUrl]
   /// is that old address, so an install that already has it does not get
-  /// TojiX added a second time, and one that removed it does not get it back.
-  static const String _tojiXRepositoryUrl =
+  /// RajajiX added a second time, and one that removed it does not get it back.
+  static const String _rajajiXRepositoryUrl =
       'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json';
   static const String _cloudStreamRepositoryUrl =
       'https://raw.githubusercontent.com/recloudstream/extensions/master/repo.json';
-  static const String _legacyTojiXRepositoryUrl =
+  static const String _legacyRajajiXRepositoryUrl =
       'https://raw.githubusercontent.com/sezkc16/katdrama/builds/plugins.json';
 
   static const List<String> _defaultRepositoryUrls = [
-    _tojiXRepositoryUrl,
+    _rajajiXRepositoryUrl,
     _cloudStreamRepositoryUrl,
   ];
 
   /// The repositories Fuse seeds, as the Plugins screen labels them:
   /// the official CloudStream providers repository is the "CloudStream"
-  /// option. The owner's repo (TojiX) is a CloudStream-format repository
+  /// option. The owner's repo (RajajiX) is a CloudStream-format repository
   /// too, but it is NOT shown in the CloudStream section: it has its own
   /// "Fuse" section above the SkyStream one, labelled "Fuse Repo"
   /// ([displayNameFor]). A manifest's own `name` is what a refresh stores,
@@ -264,13 +264,13 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   static bool isCloudStreamRepository(String url) =>
       url == _cloudStreamRepositoryUrl;
 
-  /// The owner's own repository: the same TojiX repo.json, shown as the
+  /// The owner's own repository: the same RajajiX repo.json, shown as the
   /// "Fuse Repo" in its own section. It stays in this (CloudStream) store
   /// — it is a CloudStream-format repository, and the installed plugins
   /// (Anikoto et al.) update through this store — only its display
   /// grouping moved. Never remove it from the store to hide the row:
   /// [removeRepository] would uninstall its plugins.
-  static bool isFuseRepository(String url) => url == _tojiXRepositoryUrl;
+  static bool isFuseRepository(String url) => url == _rajajiXRepositoryUrl;
 
   static String displayNameFor(CsRepository repo) {
     if (isCloudStreamRepository(repo.url)) return 'CloudStream';
@@ -285,9 +285,9 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     final removed = prefs.getStringList(removedReposKey) ?? const [];
     final stored = {for (final repo in state.repositories) repo.url};
     for (final url in _defaultRepositoryUrls) {
-      // TojiX: the old katdrama address is the same repository.
-      final aliases = url == _tojiXRepositoryUrl
-          ? {_tojiXRepositoryUrl, _legacyTojiXRepositoryUrl}
+      // RajajiX: the old katdrama address is the same repository.
+      final aliases = url == _rajajiXRepositoryUrl
+          ? {_rajajiXRepositoryUrl, _legacyRajajiXRepositoryUrl}
           : {url};
       if (aliases.any(stored.contains) || aliases.any(removed.contains)) {
         continue;
@@ -343,7 +343,7 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     }
   }
 
-  /// Hands the current providers to ZoroX's provider list (none while switched off).
+  /// Hands the current providers to Raja's provider list (none while switched off).
   void _publish() {
     final next = <String, CloudStreamProvider>{};
     if (state.enabled) {
@@ -413,7 +413,7 @@ class CloudStreamRepository extends _$CloudStreamRepository {
 
   /// What the user entered as a repository: a URL (the scheme may be left out), a
   /// `cloudstreamrepo://` or `https://cs.repo/` link, or a CloudStream shortcode. Shortcodes are
-  /// looked up online, like ZoroX's, so new ones work without an app update: `CODE` at
+  /// looked up online, like Raja's, so new ones work without an app update: `CODE` at
   /// cutt.ly and `!CODE` at py.md, where CloudStream looks them up.
   Future<String> resolveUrl(String input) async {
     final text = input.trim();
@@ -955,7 +955,7 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     }
   }
 
-  /// The launch-time pass, beside ZoroX's own: brings installed plugins up to date from their
+  /// The launch-time pass, beside Raja's own: brings installed plugins up to date from their
   /// repositories, and runs the utility plugins again as CloudStream's launch does (MegaRepo's
   /// then adds what is new to its list, announced through [watchNews]). Returns the plugins
   /// updated. Switched off or with nothing installed, it does nothing, and nothing starts the

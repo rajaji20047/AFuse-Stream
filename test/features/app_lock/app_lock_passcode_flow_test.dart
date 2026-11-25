@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/features/app_lock/app_lock_controller.dart';
-import 'package:zorox/features/app_lock/app_lock_gate.dart';
-import 'package:zorox/features/app_lock/app_lock_passcode.dart';
-import 'package:zorox/features/app_lock/app_lock_provider.dart';
-import 'package:zorox/features/app_lock/app_lock_strings.dart';
-import 'package:zorox/features/settings/presentation/app_lock_settings_screen.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/features/app_lock/app_lock_controller.dart';
+import 'package:raja/features/app_lock/app_lock_gate.dart';
+import 'package:raja/features/app_lock/app_lock_passcode.dart';
+import 'package:raja/features/app_lock/app_lock_provider.dart';
+import 'package:raja/features/app_lock/app_lock_strings.dart';
+import 'package:raja/features/settings/presentation/app_lock_settings_screen.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// App lock (v1.0.1): set a passcode in Settings, then the lock screen's
 /// number pad - a wrong passcode stays locked, the right one opens.

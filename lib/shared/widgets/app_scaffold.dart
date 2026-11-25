@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/utils/boot_trace.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
-import 'package:zorox/core/utils/motion.dart';
-import 'package:zorox/core/utils/responsive_breakpoints.dart';
-import 'package:zorox/shared/widgets/custom_bottom_nav.dart';
-import 'package:zorox/shared/widgets/app_sidebar.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/utils/boot_trace.dart';
+import 'package:raja/core/utils/layout_constants.dart';
+import 'package:raja/core/utils/motion.dart';
+import 'package:raja/core/utils/responsive_breakpoints.dart';
+import 'package:raja/shared/widgets/custom_bottom_nav.dart';
+import 'package:raja/shared/widgets/app_sidebar.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../features/settings/presentation/general_settings_provider.dart';
 import 'loading_indicator.dart';
@@ -184,7 +184,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
   }
 
   int _getRouteIndex(String route) {
-    // ZoroX nav (approved design preview): Home 0 / Search 1 /
+    // Raja nav (approved design preview): Home 0 / Search 1 /
     // Plugins 2 / Library 3 / Browse 4; Settings is branch 5.
     // (Explore is no longer a branch, so there is no '/explore' case;
     // '/detail' was replaced by '/browse' in v4.)

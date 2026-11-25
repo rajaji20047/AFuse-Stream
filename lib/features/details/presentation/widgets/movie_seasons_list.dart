@@ -13,11 +13,11 @@ import '../../../../core/models/tmdb_details.dart';
 import '../tmdb_details_controller.dart';
 import 'hero_details_widgets.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../../shared/widgets/loading_indicator.dart';
 
-import 'package:zorox/core/services/notification_service.dart';
+import 'package:raja/core/services/notification_service.dart';
 
 import '../../../../shared/focus/app_focus.dart';
 

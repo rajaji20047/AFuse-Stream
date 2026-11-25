@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../utils/motion.dart';
 
-/// The app's page transition (ZoroX v4): every full-screen navigation
+/// The app's page transition (Raja v4): every full-screen navigation
 /// glides in with the same slide + fade instead of snapping open. The
 /// report was the Settings gear ("jhatak se nahi, thoda majese khulna
 /// chaiye"), and the same motion is used for detail, the player and the

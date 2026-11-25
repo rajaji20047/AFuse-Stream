@@ -1,7 +1,7 @@
 // Build 75: the film is held for an in-place renderer move, and the
 // picture wait is split for the QoE overlay.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_pip_renderer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_pip_renderer.dart';
 
 void main() {
   group('pauseForInPlaceMove', () {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/shared/widgets/branch_cross_fade.dart';
-import 'package:zorox/shared/widgets/edge_swipe_back.dart';
+import 'package:raja/shared/widgets/branch_cross_fade.dart';
+import 'package:raja/shared/widgets/edge_swipe_back.dart';
 
 /// Build 67 on the phone: swiping Settings back from the left edge showed
 /// pure black under the sliding screen, and Home only appeared after the

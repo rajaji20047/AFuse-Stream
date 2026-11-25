@@ -464,7 +464,7 @@ class AddonStreamSource {
 
   /// Ranking score.
   ///
-  /// Resolution leads, because ZoroX streams torrents natively through the
+  /// Resolution leads, because Raja streams torrents natively through the
   /// bundled torrent server — unlike a browser client, a 4K torrent is not
   /// second-class here. Direct links still get a head start for instant
   /// playback, cached debrid links more so, and CAM rips are buried.
@@ -484,7 +484,7 @@ class AddonStreamSource {
       value += 45;
     }
 
-    // No boost for HDR: every ZoroX path shows it washed out (P1 spec 6).
+    // No boost for HDR: every Raja path shows it washed out (P1 spec 6).
     if (isCam) value -= 150;
 
     final seeds = seeders;

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/features/extensions/widgets/plugin_updates_bar.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/features/extensions/widgets/plugin_updates_bar.dart';
 
 const _repo = 'https://repo.test/repo.json';
 const _other = 'https://other.test/repo.json';

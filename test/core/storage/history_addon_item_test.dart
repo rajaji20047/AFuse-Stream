@@ -8,10 +8,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

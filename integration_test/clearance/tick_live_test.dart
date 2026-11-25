@@ -37,12 +37,12 @@ import 'package:challenge_browser/challenge_browser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/network/clearance/captcha_solver.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/core/network/clearance/widget_tap.dart';
+import 'package:raja/core/network/clearance/captcha_solver.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/core/network/clearance/widget_tap.dart';
 
 import '../cloudstream/support.dart' show whilePumping;
 

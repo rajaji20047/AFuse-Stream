@@ -1,4 +1,4 @@
-/// The bot checks a search meets, with the three ZoroX plugins whose
+/// The bot checks a search meets, with the three Raja plugins whose
 /// sites check: Movierulz, Tamilblasters and Zinkmovies. Movierulz's and
 /// Tamilblasters' sites moved for good (`5movierulz.pictures` → `.works`,
 /// `1tamilblasters.pro` → `.tech`), and Zinkmovies' sends the browser to
@@ -25,10 +25,10 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
 
 import '../cloudstream/support.dart';
 

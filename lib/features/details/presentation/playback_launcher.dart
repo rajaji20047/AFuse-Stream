@@ -21,7 +21,7 @@ import '../../../core/services/download_service.dart';
 import '../../../shared/widgets/loading_dialog.dart';
 import '../../../core/utils/app_utils.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../core/services/notification_service.dart';
 
@@ -412,7 +412,7 @@ class PlaybackLauncher {
                       title: Text(label),
                       subtitle: host.isNotEmpty ? Text(host) : null,
                       // Gold quality badge (1080p / 720p / 4K ...) pulled
-                      // from the source label, as in the ZoroX v2 design.
+                      // from the source label, as in the Raja v2 design.
                       trailing: _QualityBadge.fromLabel(label),
                       onTap: () {
                         Navigator.pop(ctx);
@@ -437,7 +437,7 @@ class PlaybackLauncher {
   }
 }
 
-/// Gold quality badge for a source-picker row (ZoroX v2 design).
+/// Gold quality badge for a source-picker row (Raja v2 design).
 ///
 /// Pulls the quality token (2160p / 1080p / 720p / 480p / 360p / 4K) out of
 /// the source label — e.g. "ShuttleTV Vidlink 1080p" -> "1080p" — and shows

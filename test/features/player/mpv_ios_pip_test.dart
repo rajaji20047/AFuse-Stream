@@ -1,7 +1,7 @@
 /// iOS Picture-in-Picture for the mpv player (+28).
 ///
 /// The Dart side only: the channel contract with the native
-/// `ZoroxMpvPipPlugin`, the decoder the PiP setting selects, and the
+/// `RajaMpvPipPlugin`, the decoder the PiP setting selects, and the
 /// setting's default. The native half (frame tap, sample-buffer layer,
 /// background delivery) cannot run on this VM and is a phone test — see
 /// the report.
@@ -10,14 +10,14 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_ios_options.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox_mpv_pip/zorox_mpv_pip.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_ios_options.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja_mpv_pip/raja_mpv_pip.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channelName = 'dev.toji.zorox.player/pip_mpv_ios';
+  const channelName = 'dev.rajaji.raja.player/pip_mpv_ios';
   const channel = MethodChannel(channelName);
 
   group('mpvIosHwdec', () {

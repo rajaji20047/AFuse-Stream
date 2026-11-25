@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/services/stream_cache/ring_store.dart';
+import 'package:raja/core/services/stream_cache/ring_store.dart';
 
 int filmByte(int offset) => (offset * 31 + (offset >> 8) * 7 + 3) & 0xFF;
 

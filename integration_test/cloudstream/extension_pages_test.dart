@@ -26,10 +26,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_page_view.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_page_view.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 import 'test_extension.dart';
@@ -37,7 +37,7 @@ import 'test_extension.dart';
 const _tvKeys = bool.fromEnvironment('CS3_TV_KEYS');
 
 const _signedIn =
-    'Signed in: cookie ok, token cs3test-token, name Test Person, title ZoroX Test sign-in, code cs3test-code, '
+    'Signed in: cookie ok, token cs3test-token, name Test Person, title Raja Test sign-in, code cs3test-code, '
     'agent ok';
 
 Finder _inSheet(Finder finder) => find.descendant(of: find.byType(ExtensionSheet), matching: finder);
@@ -60,7 +60,7 @@ Future<void> _promotionKept(WidgetTester tester, ProviderContainer container, St
   final host = container.read(cloudStreamEngineHostProvider);
   await whilePumping(
     tester,
-    host.run(path, (e) => e.mainPage('ZoroX Test A', page: 2, plugin: path), kind: 'mainPage'),
+    host.run(path, (e) => e.mainPage('Raja Test A', page: 2, plugin: path), kind: 'mainPage'),
   );
   await pumpUntil(
     tester,
@@ -128,7 +128,7 @@ void main() {
         // A page while the person waits on a title opening: shown, page and all; closing it ends the wait.
         final opening = host.run(
           path,
-          (e) => e.load('ZoroX Test A', 'https://zorox.invalid/movie/1#verify', plugin: path),
+          (e) => e.load('Raja Test A', 'https://raja.invalid/movie/1#verify', plugin: path),
           kind: 'load',
         );
         await waitFor(tester, _inSheet(find.text("Verify you're human")), timeout: const Duration(seconds: 30));

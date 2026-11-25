@@ -9,7 +9,7 @@ import '../../../../shared/widgets/olympus_section_header.dart';
 /// the 9 presets in one row of 38px circles. Tapping a swatch sets the
 /// accent immediately across the whole app (the theme is seeded from the
 /// accent, so the MaterialApp rebuilds — no restart, no re-login).
-/// Green is the default (see [ZoroxAccent.fromName]).
+/// Green is the default (see [RajaAccent.fromName]).
 ///
 /// Olympus Noir (build 102): the section wears the gold-bar heading,
 /// and the selected swatch is marked with a gold ring and glow instead
@@ -31,7 +31,7 @@ class AccentColorPicker extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final option in ZoroxAccent.values)
+              for (final option in RajaAccent.values)
                 _Swatch(
                   option: option,
                   selected: option == accent,
@@ -47,7 +47,7 @@ class AccentColorPicker extends ConsumerWidget {
 }
 
 class _Swatch extends StatelessWidget {
-  final ZoroxAccent option;
+  final RajaAccent option;
   final bool selected;
   final VoidCallback onTap;
 

@@ -28,7 +28,7 @@ import 'package:challenge_browser/challenge_browser.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
 
 import 'extension_run.dart';
 import 'resolver_group.dart' show ResolverExtension;

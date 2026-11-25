@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/search/presentation/search_category.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/search/presentation/search_category.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
 
 MultimediaItem _item({
   MultimediaContentType type = MultimediaContentType.movie,

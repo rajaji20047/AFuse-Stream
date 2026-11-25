@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/features/home/presentation/widgets/home_header_actions.dart';
-import 'package:zorox/features/profiles/data/fuse_profile.dart';
-import 'package:zorox/features/profiles/data/fuse_profile_photos_notifier.dart';
-import 'package:zorox/features/profiles/data/fuse_profiles_notifier.dart';
+import 'package:raja/features/home/presentation/widgets/home_header_actions.dart';
+import 'package:raja/features/profiles/data/fuse_profile.dart';
+import 'package:raja/features/profiles/data/fuse_profile_photos_notifier.dart';
+import 'package:raja/features/profiles/data/fuse_profiles_notifier.dart';
 
 FuseProfile _profile({required String id, required String name}) =>
     FuseProfile(

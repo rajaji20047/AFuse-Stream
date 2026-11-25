@@ -10,13 +10,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/features/addons/presentation/addon_detail_screen.dart';
-import 'package:zorox/features/addons/presentation/addon_sources_sheet.dart';
-import 'package:zorox/features/addons/presentation/widgets/stremio_sources_card.dart';
-import 'package:zorox/features/player/domain/playback_progress.dart';
-import 'package:zorox/features/sources/domain/last_used_source.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/features/addons/presentation/addon_detail_screen.dart';
+import 'package:raja/features/addons/presentation/addon_sources_sheet.dart';
+import 'package:raja/features/addons/presentation/widgets/stremio_sources_card.dart';
+import 'package:raja/features/player/domain/playback_progress.dart';
+import 'package:raja/features/sources/domain/last_used_source.dart';
 
 import 'stremio_page_fakes.dart';
 

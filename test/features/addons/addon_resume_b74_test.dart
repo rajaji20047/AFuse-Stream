@@ -1,8 +1,8 @@
 // Build 74: a Stremio title resumes — from Continue Watching and from
 // its page — on the source it last played on.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/features/addons/presentation/addon_resume_intent.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/features/addons/presentation/addon_resume_intent.dart';
 
 AddonStreamSource _source(String addon, String name, {String? url}) =>
     AddonStreamSource(

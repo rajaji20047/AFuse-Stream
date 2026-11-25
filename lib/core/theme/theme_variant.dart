@@ -24,7 +24,7 @@ part 'theme_variant.g.dart';
 ///   treatment: the floating pill nav already renders frosted glass
 ///   (see `CustomBottomNavBar`, built on `liquid_glass_bottom_nav`),
 ///   and this variant marks the theme glass through
-///   [ZoroxThemeExtension] so widgets can key their background
+///   [RajaThemeExtension] so widgets can key their background
 ///   treatment off it instead of guessing from the variant name.
 ///   The fresh-install default: the approved design preview wears the
 ///   glass pill nav, so a first launch must look like the preview, not
@@ -32,7 +32,7 @@ part 'theme_variant.g.dart';
 /// * [obsidian] — Olympus Noir (build 102): cinematic gold on obsidian
 ///   (#090B10 background, #15171E surfaces, #E7BE63 gold). Dark-only,
 ///   like Arena Gold but deeper and flatter.
-enum ZoroxThemeVariant {
+enum RajaThemeVariant {
   arenaGold('Arena Gold', 'Dark with the gold accent', isDark: true),
   midnight(
     'Midnight',
@@ -47,7 +47,7 @@ enum ZoroxThemeVariant {
   ),
   obsidian('Obsidian', 'Olympus Noir — gold on obsidian', isDark: true);
 
-  const ZoroxThemeVariant(this.label, this.detail, {required this.isDark});
+  const RajaThemeVariant(this.label, this.detail, {required this.isDark});
 
   /// Display name shown in Settings.
   final String label;
@@ -62,7 +62,7 @@ enum ZoroxThemeVariant {
   /// Whether the variant has both a dark and a light look, so the Dark
   /// Mode switch can go either way without leaving it. Only Liquid
   /// Glass.
-  bool get hasBothModes => this == ZoroxThemeVariant.liquidGlass;
+  bool get hasBothModes => this == RajaThemeVariant.liquidGlass;
 
   /// The saved variant name, or Liquid Glass for anything this release
   /// never wrote. Storage outlives downgrades and hand-editing, so an
@@ -70,12 +70,12 @@ enum ZoroxThemeVariant {
   /// does, and lands in the same place. Liquid Glass is the fresh-install
   /// default (the approved design preview wears the glass pill nav);
   /// Arena Gold stays selectable in Settings.
-  static ZoroxThemeVariant fromName(String? name) {
-    if (name == null) return ZoroxThemeVariant.liquidGlass;
-    for (final variant in ZoroxThemeVariant.values) {
+  static RajaThemeVariant fromName(String? name) {
+    if (name == null) return RajaThemeVariant.liquidGlass;
+    for (final variant in RajaThemeVariant.values) {
       if (variant.name == name) return variant;
     }
-    return ZoroxThemeVariant.liquidGlass;
+    return RajaThemeVariant.liquidGlass;
   }
 }
 
@@ -84,32 +84,32 @@ enum ZoroxThemeVariant {
 /// The pill nav's glass comes from the `liquid_glass_bottom_nav` package
 /// on every variant; what this carries is the *theme's* answer to "is
 /// this the glass variant", so a widget that wants a frosted background
-/// reads `Theme.of(context).extension<ZoroxThemeExtension>()?.isGlass`
+/// reads `Theme.of(context).extension<RajaThemeExtension>()?.isGlass`
 /// instead of importing the variant enum and comparing names. Every
 /// theme the app builds carries it — `false` for the other four
 /// variants, so a missing extension and a non-glass theme read the same.
-class ZoroxThemeExtension extends ThemeExtension<ZoroxThemeExtension> {
-  const ZoroxThemeExtension({required this.isGlass});
+class RajaThemeExtension extends ThemeExtension<RajaThemeExtension> {
+  const RajaThemeExtension({required this.isGlass});
 
   /// True only on the Liquid Glass variant.
   final bool isGlass;
 
   @override
-  ZoroxThemeExtension copyWith({bool? isGlass}) =>
-      ZoroxThemeExtension(isGlass: isGlass ?? this.isGlass);
+  RajaThemeExtension copyWith({bool? isGlass}) =>
+      RajaThemeExtension(isGlass: isGlass ?? this.isGlass);
 
   @override
-  ZoroxThemeExtension lerp(
-    ThemeExtension<ZoroxThemeExtension>? other,
+  RajaThemeExtension lerp(
+    ThemeExtension<RajaThemeExtension>? other,
     double t,
   ) {
-    if (other is! ZoroxThemeExtension) return this;
-    return ZoroxThemeExtension(isGlass: t < 0.5 ? isGlass : other.isGlass);
+    if (other is! RajaThemeExtension) return this;
+    return RajaThemeExtension(isGlass: t < 0.5 ? isGlass : other.isGlass);
   }
 
   @override
   bool operator ==(Object other) =>
-      other is ZoroxThemeExtension && other.isGlass == isGlass;
+      other is RajaThemeExtension && other.isGlass == isGlass;
 
   @override
   int get hashCode => isGlass.hashCode;
@@ -125,9 +125,9 @@ class ThemeVariant extends _$ThemeVariant {
   late SettingsRepository _repository;
 
   @override
-  ZoroxThemeVariant build() {
+  RajaThemeVariant build() {
     _repository = ref.watch(settingsRepositoryProvider);
-    return ZoroxThemeVariant.fromName(_repository.getThemeVariant());
+    return RajaThemeVariant.fromName(_repository.getThemeVariant());
   }
 
   /// Applies the variant live.
@@ -137,7 +137,7 @@ class ThemeVariant extends _$ThemeVariant {
   /// the tap would change nothing on screen. Liquid Glass has both a
   /// dark and a light look, so picking it leaves Dark Mode exactly as
   /// the user had it.
-  Future<void> setVariant(ZoroxThemeVariant variant) async {
+  Future<void> setVariant(RajaThemeVariant variant) async {
     state = variant;
     await _repository.saveThemeVariant(variant.name);
     // Remember the last dark variant, so the Dark Mode toggle knows
@@ -168,11 +168,11 @@ class ThemeVariant extends _$ThemeVariant {
     }
     if (enabled) {
       if (state.isDark) return;
-      final lastDark = ZoroxThemeVariant.fromName(
+      final lastDark = RajaThemeVariant.fromName(
         _repository.getLastDarkThemeVariant(),
       );
       await setVariant(
-        lastDark.isDark ? lastDark : ZoroxThemeVariant.liquidGlass,
+        lastDark.isDark ? lastDark : RajaThemeVariant.liquidGlass,
       );
       // Liquid Glass does not move the mode by itself.
       await ref
@@ -180,7 +180,7 @@ class ThemeVariant extends _$ThemeVariant {
           .setThemeMode(ThemeMode.dark);
     } else {
       if (!state.isDark) return;
-      await setVariant(ZoroxThemeVariant.frost);
+      await setVariant(RajaThemeVariant.frost);
     }
   }
 }

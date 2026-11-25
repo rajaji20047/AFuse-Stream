@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/data/models/github_release.dart';
-import 'package:zorox/core/services/update_service.dart';
+import 'package:raja/core/data/models/github_release.dart';
+import 'package:raja/core/services/update_service.dart';
 
 GithubAsset _asset(String name) => GithubAsset(
   name: name,
@@ -13,8 +13,8 @@ GithubAsset _asset(String name) => GithubAsset(
 final _release = [
   for (final arch in ['x64', 'arm64'])
     for (final ext in ['tar.gz', 'deb', 'AppImage'])
-      _asset('zorox-linux-$arch-2.9.0.$ext'),
-  _asset('zorox-windows-x64-2.9.0.exe'),
+      _asset('raja-linux-$arch-2.9.0.$ext'),
+  _asset('raja-windows-x64-2.9.0.exe'),
 ];
 
 void main() {
@@ -24,16 +24,16 @@ void main() {
       expect(
         UpdateService.linuxInstallOf(
           environment: {
-            'APPIMAGE': '/home/u/Apps/ZoroX.AppImage',
-            'APPDIR': '/tmp/.mount_ZoroXAbC123',
+            'APPIMAGE': '/home/u/Apps/Raja.AppImage',
+            'APPDIR': '/tmp/.mount_RajaAbC123',
           },
-          executable: '/tmp/.mount_ZoroXAbC123/opt/zorox/zorox',
+          executable: '/tmp/.mount_RajaAbC123/opt/raja/raja',
         ),
         LinuxInstall.appImage,
       );
     });
 
-    test('APPIMAGE inherited from another AppImage that started ZoroX '
+    test('APPIMAGE inherited from another AppImage that started Raja '
         'is not an AppImage install', () {
       expect(
         UpdateService.linuxInstallOf(
@@ -41,17 +41,17 @@ void main() {
             'APPIMAGE': '/home/u/Apps/Launcher.AppImage',
             'APPDIR': '/tmp/.mount_LauncXyZ789',
           },
-          executable: '/opt/zorox/zorox',
+          executable: '/opt/raja/raja',
         ),
         LinuxInstall.deb,
       );
     });
 
-    test('the .deb installs to /opt/zorox', () {
+    test('the .deb installs to /opt/raja', () {
       expect(
         UpdateService.linuxInstallOf(
           environment: const {},
-          executable: '/opt/zorox/zorox',
+          executable: '/opt/raja/raja',
         ),
         LinuxInstall.deb,
       );
@@ -61,14 +61,14 @@ void main() {
       expect(
         UpdateService.linuxInstallOf(
           environment: const {},
-          executable: '/home/u/zorox/zorox',
+          executable: '/home/u/raja/raja',
         ),
         LinuxInstall.tarball,
       );
       expect(
         UpdateService.linuxInstallOf(
           environment: const {},
-          executable: '/opt/zorox-old/zorox',
+          executable: '/opt/raja-old/raja',
         ),
         LinuxInstall.tarball,
       );
@@ -83,7 +83,7 @@ void main() {
           isArm: false,
           install: LinuxInstall.appImage,
         )?.name,
-        'zorox-linux-x64-2.9.0.AppImage',
+        'raja-linux-x64-2.9.0.AppImage',
       );
       expect(
         UpdateService.linuxAsset(
@@ -91,7 +91,7 @@ void main() {
           isArm: true,
           install: LinuxInstall.deb,
         )?.name,
-        'zorox-linux-arm64-2.9.0.deb',
+        'raja-linux-arm64-2.9.0.deb',
       );
       expect(
         UpdateService.linuxAsset(
@@ -99,7 +99,7 @@ void main() {
           isArm: false,
           install: LinuxInstall.tarball,
         )?.name,
-        'zorox-linux-x64-2.9.0.tar.gz',
+        'raja-linux-x64-2.9.0.tar.gz',
       );
     });
 
@@ -145,30 +145,30 @@ void main() {
     test('x86_64 and amd64 name the x64 build too', () {
       expect(
         UpdateService.linuxAsset(
-          [_asset('zorox-linux-x86_64.AppImage')],
+          [_asset('raja-linux-x86_64.AppImage')],
           isArm: false,
           install: LinuxInstall.appImage,
         )?.name,
-        'zorox-linux-x86_64.AppImage',
+        'raja-linux-x86_64.AppImage',
       );
       expect(
         UpdateService.linuxAsset(
-          [_asset('zorox-linux-amd64.deb')],
+          [_asset('raja-linux-amd64.deb')],
           isArm: false,
           install: LinuxInstall.deb,
         )?.name,
-        'zorox-linux-amd64.deb',
+        'raja-linux-amd64.deb',
       );
     });
 
     test('a name without an architecture serves either', () {
       expect(
         UpdateService.linuxAsset(
-          [_asset('zorox-linux.deb')],
+          [_asset('raja-linux.deb')],
           isArm: true,
           install: LinuxInstall.deb,
         )?.name,
-        'zorox-linux.deb',
+        'raja-linux.deb',
       );
     });
   });

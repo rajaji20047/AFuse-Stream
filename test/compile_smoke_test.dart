@@ -9,21 +9,21 @@
 import 'package:flutter_test/flutter_test.dart';
 
 // Entry point: pulls in routing, shell, settings and everything they touch.
-import 'package:zorox/main.dart' as app;
+import 'package:raja/main.dart' as app;
 
 // Screens and sheets that the plugin/add-on work keeps changing.
-import 'package:zorox/features/addons/presentation/addon_sources_sheet.dart';
-import 'package:zorox/features/addons/presentation/addons_screen.dart';
-import 'package:zorox/features/details/presentation/details_screen.dart';
-import 'package:zorox/features/details/presentation/tmdb_movie_details_screen.dart';
-import 'package:zorox/features/details/presentation/widgets/episode_picker_sheet.dart';
-import 'package:zorox/features/details/presentation/widgets/movie_seasons_list.dart';
-import 'package:zorox/features/extensions/screens/extensions_screen.dart';
-import 'package:zorox/features/nuvio/presentation/nuvio_plugins_view.dart';
-import 'package:zorox/features/nuvio/presentation/nuvio_scraper_settings_dialog.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
-import 'package:zorox/features/sources/presentation/plugin_sources_sheet.dart';
-import 'package:zorox/features/sources/presentation/source_sheet_widgets.dart';
+import 'package:raja/features/addons/presentation/addon_sources_sheet.dart';
+import 'package:raja/features/addons/presentation/addons_screen.dart';
+import 'package:raja/features/details/presentation/details_screen.dart';
+import 'package:raja/features/details/presentation/tmdb_movie_details_screen.dart';
+import 'package:raja/features/details/presentation/widgets/episode_picker_sheet.dart';
+import 'package:raja/features/details/presentation/widgets/movie_seasons_list.dart';
+import 'package:raja/features/extensions/screens/extensions_screen.dart';
+import 'package:raja/features/nuvio/presentation/nuvio_plugins_view.dart';
+import 'package:raja/features/nuvio/presentation/nuvio_scraper_settings_dialog.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/features/sources/presentation/plugin_sources_sheet.dart';
+import 'package:raja/features/sources/presentation/source_sheet_widgets.dart';
 
 void main() {
   test('every screen touched by plugin work still compiles', () {

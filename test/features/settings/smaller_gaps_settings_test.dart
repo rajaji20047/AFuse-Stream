@@ -6,12 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/extensions/services/repository_service.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_dialogs.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/extensions/services/repository_service.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_dialogs.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// The smaller-gaps settings, against a real Hive box in a temp directory:
 /// PiP mode, the Seek gesture, the new subtitle defaults, the GitHub proxy

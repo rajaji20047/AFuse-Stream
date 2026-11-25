@@ -1,4 +1,4 @@
-/// Tracker sign-in in ZoroX's own browser on this platform's real engine,
+/// Tracker sign-in in Raja's own browser on this platform's real engine,
 /// against a local stand-in for the provider: the sign-in page, its form post
 /// and the redirect with the answer, in the query (MyAnimeList's code) or the
 /// fragment (AniList's token). Then the real MyAnimeList and AniList sign-in
@@ -23,9 +23,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/config/sync_config.dart';
-import 'package:zorox/features/tracking/sign_in/sign_in_runner.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/config/sync_config.dart';
+import 'package:raja/features/tracking/sign_in/sign_in_runner.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 const _live = bool.fromEnvironment('SIGN_IN_E2E');
 
@@ -114,10 +114,10 @@ void main() {
       const MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: Center(child: Text('ZoroX'))),
+        home: Scaffold(body: Center(child: Text('Raja'))),
       ),
     );
-    return tester.element(find.text('ZoroX'));
+    return tester.element(find.text('Raja'));
   }
 
   /// Runs [method] to [authorize], pumping frames for its sheet or dialog,

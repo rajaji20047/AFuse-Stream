@@ -9,7 +9,7 @@ library;
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/step_seek.dart';
+import 'package:raja/features/player/domain/step_seek.dart';
 
 void main() {
   const position = Duration(seconds: 300);

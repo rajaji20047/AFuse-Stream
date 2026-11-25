@@ -21,7 +21,7 @@ public class TextureSW: NSObject, FlutterTexture, ResizableTextureProtocol {
     skipCheckArgs: true
   )
 
-  // +43 (ZoroX): the software renderer's gamma. mpv's SW backend
+  // +43 (Raja): the software renderer's gamma. mpv's SW backend
   // (libswscale, mpv 0.36 as bundled by media_kit_libs_ios_video
   // 1.1.4) expands the limited range correctly but never converts the
   // transfer function, so this buffer holds bt.1886-encoded values
@@ -133,10 +133,10 @@ public class TextureSW: NSObject, FlutterTexture, ResizableTextureProtocol {
     mpv_render_context_set_update_callback(
       renderContext,
       { (ctx) in
-        // +32 (ZoroX): count mpv's update callbacks — the diag snapshot
+        // +32 (Raja): count mpv's update callbacks — the diag snapshot
         // tells an mpv stall (this stops) apart from a Worker/main-hop
         // stall (this grows but renders don't).
-        ZoroXMpvRenderStats.shared.noteUpdate()
+        RajaMpvRenderStats.shared.noteUpdate()
         let that = unsafeBitCast(ctx, to: TextureSW.self)
         DispatchQueue.main.async {
           that.updateCallback()
@@ -245,7 +245,7 @@ public class TextureSW: NSObject, FlutterTexture, ResizableTextureProtocol {
       mpv_render_param(type: MPV_RENDER_PARAM_INVALID, data: nil),
     ]
 
-    // +32 (ZoroX): time the render — the diag snapshot shows whether
+    // +32 (Raja): time the render — the diag snapshot shows whether
     // the software render itself is slow (renderMs in the tens of ms)
     // or the frames simply never arrive.
     let renderStart = DispatchTime.now()
@@ -255,7 +255,7 @@ public class TextureSW: NSObject, FlutterTexture, ResizableTextureProtocol {
         DispatchTime.now().uptimeNanoseconds
           - renderStart.uptimeNanoseconds
       ) / 1_000_000
-    ZoroXMpvRenderStats.shared.noteRender(durationMs: renderMs)
+    RajaMpvRenderStats.shared.noteRender(durationMs: renderMs)
 
     // +43: correct the SW path's gamma (see applySwGammaCorrection):
     // mpv writes the video's own transfer function into this buffer
@@ -269,15 +269,15 @@ public class TextureSW: NSObject, FlutterTexture, ResizableTextureProtocol {
 
     textureContexts.pushAsReady(textureContext!)
 
-    // ZoroX fork: export the completed frame for the iOS mpv PiP plugin
+    // Raja fork: export the completed frame for the iOS mpv PiP plugin
     // (see MediaKitFrameTap.swift). Posted while the buffer is still
     // locked by the defer above, so the observer's synchronous copy reads
     // stable memory; the pool reuses this buffer on a later render.
     // +32: the render counters ride in userInfo for the plugin's diag.
     NotificationCenter.default.post(
-      name: .zoroxMpvRenderedFrame,
+      name: .rajaMpvRenderedFrame,
       object: textureContext!.pixelBuffer,
-      userInfo: ZoroXMpvRenderStats.shared.snapshot()
+      userInfo: RajaMpvRenderStats.shared.snapshot()
     )
   }
 

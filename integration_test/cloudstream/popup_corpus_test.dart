@@ -18,9 +18,9 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_ui_session.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_ui_session.dart';
 
 import 'support.dart';
 

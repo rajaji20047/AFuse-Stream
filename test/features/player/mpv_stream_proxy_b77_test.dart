@@ -2,9 +2,9 @@
 // cache proxy, and what the overlay says about it.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/services/stream_cache/stream_cache_proxy.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_stream_proxy.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/services/stream_cache/stream_cache_proxy.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_stream_proxy.dart';
 
 MultimediaItem item({
   MultimediaContentType type = MultimediaContentType.movie,

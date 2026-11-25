@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
 
-import '../../account/data/zorox_sync_client.dart';
+import '../../account/data/raja_sync_client.dart';
 import 'fuse_profile.dart';
 
 /// The Worker v2 profile calls: list, create, update, delete.
 ///
 /// A fresh [Dio] of its own — not the app's shared client — so profile
 /// calls never pick up a plugin's cookies or DNS overrides, like
-/// [ZoroxSyncClient]. Throws [ZoroxSyncException] with a readable message
+/// [RajaSyncClient]. Throws [RajaSyncException] with a readable message
 /// for anything the server or the network reports.
 ///
 /// The PIN is never sent: [createFuseProfile] takes the PBKDF2 record
@@ -40,7 +40,7 @@ class FuseProfilesClient {
       );
       final body = response.data ?? const {};
       if (body['ok'] != true) {
-        throw ZoroxSyncException(_serverMessage(body));
+        throw RajaSyncException(_serverMessage(body));
       }
       final raw = body['profiles'];
       if (raw is! List) return const [];
@@ -48,10 +48,10 @@ class FuseProfilesClient {
         for (final e in raw)
           if (e is Map) FuseProfile.fromJson(Map<String, dynamic>.from(e)),
       ];
-    } on ZoroxSyncException {
+    } on RajaSyncException {
       rethrow;
     } on DioException catch (e) {
-      throw ZoroxSyncException(
+      throw RajaSyncException(
         _dioMessage(e),
         statusCode: e.response?.statusCode,
       );
@@ -75,7 +75,7 @@ class FuseProfilesClient {
     });
     final profile = body['profile'];
     if (profile is! Map) {
-      throw const ZoroxSyncException(
+      throw const RajaSyncException(
         'The sync server did not return the new profile.',
       );
     }
@@ -103,7 +103,7 @@ class FuseProfilesClient {
     });
     final profile = body['profile'];
     if (profile is! Map) {
-      throw const ZoroxSyncException(
+      throw const RajaSyncException(
         'The sync server did not return the updated profile.',
       );
     }
@@ -136,13 +136,13 @@ class FuseProfilesClient {
       );
       final data = response.data ?? const {};
       if (data['ok'] != true) {
-        throw ZoroxSyncException(_serverMessage(data));
+        throw RajaSyncException(_serverMessage(data));
       }
       return data;
-    } on ZoroxSyncException {
+    } on RajaSyncException {
       rethrow;
     } on DioException catch (e) {
-      throw ZoroxSyncException(
+      throw RajaSyncException(
         _dioMessage(e),
         statusCode: e.response?.statusCode,
       );

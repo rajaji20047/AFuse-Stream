@@ -7,14 +7,14 @@ import 'dart:typed_data';
 import 'package:challenge_browser/challenge_browser.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_interceptor.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/core/network/clearance/widget_tap.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_interceptor.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/core/network/clearance/widget_tap.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
 
 import 'fakes.dart';
 

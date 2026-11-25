@@ -1,6 +1,6 @@
 /// CloudStream extensions that load a page to find their video: CloudStream's `WebViewResolver`,
 /// or a library extractor built on it ([resolverGroup], from the survey of 2026-09-30).
-/// On every platform the page loads hidden in ZoroX's own browser, and the engine matches the
+/// On every platform the page loads hidden in Raja's own browser, and the engine matches the
 /// requests it makes (on Android since 2026-10-02, in place of CloudStream's own WebView).
 ///
 /// For each extension, as the survey did: its search results for the survey's words, then its
@@ -27,12 +27,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/http_defaults.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/http_defaults.dart';
 
 import 'resolver_group.dart';
 import 'support.dart';

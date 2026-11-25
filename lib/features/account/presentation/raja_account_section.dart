@@ -10,26 +10,26 @@ import '../../profiles/presentation/legacy_move_dialog.dart';
 import '../../profiles/presentation/manage_profiles_screen.dart';
 import '../../profiles/presentation/profile_switcher_screen.dart';
 import '../../settings/presentation/widgets/settings_widgets.dart';
-import '../data/zorox_account_notifier.dart';
-import '../data/zorox_backup.dart';
-import '../data/zorox_sync_client.dart';
+import '../data/raja_account_notifier.dart';
+import '../data/raja_backup.dart';
+import '../data/raja_sync_client.dart';
 
 /// The "Fuse Account" group on the Accounts settings screen.
 ///
-/// Gold & Black comes from the theme itself (primary is Zoro gold), so
+/// Gold & Black comes from the theme itself (primary is Raja gold), so
 /// nothing here sets its own colours. All strings are plain English, like
 /// the rest of the app since v4.
-class ZoroxAccountSection extends ConsumerWidget {
-  const ZoroxAccountSection({super.key});
+class RajaAccountSection extends ConsumerWidget {
+  const RajaAccountSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final account = ref.watch(zoroxAccountProvider);
+    final account = ref.watch(rajaAccountProvider);
     final fuseProfiles = ref.watch(fuseProfilesProvider);
     final activeFuseProfile = fuseProfiles.activeProfile;
     // The design preview's Accounts screen opens with a BACKUP card
     // (Import backup). The account itself — log in, cloud sync, sync
-    // server — is ZoroX's own feature, not in the preview; it keeps its
+    // server — is Raja's own feature, not in the preview; it keeps its
     // own card right below Backup rather than being dropped.
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -120,7 +120,7 @@ class ZoroxAccountSection extends ConsumerWidget {
                   : 'Back up watch history, plugins & library',
               onTap: () => showDialog<void>(
                 context: context,
-                builder: (_) => const ZoroxAccountDialog(),
+                builder: (_) => const RajaAccountDialog(),
               ),
             ),
             if (account.loggedIn)
@@ -144,11 +144,11 @@ class ZoroxAccountSection extends ConsumerWidget {
                 trailing: Switch(
                   value: account.autoSyncEnabled,
                   onChanged: (value) => ref
-                      .read(zoroxAccountProvider.notifier)
+                      .read(rajaAccountProvider.notifier)
                       .setAutoSyncEnabled(value),
                 ),
                 onTap: () => ref
-                    .read(zoroxAccountProvider.notifier)
+                    .read(rajaAccountProvider.notifier)
                     .setAutoSyncEnabled(!account.autoSyncEnabled),
               ),
             SettingsTile(
@@ -160,7 +160,7 @@ class ZoroxAccountSection extends ConsumerWidget {
               isLast: true,
               onTap: () => showDialog<void>(
                 context: context,
-                builder: (_) => const ZoroxWorkerUrlDialog(),
+                builder: (_) => const RajaWorkerUrlDialog(),
               ),
             ),
           ],
@@ -194,7 +194,7 @@ class ZoroxAccountSection extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    await ref.read(zoroxAccountProvider.notifier).deleteLegacyData();
+    await ref.read(rajaAccountProvider.notifier).deleteLegacyData();
     if (!context.mounted) return;
     ref
         .read(notificationServiceProvider)
@@ -206,7 +206,7 @@ class ZoroxAccountSection extends ConsumerWidget {
   }
 
   Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(zoroxAccountProvider.notifier);
+    final notifier = ref.read(rajaAccountProvider.notifier);
     final ok = await notifier.syncNow();
     if (!context.mounted) return;
     final notifications = ref.read(notificationServiceProvider);
@@ -218,7 +218,7 @@ class ZoroxAccountSection extends ConsumerWidget {
       );
     } else {
       notifications.showError(
-        ref.read(zoroxAccountProvider).error ?? 'Could not sync. Try again.',
+        ref.read(rajaAccountProvider).error ?? 'Could not sync. Try again.',
         title: 'Fuse Account',
         icon: Icons.cloud_off_rounded,
       );
@@ -228,7 +228,7 @@ class ZoroxAccountSection extends ConsumerWidget {
   Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
     try {
       final result = await ref
-          .read(zoroxAccountProvider.notifier)
+          .read(rajaAccountProvider.notifier)
           .exportBackupFile();
       if (!context.mounted) return;
       if (result == null) return; // User cancelled the save dialog.
@@ -254,7 +254,7 @@ class ZoroxAccountSection extends ConsumerWidget {
   }
 
   Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(zoroxAccountProvider.notifier);
+    final notifier = ref.read(rajaAccountProvider.notifier);
     // The toasts ride the global overlay and need no BuildContext, so they
     // are shown even when this screen is gone by the time the import
     // finishes. The old code returned early on `!context.mounted` after the
@@ -272,10 +272,10 @@ class ZoroxAccountSection extends ConsumerWidget {
     }
 
     // 1) Pick the file. Null is the user cancelling the picker.
-    ZoroxBackup? backup;
+    RajaBackup? backup;
     try {
       backup = await notifier.pickBackupFile();
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       notifications.showError(
         e.message,
         title: 'Fuse Account',
@@ -329,7 +329,7 @@ class ZoroxAccountSection extends ConsumerWidget {
         },
       ).then((_) => dialogShowing = false),
     );
-    ZoroxRestoreReport? report;
+    RajaRestoreReport? report;
     Object? failure;
     try {
       report = await notifier.restoreBackup(backup);
@@ -355,9 +355,9 @@ class ZoroxAccountSection extends ConsumerWidget {
 /// Restores [backup] and confirms the result through the global toasts,
 /// which need no BuildContext — for an import whose screen is already gone.
 Future<void> _restoreAndConfirm(
-  ZoroxAccountNotifier notifier,
+  RajaAccountNotifier notifier,
   NotificationService notifications,
-  ZoroxBackup backup,
+  RajaBackup backup,
 ) async {
   try {
     final report = await notifier.restoreBackup(backup);
@@ -376,7 +376,7 @@ Future<void> _restoreAndConfirm(
 /// toast lasts five seconds, so it can actually be read.
 void _confirmRestore(
   NotificationService notifications,
-  ZoroxRestoreReport report,
+  RajaRestoreReport report,
 ) {
   notifications.showSuccess(
     report.summary,
@@ -454,14 +454,14 @@ String _formatLastSynced(DateTime at) {
 /// account, last sync, Sync now and Log out. The password field never keeps
 /// its text after the dialog closes, and the password is never stored — only
 /// the session token, in the keychain/keystore.
-class ZoroxAccountDialog extends ConsumerStatefulWidget {
-  const ZoroxAccountDialog({super.key});
+class RajaAccountDialog extends ConsumerStatefulWidget {
+  const RajaAccountDialog({super.key});
 
   @override
-  ConsumerState<ZoroxAccountDialog> createState() => _ZoroxAccountDialogState();
+  ConsumerState<RajaAccountDialog> createState() => _RajaAccountDialogState();
 }
 
-class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
+class _RajaAccountDialogState extends ConsumerState<RajaAccountDialog> {
   late final TextEditingController _emailController = TextEditingController();
   late final TextEditingController _passwordController =
       TextEditingController();
@@ -476,7 +476,7 @@ class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final account = ref.watch(zoroxAccountProvider);
+    final account = ref.watch(rajaAccountProvider);
     final primary = Theme.of(context).colorScheme.primary;
     return AlertDialog(
       title: const Text('Fuse Account'),
@@ -625,7 +625,7 @@ class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
 
   Future<void> _login() async {
     final ok = await ref
-        .read(zoroxAccountProvider.notifier)
+        .read(rajaAccountProvider.notifier)
         .login(
           email: _emailController.text,
           password: _passwordController.text,
@@ -635,7 +635,7 @@ class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
 
   Future<void> _register() async {
     final ok = await ref
-        .read(zoroxAccountProvider.notifier)
+        .read(rajaAccountProvider.notifier)
         .register(
           email: _emailController.text,
           password: _passwordController.text,
@@ -644,12 +644,12 @@ class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
   }
 
   Future<void> _logout() async {
-    await ref.read(zoroxAccountProvider.notifier).logout();
+    await ref.read(rajaAccountProvider.notifier).logout();
     if (mounted) Navigator.pop(context);
   }
 
   Future<void> _syncNow() async {
-    final ok = await ref.read(zoroxAccountProvider.notifier).syncNow();
+    final ok = await ref.read(rajaAccountProvider.notifier).syncNow();
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
@@ -666,21 +666,21 @@ class _ZoroxAccountDialogState extends ConsumerState<ZoroxAccountDialog> {
 
 /// The sync server URL editor: paste the deployed Worker URL
 /// (`https://zorox-sync.<subdomain>.workers.dev`). Empty clears it.
-class ZoroxWorkerUrlDialog extends ConsumerStatefulWidget {
-  const ZoroxWorkerUrlDialog({super.key});
+class RajaWorkerUrlDialog extends ConsumerStatefulWidget {
+  const RajaWorkerUrlDialog({super.key});
 
   @override
-  ConsumerState<ZoroxWorkerUrlDialog> createState() =>
-      _ZoroxWorkerUrlDialogState();
+  ConsumerState<RajaWorkerUrlDialog> createState() =>
+      _RajaWorkerUrlDialogState();
 }
 
-class _ZoroxWorkerUrlDialogState extends ConsumerState<ZoroxWorkerUrlDialog> {
+class _RajaWorkerUrlDialogState extends ConsumerState<RajaWorkerUrlDialog> {
   late final TextEditingController _controller = TextEditingController(
     // Only the user's own server is shown for editing; the built-in
     // default is what an empty field means.
-    text: ref.read(zoroxAccountProvider).usingDefaultServer
+    text: ref.read(rajaAccountProvider).usingDefaultServer
         ? ''
-        : ref.read(zoroxAccountProvider).workerUrl,
+        : ref.read(rajaAccountProvider).workerUrl,
   );
 
   @override
@@ -725,7 +725,7 @@ class _ZoroxWorkerUrlDialogState extends ConsumerState<ZoroxWorkerUrlDialog> {
         FilledButton(
           onPressed: () async {
             final ok = await ref
-                .read(zoroxAccountProvider.notifier)
+                .read(rajaAccountProvider.notifier)
                 .setWorkerUrl(_controller.text);
             if (ok && context.mounted) Navigator.pop(context);
           },

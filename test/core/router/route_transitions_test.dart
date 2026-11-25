@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/router/route_transitions.dart';
-import 'package:zorox/core/utils/motion.dart';
+import 'package:raja/core/router/route_transitions.dart';
+import 'package:raja/core/utils/motion.dart';
 
 void main() {
   tearDown(() => debugDefaultTargetPlatformOverride = null);

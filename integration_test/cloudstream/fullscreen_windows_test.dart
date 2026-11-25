@@ -17,10 +17,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 

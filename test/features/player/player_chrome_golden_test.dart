@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel.dart'
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel.dart'
     show PlayerPanelTab;
-import 'package:zorox/features/player/presentation/vlc/resume_hint.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/player/presentation/vlc/chrome_visibility_controller.dart';
-import 'package:zorox/features/player/presentation/system_volume.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/focus/app_focus.dart';
+import 'package:raja/features/player/presentation/vlc/resume_hint.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/player/presentation/vlc/chrome_visibility_controller.dart';
+import 'package:raja/features/player/presentation/system_volume.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/focus/app_focus.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'fake_vlc_engine.dart';

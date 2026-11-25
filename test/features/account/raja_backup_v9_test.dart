@@ -4,28 +4,28 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/account/data/zorox_backup.dart';
-import 'package:zorox/features/account/data/zorox_settings_sync.dart';
+import 'package:raja/features/account/data/raja_backup.dart';
+import 'package:raja/features/account/data/raja_settings_sync.dart';
 
 /// A backup exactly as v8 wrote it.
 const String _v8Backup = '''
 {
-  "format": "zorox-backup",
+  "format": "raja-backup",
   "version": 1,
   "exportedAt": 1763380000000,
   "history": [{"id": "tt1", "position": 120}],
   "library": [{"id": "tt2"}],
-  "zoroxRepos": ["https://example.org/repo.json"],
-  "zoroxPlugins": [{"packageName": "p", "repositoryUrl": "https://example.org/repo.json"}],
+  "rajaRepos": ["https://example.org/repo.json"],
+  "rajaPlugins": [{"packageName": "p", "repositoryUrl": "https://example.org/repo.json"}],
   "cloudstreamRepos": ["https://example.org/cs.json"],
   "cloudstreamPlugins": [{"internalName": "X", "name": "X", "url": "https://example.org/x.cs3", "repositoryUrl": "https://example.org/cs.json"}]
 }
 ''';
 
 void main() {
-  group('ZoroxBackup', () {
+  group('RajaBackup', () {
     test('round trip keeps every v9 field', () {
-      final backup = ZoroxBackup(
+      final backup = RajaBackup(
         exportedAt: 1763390000000,
         history: const [
           {'id': 'tt1', 'position': 5},
@@ -33,7 +33,7 @@ void main() {
         library: const [
           {'id': 'tt2'},
         ],
-        zoroxRepos: const ['https://example.org/repo.json'],
+        rajaRepos: const ['https://example.org/repo.json'],
         cloudstreamRepos: const ['https://example.org/cs.json'],
         stremioAddons: const [
           {'url': 'https://v3-cinemeta.strem.io/manifest.json', 'enabled': true},
@@ -55,11 +55,11 @@ void main() {
         settingsUpdatedAt: 1763389000000,
         addonsSkippedForSecrets: 1,
       );
-      final back = ZoroxBackup.fromJson(
+      final back = RajaBackup.fromJson(
         jsonDecode(jsonEncode(backup.toJson())) as Map<String, dynamic>,
       );
       expect(back.toJson(), backup.toJson());
-      expect(back.schema, ZoroxBackup.currentSchema);
+      expect(back.schema, RajaBackup.currentSchema);
       expect(back.stremioAddons, hasLength(2));
       expect(back.stremioAddons[1]['enabled'], isFalse);
       expect(back.nuvioRepos.single['disabled'], ['a']);
@@ -69,7 +69,7 @@ void main() {
     });
 
     test('the format name and version are what v8 reads', () {
-      final json = ZoroxBackup(exportedAt: 1).toJson();
+      final json = RajaBackup(exportedAt: 1).toJson();
       expect(json['format'], 'zorox-backup');
       // v8 refuses any version but 1, so the additive revision is `schema`.
       // Profiles (Build 1) bumped it 2 -> 3; v8/v9 readers ignore the
@@ -79,13 +79,13 @@ void main() {
     });
 
     test('a v8 backup restores: old sections read, new ones empty', () {
-      final backup = ZoroxBackup.fromJson(
+      final backup = RajaBackup.fromJson(
         jsonDecode(_v8Backup) as Map<String, dynamic>,
       );
       expect(backup.schema, 1);
       expect(backup.history.single['id'], 'tt1');
       expect(backup.library.single['id'], 'tt2');
-      expect(backup.zoroxRepos, ['https://example.org/repo.json']);
+      expect(backup.rajaRepos, ['https://example.org/repo.json']);
       expect(backup.cloudstreamPlugins.single['internalName'], 'X');
       expect(backup.stremioAddons, isEmpty);
       expect(backup.nuvioRepos, isEmpty);
@@ -105,7 +105,7 @@ void main() {
           'junk',
           {'noUrl': true},
         ];
-      final backup = ZoroxBackup.fromJson(json);
+      final backup = RajaBackup.fromJson(json);
       expect(backup.version, 3);
       expect(backup.history, hasLength(1));
       expect(backup.stremioAddons.single['url'], 'https://example.org/manifest.json');
@@ -113,17 +113,17 @@ void main() {
 
     test('not a Fuse backup, or version 0, is refused', () {
       expect(
-        () => ZoroxBackup.fromJson({'format': 'other', 'version': 1}),
+        () => RajaBackup.fromJson({'format': 'other', 'version': 1}),
         throwsFormatException,
       );
       expect(
-        () => ZoroxBackup.fromJson({'format': 'zorox-backup', 'version': 0}),
+        () => RajaBackup.fromJson({'format': 'zorox-backup', 'version': 0}),
         throwsFormatException,
       );
     });
 
     test('a realistic backup is far below the 5 MB server limit', () {
-      final backup = ZoroxBackup(
+      final backup = RajaBackup(
         exportedAt: 1763390000000,
         history: [
           for (var i = 0; i < 500; i++)
@@ -197,8 +197,8 @@ void main() {
       'player_os_user',
       'player_os_pass',
       'opensubtitles_api_key',
-      'zorox_session_token',
-      'zorox_worker_url',
+      'raja_session_token',
+      'raja_worker_url',
       'zorox_auto_sync_off',
       'download_path',
       'declined_update_tag',
@@ -278,7 +278,7 @@ void main() {
           'accent_color': 'gold',
           'tmdb_api_key': 'theirs',
           'app_lock_enabled': false,
-          'zorox_worker_url': 'https://evil.example',
+          'raja_worker_url': 'https://evil.example',
           'player_os_pass': 'x',
         },
         read: (key) => box[key],
@@ -296,7 +296,7 @@ void main() {
       expect(changed, 2);
       expect(box['tmdb_api_key'], 'mine');
       expect(box['app_lock_enabled'], isTrue);
-      expect(box.containsKey('zorox_worker_url'), isFalse);
+      expect(box.containsKey('raja_worker_url'), isFalse);
       expect(box.containsKey('player_os_pass'), isFalse);
     });
 

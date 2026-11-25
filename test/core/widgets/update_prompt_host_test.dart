@@ -20,12 +20,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/data/models/github_release.dart';
-import 'package:zorox/core/providers/update_provider.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/widgets/update_dialog.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/data/models/github_release.dart';
+import 'package:raja/core/providers/update_provider.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/widgets/update_dialog.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 GithubRelease _release(String tag) => GithubRelease(
   tagName: tag,

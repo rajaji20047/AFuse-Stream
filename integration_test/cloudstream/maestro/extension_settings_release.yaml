@@ -1,7 +1,7 @@
 # An extension's settings screen in a release build (R8 on), through the UI, which `flutter test`
-# cannot run: add CNC's repository, install CNC Verse, open its settings in ZoroX's sheet, untick
+# cannot run: add CNC's repository, install CNC Verse, open its settings in Raja's sheet, untick
 # its first studio, save, answer its restart alert, and see the change applied.
-#   (cd OUT_DIR && maestro test -e APP_ID=com.toji.zorox PATH_TO/extension_settings_release.yaml)
+#   (cd OUT_DIR && maestro test -e APP_ID=com.raja.fuse PATH_TO/extension_settings_release.yaml)
 appId: ${APP_ID}
 ---
 - launchApp:

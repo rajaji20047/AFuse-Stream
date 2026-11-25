@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/storage/secure_token_storage.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/storage/secure_token_storage.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 /// Source of [PlayerSettings], read as text.
 ///

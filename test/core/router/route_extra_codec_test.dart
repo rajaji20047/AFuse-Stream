@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/features/explore/presentation/view_all_screen.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/features/explore/presentation/view_all_screen.dart';
 
 void main() {
   group('RouteExtraCodec', () {

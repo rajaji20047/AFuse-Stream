@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 class AppErrorMessages {
   AppErrorMessages._();

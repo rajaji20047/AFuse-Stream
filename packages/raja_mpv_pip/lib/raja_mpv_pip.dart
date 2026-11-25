@@ -1,6 +1,6 @@
 /// iOS Picture-in-Picture for the mpv (Golden) player.
 ///
-/// Thin MethodChannel wrapper around the native `ZoroxMpvPipPlugin`
+/// Thin MethodChannel wrapper around the native `RajaMpvPipPlugin`
 /// (iOS only). The native side taps the frames the forked `media_kit_video`
 /// software renderer already produces (see `packages/media_kit_video/
 /// FORK.md`), wraps each one as a `CMSampleBuffer`, and drives an
@@ -30,7 +30,7 @@ import 'package:flutter/services.dart';
 /// (the same convention as `PlayerPlatformService`).
 class MpvPipIos {
   static const MethodChannel _channel = MethodChannel(
-    'dev.toji.zorox.player/pip_mpv_ios',
+    'dev.rajaji.raja.player/pip_mpv_ios',
   );
 
   bool _prepared = false;

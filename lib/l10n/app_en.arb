@@ -516,8 +516,8 @@
   "@extensionsSubtitle": {
     "description": "Subtitle under the Extensions title: which plugin sources the screen lists."
   },
-  "noZoroxReposYet": "No SkyStream repos yet",
-  "@noZoroxReposYet": {
+  "noRajaReposYet": "No SkyStream repos yet",
+  "@noRajaReposYet": {
     "description": "Empty state of the Extensions > Repositories section: no repository added yet."
   },
   "pasteRepoUrlHint": "Paste a CloudStream repository URL — its .cs3 extensions install from here using the repo.json + .cs3 flow.",

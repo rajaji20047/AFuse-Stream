@@ -13,9 +13,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/explore/presentation/widgets/explore_carousel.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/explore/presentation/widgets/explore_carousel.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 MultimediaItem _movie(int i) => MultimediaItem(

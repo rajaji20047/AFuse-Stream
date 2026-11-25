@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/golden_video_drawer.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_ios_options.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/player/presentation/mpv/golden_video_drawer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_ios_options.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 /// The Video panel (+57, reworked in v9): PICTURE — three sliders that
 /// are real mpv properties — and HDR — two choices, Bright (clip) and

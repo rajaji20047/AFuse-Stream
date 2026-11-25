@@ -2,10 +2,10 @@ import 'dart:async' show unawaited;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:zorox/core/logger/app_logger.dart';
-import 'package:zorox/core/utils/app_utils.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/l10n/generated/app_localizations_en.dart';
+import 'package:raja/core/logger/app_logger.dart';
+import 'package:raja/core/utils/app_utils.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations_en.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
 /// The app's global error boundary.

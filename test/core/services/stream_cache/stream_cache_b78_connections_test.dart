@@ -8,7 +8,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/services/stream_cache/stream_cache_proxy.dart';
+import 'package:raja/core/services/stream_cache/stream_cache_proxy.dart';
 
 import 'fake_host.dart';
 

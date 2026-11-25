@@ -21,10 +21,10 @@ import 'dart:convert';
 import 'package:challenge_browser/challenge_browser.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
 
 import '../cloudstream/support.dart';
 

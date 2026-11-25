@@ -9,8 +9,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/account/data/zorox_sync_client.dart';
-import 'package:zorox/features/profiles/data/fuse_profiles_client.dart';
+import 'package:raja/features/account/data/raja_sync_client.dart';
+import 'package:raja/features/profiles/data/fuse_profiles_client.dart';
 
 /// Answers every request with the next of [answers], noting each request.
 /// (Same shape as the fake adapters in test/core/addons/.)
@@ -100,7 +100,7 @@ void main() {
       expect(
         () => client.fetchFuseProfiles('https://example.workers.dev', 'tok'),
         throwsA(
-          isA<ZoroxSyncException>()
+          isA<RajaSyncException>()
               .having((e) => e.sessionExpired, 'sessionExpired', isTrue)
               .having((e) => e.statusCode, 'statusCode', 401),
         ),
@@ -156,7 +156,7 @@ void main() {
           accountPassword: 'wrong',
         ),
         throwsA(
-          isA<ZoroxSyncException>().having(
+          isA<RajaSyncException>().having(
             (e) => e.message,
             'message',
             'Wrong account password.',
@@ -191,7 +191,7 @@ void main() {
           'account-password',
         ),
         throwsA(
-          isA<ZoroxSyncException>().having(
+          isA<RajaSyncException>().having(
             (e) => e.statusCode,
             'statusCode',
             409,

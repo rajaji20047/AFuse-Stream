@@ -10,11 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:zorox/core/config/tmdb_config.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/explore/presentation/widgets/explore_carousel.dart';
-import 'package:zorox/features/home/data/hero_enrichment.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/config/tmdb_config.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/explore/presentation/widgets/explore_carousel.dart';
+import 'package:raja/features/home/data/hero_enrichment.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// A Browse hero item as TMDB's list payload gives it: an id, a title, a
 /// year and TMDB's own average — no genres, runtime, certification,

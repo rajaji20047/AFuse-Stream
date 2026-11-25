@@ -6,9 +6,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/core/theme/theme_variant.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_widgets.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/core/theme/theme_variant.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_widgets.dart';
 
 SettingsTile _tile(String title) =>
     SettingsTile(icon: Icons.settings, title: title, subtitle: 'sub');
@@ -169,7 +169,7 @@ void main() {
       [_tile('One'), _tile('Two')],
       theme: AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.liquidGlass,
+        variant: RajaThemeVariant.liquidGlass,
       ),
     );
     final glass = _line(tester, 'Two');
@@ -179,7 +179,7 @@ void main() {
     await _pump(
       tester,
       [_tile('One'), _tile('Two')],
-      theme: AppTheme.createLightTheme(null, variant: ZoroxThemeVariant.frost),
+      theme: AppTheme.createLightTheme(null, variant: RajaThemeVariant.frost),
     );
     final frost = _line(tester, 'Two');
     expect(frost.hasLineAbove, isTrue);

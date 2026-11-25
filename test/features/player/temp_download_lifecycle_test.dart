@@ -9,8 +9,8 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/temp_download.dart';
-import 'package:zorox/features/player/domain/temp_download_lifecycle.dart';
+import 'package:raja/features/player/domain/temp_download.dart';
+import 'package:raja/features/player/domain/temp_download_lifecycle.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -1,5 +1,5 @@
-/// The CloudStream UI in ZoroX: the Settings tile, the CloudStream screen, the provider
-/// list with the CloudStream badge, a CloudStream provider's home page on ZoroX's home, and
+/// The CloudStream UI in Raja: the Settings tile, the CloudStream screen, the provider
+/// list with the CloudStream badge, a CloudStream provider's home page on Raja's home, and
 /// the global switch hiding the providers. Saves a PNG of each screen to the temporary
 /// directory and prints its path (`CS3-UI`). Installs Internet Archive if it is missing, and
 /// removes whatever it added.
@@ -10,9 +10,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/features/cloudstream/presentation/cloudstream_badge.dart';
-import 'package:zorox/shared/widgets/custom_widgets.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/features/cloudstream/presentation/cloudstream_badge.dart';
+import 'package:raja/shared/widgets/custom_widgets.dart';
 
 import 'support.dart';
 

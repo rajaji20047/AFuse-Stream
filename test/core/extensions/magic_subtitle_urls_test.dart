@@ -14,13 +14,13 @@ import 'dart:isolate';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/extensions/engine/js_bytecode_compiler.dart';
-import 'package:zorox/core/extensions/engine/js_engine.dart';
-import 'package:zorox/core/extensions/engine/js_engine_worker.dart';
-import 'package:zorox/core/extensions/providers/js_based_provider.dart';
-import 'package:zorox/core/services/local_proxy_service.dart';
-import 'package:zorox/core/storage/extension_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
+import 'package:raja/core/extensions/engine/js_bytecode_compiler.dart';
+import 'package:raja/core/extensions/engine/js_engine.dart';
+import 'package:raja/core/extensions/engine/js_engine_worker.dart';
+import 'package:raja/core/extensions/providers/js_based_provider.dart';
+import 'package:raja/core/services/local_proxy_service.dart';
+import 'package:raja/core/storage/extension_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
 
 class _MemoryExtensionRepository extends ExtensionRepository {
   _MemoryExtensionRepository() : super(StorageService());

@@ -13,10 +13,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/library/presentation/library_provider.dart';
-import 'package:zorox/features/library/presentation/library_state.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/library/presentation/library_provider.dart';
+import 'package:raja/features/library/presentation/library_state.dart';
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();

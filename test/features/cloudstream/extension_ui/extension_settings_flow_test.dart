@@ -1,5 +1,5 @@
 /// The Settings button on an installed CloudStream extension: it shows when the extension has a screen,
-/// opens it in ZoroX's sheet, and applies the changes once the sheet closes.
+/// opens it in Raja's sheet, and applies the changes once the sheet closes.
 library;
 
 import 'dart:async';
@@ -7,12 +7,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/cloudstream/presentation/cloudstream_screen.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/cloudstream/presentation/cloudstream_screen.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 const _info = CsPluginInfo(
   internalName: 'Alpha',

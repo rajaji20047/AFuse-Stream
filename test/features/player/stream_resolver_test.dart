@@ -8,12 +8,12 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart'
     show ProviderListenable;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 /// A provider reader backed by a fixed table, so the resolver can be exercised
 /// without a container. Reading anything not listed is a failure rather than a
@@ -48,7 +48,7 @@ class FakePlugin implements SkyStreamProvider {
   Future<List<StreamResult>> loadStreams(String url) async => streams;
 
   @override
-  String get packageName => 'com.zorox.fake';
+  String get packageName => 'com.raja.fake';
   @override
   String get name => 'Fake';
   @override

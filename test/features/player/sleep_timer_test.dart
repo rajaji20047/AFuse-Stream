@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/sleep_timer.dart';
-import 'package:zorox/features/player/presentation/mpv/golden_sleep_timer.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/features/player/domain/sleep_timer.dart';
+import 'package:raja/features/player/presentation/mpv/golden_sleep_timer.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// A clock and a ticker the test cranks by hand: no real minutes pass.
 class _FakeTime {

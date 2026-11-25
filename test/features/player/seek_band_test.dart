@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/seek_band.dart';
+import 'package:raja/features/player/presentation/mpv/seek_band.dart';
 
 void main() {
   const film = Duration(minutes: 23, seconds: 40);

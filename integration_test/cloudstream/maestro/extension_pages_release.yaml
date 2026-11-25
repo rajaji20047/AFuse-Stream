@@ -1,7 +1,7 @@
 # A real extension's page in a release build (R8 on), through the UI, which `flutter test` cannot run: add the raghav
-# repository, install AnimeWorldIndia, open its settings in ZoroX's sheet, and tap Bypass Cloudflare: its alert
+# repository, install AnimeWorldIndia, open its settings in Raja's sheet, and tap Bypass Cloudflare: its alert
 # shows in the sheet with its own WebView in it (lent by the cs3_engine plugin), its buttons in view below the page.
-#   (cd OUT_DIR && maestro test -e APP_ID=com.toji.zorox PATH_TO/extension_pages_release.yaml)
+#   (cd OUT_DIR && maestro test -e APP_ID=com.raja.fuse PATH_TO/extension_pages_release.yaml)
 appId: ${APP_ID}
 ---
 - launchApp:

@@ -20,51 +20,51 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/theme/accent_color.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/core/theme/theme_provider.dart';
-import 'package:zorox/core/theme/theme_variant.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/theme/accent_color.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/core/theme/theme_provider.dart';
+import 'package:raja/core/theme/theme_variant.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('the variants', () {
     test('are the five named in the spec, each with a label and a line', () {
-      expect(ZoroxThemeVariant.values.length, 5);
+      expect(RajaThemeVariant.values.length, 5);
       expect(
-        ZoroxThemeVariant.values.map((v) => v.label).toList(),
+        RajaThemeVariant.values.map((v) => v.label).toList(),
         ['Arena Gold', 'Midnight', 'Frost', 'Liquid Glass', 'Obsidian'],
       );
-      for (final variant in ZoroxThemeVariant.values) {
+      for (final variant in RajaThemeVariant.values) {
         expect(variant.label, isNotEmpty);
         expect(variant.detail, isNotEmpty);
       }
     });
 
     test('Frost is the only light one', () {
-      expect(ZoroxThemeVariant.frost.isDark, isFalse);
+      expect(RajaThemeVariant.frost.isDark, isFalse);
       for (final variant in [
-        ZoroxThemeVariant.arenaGold,
-        ZoroxThemeVariant.midnight,
-        ZoroxThemeVariant.liquidGlass,
-        ZoroxThemeVariant.obsidian,
+        RajaThemeVariant.arenaGold,
+        RajaThemeVariant.midnight,
+        RajaThemeVariant.liquidGlass,
+        RajaThemeVariant.obsidian,
       ]) {
         expect(variant.isDark, isTrue, reason: variant.name);
       }
     });
 
     test('fromName round-trips every variant', () {
-      for (final variant in ZoroxThemeVariant.values) {
-        expect(ZoroxThemeVariant.fromName(variant.name), variant);
+      for (final variant in RajaThemeVariant.values) {
+        expect(RajaThemeVariant.fromName(variant.name), variant);
       }
     });
 
     test('fromName falls back to Liquid Glass for null or unknown', () {
-      expect(ZoroxThemeVariant.fromName(null), ZoroxThemeVariant.liquidGlass);
+      expect(RajaThemeVariant.fromName(null), RajaThemeVariant.liquidGlass);
       expect(
-        ZoroxThemeVariant.fromName('sepia'),
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.fromName('sepia'),
+        RajaThemeVariant.liquidGlass,
       );
     });
   });
@@ -73,25 +73,25 @@ void main() {
     test('Arena Gold is the warm dark theme', () {
       final theme = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.arenaGold,
+        variant: RajaThemeVariant.arenaGold,
       );
       expect(theme.brightness, Brightness.dark);
       expect(theme.scaffoldBackgroundColor, const Color(0xFF0D0A07));
       expect(theme.cardTheme.color, const Color(0xFF1B150E));
       expect(theme.colorScheme.surface, const Color(0xFF1B150E));
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isFalse);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isFalse);
     });
 
     test('the default build is Arena Gold', () {
       final theme = AppTheme.createDarkTheme(null);
       expect(theme.scaffoldBackgroundColor, const Color(0xFF0D0A07));
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isFalse);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isFalse);
     });
 
     test('Midnight is purer black, same structure', () {
       final theme = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.midnight,
+        variant: RajaThemeVariant.midnight,
       );
       expect(theme.brightness, Brightness.dark);
       expect(theme.scaffoldBackgroundColor, const Color(0xFF000000));
@@ -106,12 +106,12 @@ void main() {
         const Color(0xFF0A0A0A),
       );
       expect(theme.appBarTheme.backgroundColor, const Color(0xFF000000));
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isFalse);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isFalse);
       // Gold accent kept: the same seed produces the same primary as
       // Arena Gold — only the surfaces moved.
       final arenaGold = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.arenaGold,
+        variant: RajaThemeVariant.arenaGold,
       );
       expect(theme.colorScheme.primary, arenaGold.colorScheme.primary);
     });
@@ -119,18 +119,18 @@ void main() {
     test('Liquid Glass is dark, cool teal-green, and marked glass', () {
       final theme = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.liquidGlass,
+        variant: RajaThemeVariant.liquidGlass,
       );
       expect(theme.brightness, Brightness.dark);
       expect(theme.scaffoldBackgroundColor, const Color(0xFF081210));
       expect(theme.cardTheme.color, const Color(0xFF122019));
       expect(theme.colorScheme.surface, const Color(0xFF122019));
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isTrue);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isTrue);
       // Gold accent kept: the same seed produces the same primary as
       // Arena Gold — only the surfaces moved.
       final arenaGold = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.arenaGold,
+        variant: RajaThemeVariant.arenaGold,
       );
       expect(theme.colorScheme.primary, arenaGold.colorScheme.primary);
     });
@@ -138,21 +138,21 @@ void main() {
     test('a dark theme asked for Frost falls back to Arena Gold', () {
       final theme = AppTheme.createDarkTheme(
         null,
-        variant: ZoroxThemeVariant.frost,
+        variant: RajaThemeVariant.frost,
       );
       expect(theme.brightness, Brightness.dark);
       expect(theme.scaffoldBackgroundColor, const Color(0xFF0D0A07));
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isFalse);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isFalse);
     });
 
     test('Frost is the existing light theme', () {
       final theme = AppTheme.createLightTheme(
         null,
-        variant: ZoroxThemeVariant.frost,
+        variant: RajaThemeVariant.frost,
       );
       expect(theme.brightness, Brightness.light);
       expect(theme.scaffoldBackgroundColor, AppTheme.lightBackground);
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isFalse);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isFalse);
     });
 
     test('the default light build is Frost too', () {
@@ -164,24 +164,24 @@ void main() {
     test('Liquid Glass keeps the glass flag on a light system', () {
       final theme = AppTheme.createLightTheme(
         null,
-        variant: ZoroxThemeVariant.liquidGlass,
+        variant: RajaThemeVariant.liquidGlass,
       );
       expect(theme.brightness, Brightness.light);
       expect(
         theme.scaffoldBackgroundColor,
         AppTheme.liquidGlassLightBackground,
       );
-      expect(theme.extension<ZoroxThemeExtension>()?.isGlass, isTrue);
+      expect(theme.extension<RajaThemeExtension>()?.isGlass, isTrue);
     });
   });
 
   group('the 8+2 accents keep working across all four variants', () {
     test('every accent builds a dark theme in each dark variant', () {
-      for (final accent in ZoroxAccent.values) {
+      for (final accent in RajaAccent.values) {
         for (final variant in [
-          ZoroxThemeVariant.arenaGold,
-          ZoroxThemeVariant.midnight,
-          ZoroxThemeVariant.liquidGlass,
+          RajaThemeVariant.arenaGold,
+          RajaThemeVariant.midnight,
+          RajaThemeVariant.liquidGlass,
         ]) {
           final theme = AppTheme.createDarkTheme(
             null,
@@ -194,11 +194,11 @@ void main() {
     });
 
     test('every accent drives primary in the light theme', () {
-      for (final accent in ZoroxAccent.values) {
+      for (final accent in RajaAccent.values) {
         final theme = AppTheme.createLightTheme(
           null,
           accent: accent.color,
-          variant: ZoroxThemeVariant.frost,
+          variant: RajaThemeVariant.frost,
         );
         expect(
           theme.colorScheme.primary,
@@ -214,18 +214,18 @@ void main() {
       // the app actually silver. (White / Black retired in v3, 2.9.19+59;
       // the pin covers any near-achromatic seed.)
       for (final variant in [
-        ZoroxThemeVariant.arenaGold,
-        ZoroxThemeVariant.midnight,
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.arenaGold,
+        RajaThemeVariant.midnight,
+        RajaThemeVariant.liquidGlass,
       ]) {
         final theme = AppTheme.createDarkTheme(
           null,
-          seedColor: ZoroxAccent.silver.color,
+          seedColor: RajaAccent.silver.color,
           variant: variant,
         );
         expect(
           theme.colorScheme.primary,
-          ZoroxAccent.silver.color,
+          RajaAccent.silver.color,
           reason: 'silver on ${variant.name}',
         );
       }
@@ -237,18 +237,18 @@ void main() {
       // the neutral ramp's: the failure this guards is the extremes
       // collapsing onto one another.
       for (final variant in [
-        ZoroxThemeVariant.arenaGold,
-        ZoroxThemeVariant.midnight,
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.arenaGold,
+        RajaThemeVariant.midnight,
+        RajaThemeVariant.liquidGlass,
       ]) {
         final theme = AppTheme.createDarkTheme(
           null,
-          seedColor: ZoroxAccent.violet.color,
+          seedColor: RajaAccent.violet.color,
           variant: variant,
         );
         final primary = theme.colorScheme.primary;
-        for (final other in ZoroxAccent.values.where(
-          (a) => a != ZoroxAccent.violet,
+        for (final other in RajaAccent.values.where(
+          (a) => a != RajaAccent.violet,
         )) {
           final otherTheme = AppTheme.createDarkTheme(
             null,
@@ -288,8 +288,8 @@ void main() {
 
     test('Midnight and Liquid Glass bodySmall clear AA on the scaffold', () {
       for (final variant in [
-        ZoroxThemeVariant.midnight,
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.midnight,
+        RajaThemeVariant.liquidGlass,
       ]) {
         final theme = AppTheme.createDarkTheme(null, variant: variant);
         final style = theme.textTheme.bodySmall!;
@@ -307,7 +307,7 @@ void main() {
       // the themes themselves must never be one. Every scaffold and
       // surface is fully opaque, so at rest nothing can show through
       // another screen, on any variant in either brightness.
-      for (final variant in ZoroxThemeVariant.values) {
+      for (final variant in RajaThemeVariant.values) {
         for (final theme in [
           AppTheme.createDarkTheme(null, variant: variant),
           AppTheme.createLightTheme(null, variant: variant),
@@ -372,11 +372,11 @@ void main() {
     test('nothing chosen yet comes up Liquid Glass', () {
       expect(storage.getThemeVariant(), isNull, reason: 'nothing recorded yet');
 
-      expect(boot().read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+      expect(boot().read(themeVariantProvider), RajaThemeVariant.liquidGlass);
     });
 
     test('every variant round-trips through storage', () async {
-      for (final variant in ZoroxThemeVariant.values) {
+      for (final variant in RajaThemeVariant.values) {
         await storage.saveThemeVariant(variant.name);
 
         expect(
@@ -390,21 +390,21 @@ void main() {
     test('a value no release ever wrote falls back to Liquid Glass', () async {
       await storage.saveThemeVariant('sepia');
 
-      expect(boot().read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+      expect(boot().read(themeVariantProvider), RajaThemeVariant.liquidGlass);
     });
 
     test('choosing a variant records it and applies it live', () async {
       final container = boot();
       expect(
         container.read(themeVariantProvider),
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.liquidGlass,
       );
 
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.midnight);
+          .setVariant(RajaThemeVariant.midnight);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.midnight);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.midnight);
       expect(storage.getThemeVariant(), 'midnight');
     });
 
@@ -414,9 +414,9 @@ void main() {
 
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.frost);
+          .setVariant(RajaThemeVariant.frost);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.frost);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.frost);
       expect(container.read(appThemeModeProvider), ThemeMode.light);
     });
 
@@ -424,14 +424,14 @@ void main() {
       final container = boot();
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.frost);
+          .setVariant(RajaThemeVariant.frost);
       expect(container.read(appThemeModeProvider), ThemeMode.light);
 
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.midnight);
+          .setVariant(RajaThemeVariant.midnight);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.midnight);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.midnight);
       expect(container.read(appThemeModeProvider), ThemeMode.dark);
     });
 
@@ -440,17 +440,17 @@ void main() {
       final container = boot();
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.midnight);
+          .setVariant(RajaThemeVariant.midnight);
       expect(container.read(appThemeModeProvider), ThemeMode.dark);
 
       await container.read(themeVariantProvider.notifier).setDarkMode(false);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.frost);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.frost);
       expect(container.read(appThemeModeProvider), ThemeMode.light);
 
       await container.read(themeVariantProvider.notifier).setDarkMode(true);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.midnight);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.midnight);
       expect(container.read(appThemeModeProvider), ThemeMode.dark);
     });
 
@@ -459,7 +459,7 @@ void main() {
       final container = boot();
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.frost);
+          .setVariant(RajaThemeVariant.frost);
       expect(
         storage.getLastDarkThemeVariant(),
         isNull,
@@ -470,7 +470,7 @@ void main() {
 
       expect(
         container.read(themeVariantProvider),
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.liquidGlass,
       );
       expect(container.read(appThemeModeProvider), ThemeMode.dark);
     });
@@ -479,13 +479,13 @@ void main() {
       final container = boot();
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.arenaGold);
+          .setVariant(RajaThemeVariant.arenaGold);
       expect(storage.getLastDarkThemeVariant(), 'arenaGold');
 
       await container.read(themeVariantProvider.notifier).setDarkMode(false);
       await container.read(themeVariantProvider.notifier).setDarkMode(true);
 
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.arenaGold);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.arenaGold);
     });
 
     test('the toggle is a no-op when already on its side', () async {
@@ -494,18 +494,18 @@ void main() {
       await container.read(themeVariantProvider.notifier).setDarkMode(true);
       expect(
         container.read(themeVariantProvider),
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.liquidGlass,
       );
 
       await container
           .read(themeVariantProvider.notifier)
-          .setVariant(ZoroxThemeVariant.frost);
+          .setVariant(RajaThemeVariant.frost);
       await container.read(themeVariantProvider.notifier).setDarkMode(false);
-      expect(container.read(themeVariantProvider), ZoroxThemeVariant.frost);
+      expect(container.read(themeVariantProvider), RajaThemeVariant.frost);
     });
 
     group('Liquid Glass with Dark Mode on and off (build 83)', () {
-      Future<void> pick(ProviderContainer c, ZoroxThemeVariant v) =>
+      Future<void> pick(ProviderContainer c, RajaThemeVariant v) =>
           c.read(themeVariantProvider.notifier).setVariant(v);
       Future<void> dark(ProviderContainer c, bool on) =>
           c.read(themeVariantProvider.notifier).setDarkMode(on);
@@ -513,45 +513,45 @@ void main() {
       test('Dark Mode off on Liquid Glass stays Liquid Glass, light',
           () async {
         final c = boot();
-        expect(c.read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+        expect(c.read(themeVariantProvider), RajaThemeVariant.liquidGlass);
         await dark(c, false);
-        expect(c.read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+        expect(c.read(themeVariantProvider), RajaThemeVariant.liquidGlass);
         expect(c.read(appThemeModeProvider), ThemeMode.light);
         expect(storage.getThemeVariant() ?? 'liquidGlass', 'liquidGlass');
         expect(storage.getThemeMode(), 'light');
 
         await dark(c, true);
-        expect(c.read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+        expect(c.read(themeVariantProvider), RajaThemeVariant.liquidGlass);
         expect(c.read(appThemeModeProvider), ThemeMode.dark);
       });
 
       test('picking Liquid Glass from Frost keeps Dark Mode off', () async {
         final c = boot();
-        await pick(c, ZoroxThemeVariant.frost);
-        await pick(c, ZoroxThemeVariant.liquidGlass);
-        expect(c.read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+        await pick(c, RajaThemeVariant.frost);
+        await pick(c, RajaThemeVariant.liquidGlass);
+        expect(c.read(themeVariantProvider), RajaThemeVariant.liquidGlass);
         expect(c.read(appThemeModeProvider), ThemeMode.light);
       });
 
       test('picking Liquid Glass from a dark variant keeps Dark Mode on',
           () async {
         final c = boot();
-        await pick(c, ZoroxThemeVariant.midnight);
-        await pick(c, ZoroxThemeVariant.liquidGlass);
+        await pick(c, RajaThemeVariant.midnight);
+        await pick(c, RajaThemeVariant.liquidGlass);
         expect(c.read(appThemeModeProvider), ThemeMode.dark);
       });
 
       test('his recording: Frost, Liquid Glass, Dark Mode on then off',
           () async {
         final c = boot();
-        await pick(c, ZoroxThemeVariant.frost);
-        await pick(c, ZoroxThemeVariant.liquidGlass);
+        await pick(c, RajaThemeVariant.frost);
+        await pick(c, RajaThemeVariant.liquidGlass);
         await dark(c, true);
         expect(c.read(appThemeModeProvider), ThemeMode.dark);
         await dark(c, false);
         expect(
           c.read(themeVariantProvider),
-          ZoroxThemeVariant.liquidGlass,
+          RajaThemeVariant.liquidGlass,
           reason: 'used to jump back to Frost',
         );
         expect(c.read(appThemeModeProvider), ThemeMode.light);
@@ -561,17 +561,17 @@ void main() {
           () async {
         // variant -> (after Dark Mode off, after Dark Mode on again)
         const expected = {
-          ZoroxThemeVariant.arenaGold: [
-            ZoroxThemeVariant.frost,
-            ZoroxThemeVariant.arenaGold,
+          RajaThemeVariant.arenaGold: [
+            RajaThemeVariant.frost,
+            RajaThemeVariant.arenaGold,
           ],
-          ZoroxThemeVariant.midnight: [
-            ZoroxThemeVariant.frost,
-            ZoroxThemeVariant.midnight,
+          RajaThemeVariant.midnight: [
+            RajaThemeVariant.frost,
+            RajaThemeVariant.midnight,
           ],
-          ZoroxThemeVariant.liquidGlass: [
-            ZoroxThemeVariant.liquidGlass,
-            ZoroxThemeVariant.liquidGlass,
+          RajaThemeVariant.liquidGlass: [
+            RajaThemeVariant.liquidGlass,
+            RajaThemeVariant.liquidGlass,
           ],
         };
         for (final entry in expected.entries) {
@@ -591,11 +591,11 @@ void main() {
       test('light Liquid Glass after Frost: Dark Mode on stays Liquid Glass',
           () async {
         final c = boot();
-        await pick(c, ZoroxThemeVariant.midnight);
-        await pick(c, ZoroxThemeVariant.frost);
-        await pick(c, ZoroxThemeVariant.liquidGlass);
+        await pick(c, RajaThemeVariant.midnight);
+        await pick(c, RajaThemeVariant.frost);
+        await pick(c, RajaThemeVariant.liquidGlass);
         await dark(c, true);
-        expect(c.read(themeVariantProvider), ZoroxThemeVariant.liquidGlass);
+        expect(c.read(themeVariantProvider), RajaThemeVariant.liquidGlass);
         expect(c.read(appThemeModeProvider), ThemeMode.dark);
       });
 
@@ -617,25 +617,25 @@ void main() {
       test('the dark look is untouched and the light look is its own', () {
         final darkTheme = AppTheme.createDarkTheme(
           null,
-          variant: ZoroxThemeVariant.liquidGlass,
+          variant: RajaThemeVariant.liquidGlass,
         );
         expect(darkTheme.scaffoldBackgroundColor, const Color(0xFF081210));
         expect(darkTheme.colorScheme.surface, const Color(0xFF122019));
 
         final light = AppTheme.createLightTheme(
           null,
-          variant: ZoroxThemeVariant.liquidGlass,
+          variant: RajaThemeVariant.liquidGlass,
         );
         final frost = AppTheme.createLightTheme(
           null,
-          variant: ZoroxThemeVariant.frost,
+          variant: RajaThemeVariant.frost,
         );
         expect(light.brightness, Brightness.light);
         expect(light.scaffoldBackgroundColor, const Color(0xFFEEF1F6));
         expect(frost.scaffoldBackgroundColor, AppTheme.lightBackground);
         for (final v in [
-          ZoroxThemeVariant.arenaGold,
-          ZoroxThemeVariant.midnight,
+          RajaThemeVariant.arenaGold,
+          RajaThemeVariant.midnight,
         ]) {
           expect(
             AppTheme.createLightTheme(null, variant: v).colorScheme,
@@ -647,7 +647,7 @@ void main() {
       test('light Liquid Glass text is readable on every surface', () {
         final cs = AppTheme.createLightTheme(
           null,
-          variant: ZoroxThemeVariant.liquidGlass,
+          variant: RajaThemeVariant.liquidGlass,
         ).colorScheme;
         double lum(Color c) => c.computeLuminance();
         double ratio(Color a, Color b) {

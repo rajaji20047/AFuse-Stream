@@ -14,23 +14,23 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/services/notification_service.dart';
-import 'package:zorox/core/storage/secure_token_storage.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/core/theme/theme_variant.dart';
-import 'package:zorox/features/settings/presentation/app_version_provider.dart';
-import 'package:zorox/features/settings/presentation/cache_provider.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_screen.dart';
-import 'package:zorox/features/settings/presentation/settings_screen.dart';
-import 'package:zorox/features/settings/presentation/widgets/olympus_theme_cards.dart';
-import 'package:zorox/features/settings/presentation/widgets/fuse_segmented_control.dart';
-import 'package:zorox/features/tracking/presentation/tracking_auth_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/services/notification_service.dart';
+import 'package:raja/core/storage/secure_token_storage.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/core/theme/theme_variant.dart';
+import 'package:raja/features/settings/presentation/app_version_provider.dart';
+import 'package:raja/features/settings/presentation/cache_provider.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_screen.dart';
+import 'package:raja/features/settings/presentation/settings_screen.dart';
+import 'package:raja/features/settings/presentation/widgets/olympus_theme_cards.dart';
+import 'package:raja/features/settings/presentation/widgets/fuse_segmented_control.dart';
+import 'package:raja/features/tracking/presentation/tracking_auth_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// A repository that remembers the theme in memory instead of in a box.
 class _MemorySettings extends SettingsRepository {
@@ -286,7 +286,7 @@ void main() {
       final cards = find.byType(OlympusThemeCards);
       expect(
         tester.widget<OlympusThemeCards>(cards).current,
-        ZoroxThemeVariant.liquidGlass,
+        RajaThemeVariant.liquidGlass,
       );
 
       await tester.tap(find.text('Midnight'));
@@ -294,7 +294,7 @@ void main() {
 
       expect(
         tester.widget<OlympusThemeCards>(cards).current,
-        ZoroxThemeVariant.midnight,
+        RajaThemeVariant.midnight,
       );
       expect(settings.variant, 'midnight');
       expect(settings.lastDark, 'midnight');
@@ -458,19 +458,19 @@ void main() {
         'every theme and with the White accent', (tester) async {
       const white = Color(0xFFE8EAED);
       final themes = <ThemeData>[
-        for (final variant in ZoroxThemeVariant.values)
+        for (final variant in RajaThemeVariant.values)
           variant.isDark
               ? AppTheme.createDarkTheme(null, variant: variant)
               : AppTheme.createLightTheme(null, variant: variant),
         AppTheme.createDarkTheme(
           null,
           seedColor: white,
-          variant: ZoroxThemeVariant.midnight,
+          variant: RajaThemeVariant.midnight,
         ),
         AppTheme.createLightTheme(
           null,
           accent: white,
-          variant: ZoroxThemeVariant.frost,
+          variant: RajaThemeVariant.frost,
         ),
       ];
       for (final theme in themes) {

@@ -7,16 +7,16 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/config/tmdb_config.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/models/tmdb_details.dart';
-import 'package:zorox/core/services/tmdb_service.dart';
-import 'package:zorox/features/details/data/cast_photo_service.dart';
-import 'package:zorox/features/details/data/metadata_resolution_service.dart';
-import 'package:zorox/features/details/data/tmdb_details_provider.dart';
-import 'package:zorox/features/details/data/tmdb_recommendations_provider.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/config/tmdb_config.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/models/tmdb_details.dart';
+import 'package:raja/core/services/tmdb_service.dart';
+import 'package:raja/features/details/data/cast_photo_service.dart';
+import 'package:raja/features/details/data/metadata_resolution_service.dart';
+import 'package:raja/features/details/data/tmdb_details_provider.dart';
+import 'package:raja/features/details/data/tmdb_recommendations_provider.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
 
 import 'stremio_page_fakes.dart';
 

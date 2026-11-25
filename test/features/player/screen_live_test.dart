@@ -2,15 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/dio_client_provider.dart';
-import 'package:zorox/features/player/presentation/player_debug_flags.dart';
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel_row.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/player/presentation/widgets/hotstar_player_style.dart';
-import 'package:zorox/features/tracking/data/sync_manager.dart';
-import 'package:zorox/features/tracking/data/tracking_service.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/dio_client_provider.dart';
+import 'package:raja/features/player/presentation/player_debug_flags.dart';
+import 'package:raja/features/player/presentation/vlc/panel/player_panel_row.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/player/presentation/widgets/hotstar_player_style.dart';
+import 'package:raja/features/tracking/data/sync_manager.dart';
+import 'package:raja/features/tracking/data/tracking_service.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'fake_vlc_engine.dart';
@@ -571,7 +571,7 @@ void main() {
       variant: texturePlatform,
       (tester) async {
         PlayerDiagnostics.environment = const <String, String>{
-          'ZOROX_LIVE_DELAY_MS': '7000',
+          'RAJA_LIVE_DELAY_MS': '7000',
         };
         const url = 'https://example.com/live/index.m3u8';
         await pumpPlayer(

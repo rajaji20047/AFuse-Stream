@@ -6,17 +6,17 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/core/extensions/models/extension_repository.dart';
-import 'package:zorox/features/addons/presentation/addon_providers.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
-import 'package:zorox/features/extensions/screens/settings_extensions_screen.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/extensions/models/extension_repository.dart';
+import 'package:raja/features/addons/presentation/addon_providers.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/features/extensions/screens/settings_extensions_screen.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 class _MockExtensionsController extends ExtensionsController {
   _MockExtensionsController(this._state);

@@ -17,9 +17,9 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
 
 import '../cloudstream/support.dart' show withApp;
 

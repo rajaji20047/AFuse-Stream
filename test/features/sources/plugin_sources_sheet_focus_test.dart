@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/link_probe_service.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/features/sources/presentation/plugin_sources_sheet.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/link_probe_service.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/features/sources/presentation/plugin_sources_sheet.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// The sheet's TV model, asserted against the real widget rather than a
 /// stand-in: UP/DOWN steps between source cards, LEFT/RIGHT moves inside the

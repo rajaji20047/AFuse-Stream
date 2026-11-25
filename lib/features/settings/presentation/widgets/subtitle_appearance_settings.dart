@@ -20,7 +20,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../../shared/widgets/custom_widgets.dart';
 import '../../../player/domain/subtitle_code_pages.dart';
@@ -371,7 +371,7 @@ void _showChoiceDialog<T>(
 }
 
 /// A sample caption drawn the way the player will draw it: libVLC for a
-/// track inside the video, ZoroX itself for a subtitle file - both at
+/// track inside the video, Raja itself for a subtitle file - both at
 /// [subtitleFontSize].
 class SubtitlePreview extends StatelessWidget {
   const SubtitlePreview({

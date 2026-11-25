@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../account/data/zorox_account_notifier.dart';
+import '../../account/data/raja_account_notifier.dart';
 import '../../../core/router/app_router.dart';
 import '../data/fuse_profile.dart';
 import '../data/fuse_profiles_notifier.dart';
@@ -65,7 +65,7 @@ class _ProfileGateState extends ConsumerState<ProfileGate> {
   /// their legacy data through the first-profile setup instead.
   void _maybeShowMovePrompt() {
     if (_movePromptShown) return;
-    final account = ref.read(zoroxAccountProvider);
+    final account = ref.read(rajaAccountProvider);
     final profiles = ref.read(fuseProfilesProvider);
     final active = profiles.activeProfile;
     if (!account.loggedIn ||
@@ -84,7 +84,7 @@ class _ProfileGateState extends ConsumerState<ProfileGate> {
 
   @override
   Widget build(BuildContext context) {
-    final account = ref.watch(zoroxAccountProvider);
+    final account = ref.watch(rajaAccountProvider);
     final profiles = ref.watch(fuseProfilesProvider);
 
     Widget? overlay;
@@ -107,7 +107,7 @@ class _ProfileGateState extends ConsumerState<ProfileGate> {
           onCreated: (name, color, pin) async {
             if (account.loggedIn) {
               final profile = await ref
-                  .read(zoroxAccountProvider.notifier)
+                  .read(rajaAccountProvider.notifier)
                   .completeFuseProfileMigration(
                     name: name,
                     color: color,

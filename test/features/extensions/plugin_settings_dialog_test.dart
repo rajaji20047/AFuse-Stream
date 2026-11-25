@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/core/storage/extension_repository.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/features/extensions/screens/plugin_settings_dialog.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_widgets.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/storage/extension_repository.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/features/extensions/screens/plugin_settings_dialog.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_widgets.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Plugin settings used to be a pushed page. On a television that meant losing
 /// the extensions list - and the gear the focus was on - to read three

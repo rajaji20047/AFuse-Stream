@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:clock/clock.dart';
 import 'package:vlc_player/vlc_player.dart'
     show VlcAudioInterruption, VlcMediaStats, VlcPlaybackState;
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/player/domain/playback_recovery.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart'
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/player/domain/playback_recovery.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart'
     show ProbeOutcome;
 
 void main() {

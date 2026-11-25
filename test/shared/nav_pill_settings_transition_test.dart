@@ -40,13 +40,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_bottom_nav/liquid_glass_bottom_nav.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/core/utils/motion.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/app_scaffold.dart';
-import 'package:zorox/shared/widgets/custom_bottom_nav.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/core/utils/motion.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/app_scaffold.dart';
+import 'package:raja/shared/widgets/custom_bottom_nav.dart';
 
 void main() {
   Future<GoRouter> pumpShell(WidgetTester tester) async {

@@ -23,7 +23,7 @@ import 'plugin_check_bar.dart';
 /// (and the installed CloudStream plugins) beside Fuse's own, with
 /// install / update / uninstall wired to [CloudStreamRepository].
 ///
-/// The owner's repo (TojiX) is a CloudStream-format repository (repo.json),
+/// The owner's repo (RajajiX) is a CloudStream-format repository (repo.json),
 /// but it does NOT sit in the "CloudStream" section: it has its own "Fuse"
 /// section above the SkyStream one ([FuseRepositorySection]), labelled
 /// "Fuse Repo". The "CloudStream" section here holds the official
@@ -39,7 +39,7 @@ import 'plugin_check_bar.dart';
 /// buttons; this section is only the repositories and their plugins.
 
 /// The owner's own repository, in its own "Fuse" section above the
-/// "Fuse (SkyStream)" one: the same TojiX repo.json (14 .cs3 extensions),
+/// "Fuse (SkyStream)" one: the same RajajiX repo.json (14 .cs3 extensions),
 /// shown as "Fuse Repo". It is still stored in the CloudStream store —
 /// the .cs3 install / update flow and the installed plugins (Anikoto)
 /// run through that store — so this section only groups it for display,
@@ -89,7 +89,7 @@ class CloudStreamRepositoriesSection extends ConsumerWidget {
   /// where the inline Add Repository card is the only add entry.
   final bool showAddRow;
 
-  /// This section's add flow: the CloudStream fetcher, not ZoroX's.
+  /// This section's add flow: the CloudStream fetcher, not Raja's.
   /// A repo.json manifest (name + pluginLists, no id/packageName needed)
   /// or a bare plugin list lands here. A repository that is already there
   /// is refreshed in place instead of a duplicate card.
@@ -200,7 +200,7 @@ class CloudStreamRepositoriesSection extends ConsumerWidget {
             ),
           ),
         // This section's own add row: a CloudStream-format repository
-        // lands here, not under ZoroX. Hidden when [showAddRow] is
+        // lands here, not under Raja. Hidden when [showAddRow] is
         // false — the Extensions screen's inline Add Repository card
         // already feeds this same flow.
         if (showAddRow)
@@ -268,8 +268,8 @@ class RepositoryGroupHeader extends StatelessWidget {
 }
 
 /// The installed CloudStream plugins, for the Installed tab, under the one
-/// "CloudStream" group — including the ones from the owner's TojiX repo,
-/// which used to be grouped under "ZoroX". Nothing when there are none.
+/// "CloudStream" group — including the ones from the owner's RajajiX repo,
+/// which used to be grouped under "Raja". Nothing when there are none.
 class CloudStreamInstalledSection extends ConsumerWidget {
   const CloudStreamInstalledSection({super.key});
 

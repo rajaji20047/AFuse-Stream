@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/nuvio/data/nuvio_clearance.dart';
-import 'package:zorox/core/nuvio/data/nuvio_engine.dart';
-import 'package:zorox/core/nuvio/data/nuvio_polyfill.dart';
+import 'package:raja/core/nuvio/data/nuvio_clearance.dart';
+import 'package:raja/core/nuvio/data/nuvio_engine.dart';
+import 'package:raja/core/nuvio/data/nuvio_polyfill.dart';
 
 /// The main side as a scraper's worker sees it: answers set by the test.
 class _Channel implements NuvioClearanceChannel {

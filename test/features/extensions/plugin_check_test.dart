@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/features/extensions/providers/plugin_check.dart';
-import 'package:zorox/features/extensions/providers/plugin_check_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/features/extensions/providers/plugin_check.dart';
+import 'package:raja/features/extensions/providers/plugin_check_provider.dart';
 
 /// The plugin status check (v7): classification of one source's answer,
 /// one-at-a-time order, cancel, and the notifier that keeps the results.

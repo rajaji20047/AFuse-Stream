@@ -683,7 +683,7 @@ class DownloadService {
 
       if (isIOS && !hasCustomDir) {
         baseDir = BaseDirectory.applicationDocuments;
-        // On iOS, 'directory' (from getDownloadPath(absolute: false)) is relative: "ZoroX/Title"
+        // On iOS, 'directory' (from getDownloadPath(absolute: false)) is relative: "Raja/Title"
         taskDirectory = directory;
       } else {
         // Android, Windows, macOS, Linux: use absolute paths with BaseDirectory.root
@@ -692,9 +692,9 @@ class DownloadService {
           taskDirectory = p.join(await _getPublicDownloadsPath(), directory);
         } else if (isIOS && hasCustomDir) {
           // `directory` already is absolute here: getDownloadPath() returns
-          // customDir/ZoroX/<title> whenever a custom directory is set, so
+          // customDir/Raja/<title> whenever a custom directory is set, so
           // joining the custom dir onto it again doubled the prefix
-          // (customDir/customDir/ZoroX/…). A relative value — from a caller
+          // (customDir/customDir/Raja/…). A relative value — from a caller
           // that did not go through getDownloadPath — still joins.
           taskDirectory = p.isAbsolute(directory)
               ? directory
@@ -799,7 +799,7 @@ class DownloadService {
   }
 
   /// The app's Documents directory on iOS — the folder Files shows as
-  /// "On My iPhone › ZoroX". The presets in the download-location dialog
+  /// "On My iPhone › Raja". The presets in the download-location dialog
   /// are resolved against it.
   Future<String> getApplicationDocumentsPath() async {
     return (await getApplicationDocumentsDirectory()).path;
@@ -823,19 +823,19 @@ class DownloadService {
     final baseRoot = hasCustomDir ? customDir.trim() : publicDir;
 
     if (Platform.isIOS && !hasCustomDir) {
-      path = p.join("ZoroX", sanitizedTitle);
+      path = p.join("Raja", sanitizedTitle);
       if (absolute) {
         path = p.join(baseRoot, path);
       }
     } else if (Platform.isAndroid && !hasCustomDir) {
-      path = p.join("ZoroX", sanitizedTitle);
+      path = p.join("Raja", sanitizedTitle);
       if (absolute) {
         path = p.join(baseRoot, path);
       }
     } else if (hasCustomDir) {
-      path = p.join(baseRoot, "ZoroX", sanitizedTitle);
+      path = p.join(baseRoot, "Raja", sanitizedTitle);
     } else {
-      path = p.join(dir.path, "ZoroX", sanitizedTitle);
+      path = p.join(dir.path, "Raja", sanitizedTitle);
     }
 
     // Add Season subdirectory if it's a series and we have an episode
@@ -928,12 +928,12 @@ class DownloadService {
 
   Future<void> _deleteEmptyParentDirectories(Directory directory) async {
     try {
-      // 1. Safety check: Only delete if it's within a 'ZoroX' folder
-      if (!directory.path.contains('ZoroX')) return;
+      // 1. Safety check: Only delete if it's within a 'Raja' folder
+      if (!directory.path.contains('Raja')) return;
 
-      // 2. Stop at the main 'ZoroX' root to avoid deleting the base app directory
-      if (directory.path.endsWith('ZoroX') ||
-          directory.path.endsWith('ZoroX/')) {
+      // 2. Stop at the main 'Raja' root to avoid deleting the base app directory
+      if (directory.path.endsWith('Raja') ||
+          directory.path.endsWith('Raja/')) {
         return;
       }
 
@@ -980,11 +980,11 @@ class DownloadService {
 /// The preset download locations the settings dialog offers on iOS.
 ///
 /// * [defaultLocation] — no custom directory: files land in the app's
-///   Documents/ZoroX, which Files shows as "On My iPhone › ZoroX". This is
-///   the design preview's "On My iPhone › ZoroX" value, and the default.
+///   Documents/Raja, which Files shows as "On My iPhone › Raja". This is
+///   the design preview's "On My iPhone › Raja" value, and the default.
 /// * [filesDownloads] — Documents/Downloads, a folder inside the app's
-///   Documents that Files shows under "On My iPhone › ZoroX › Downloads".
-///   Stored as a custom directory; downloads still go under its ZoroX
+///   Documents that Files shows under "On My iPhone › Raja › Downloads".
+///   Stored as a custom directory; downloads still go under its Raja
 ///   subfolder, as they do under every custom directory.
 /// * [custom] — a folder the viewer picked with the file picker, or any
 ///   other stored directory that matches no preset.

@@ -7,13 +7,13 @@
 // platform channel is involved.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:zorox/features/settings/presentation/app_version_provider.dart';
+import 'package:raja/features/settings/presentation/app_version_provider.dart';
 
 void main() {
   void mockInfo({required String version, required String buildNumber}) {
     PackageInfo.setMockInitialValues(
-      appName: 'ZoroX',
-      packageName: 'com.toji.zorox',
+      appName: 'Raja',
+      packageName: 'com.raja.fuse',
       version: version,
       buildNumber: buildNumber,
       buildSignature: '',

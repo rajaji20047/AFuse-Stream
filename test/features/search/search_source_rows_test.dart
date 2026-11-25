@@ -5,17 +5,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/features/search/data/search_history_store.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
-import 'package:zorox/features/search/presentation/search_screen.dart';
-import 'package:zorox/features/search/presentation/search_source_grid_screen.dart';
-import 'package:zorox/features/search/presentation/search_sources.dart';
-import 'package:zorox/features/search/presentation/widgets/search_source_row.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/features/search/data/search_history_store.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/search_screen.dart';
+import 'package:raja/features/search/presentation/search_source_grid_screen.dart';
+import 'package:raja/features/search/presentation/search_sources.dart';
+import 'package:raja/features/search/presentation/widgets/search_source_row.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Search results, v5 design A "Rows": one section per source that
 /// answered, each a header (icon, clean name, count, View All) over a
@@ -280,7 +280,7 @@ void main() {
         r('stremio:cinemeta', SearchSourceKind.stremio),
         r('p.anikoto', SearchSourceKind.cloudstream),
         r('nuvio', SearchSourceKind.nuvio),
-        r('p.js', SearchSourceKind.zorox),
+        r('p.js', SearchSourceKind.raja),
       ])
         (s, s.results),
     ]);

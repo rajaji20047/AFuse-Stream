@@ -37,7 +37,7 @@ final class VlcPictureInPictureController: NSObject {
   /// Diagnostics for the PiP attempt, readable in Console.app: every refusal
   /// logs its reason, so a phone that silently shows no window can be told
   /// apart from one that never asked. (No user data: sizes, counts, errors.)
-  private static let pipLog = OSLog(subsystem: "com.toji.zorox", category: "pip")
+  private static let pipLog = OSLog(subsystem: "com.raja.fuse", category: "pip")
 
   /// How long the controller has to report `isPictureInPicturePossible`
   /// before the attempt is abandoned. The window normally opens in well

@@ -67,7 +67,7 @@ class NuvioState {
 
 /// Stores Nuvio plugin repositories and the scraper code they publish.
 ///
-/// This sits next to — not inside — the ZoroX plugin system: both are
+/// This sits next to — not inside — the Raja plugin system: both are
 /// "plugins", both feed the same sources sheet, but they speak different
 /// protocols and are managed separately.
 @Riverpod(keepAlive: true)

@@ -7,12 +7,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/explore/presentation/view_all_screen.dart';
-import 'package:zorox/features/explore/presentation/widgets/media_horizontal_list.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/multimedia_card.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/explore/presentation/view_all_screen.dart';
+import 'package:raja/features/explore/presentation/widgets/media_horizontal_list.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/multimedia_card.dart';
 
 /// MultimediaCard reads the title-position setting; the harness has no
 /// StorageService, so the settings notifier is faked with defaults.

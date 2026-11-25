@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/explore/presentation/widgets/home_hero_meta.dart';
-import 'package:zorox/features/home/data/hero_enrichment.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/explore/presentation/widgets/home_hero_meta.dart';
+import 'package:raja/features/home/data/hero_enrichment.dart';
 
 MultimediaItem item(
   String title, {

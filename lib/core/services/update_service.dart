@@ -234,12 +234,12 @@ class UpdateService {
     return null;
   }
 
-  /// How ZoroX runs on Linux, from its [environment] and the path of its
+  /// How Raja runs on Linux, from its [environment] and the path of its
   /// [executable].
   ///
   /// The AppImage runtime sets `APPIMAGE` and `APPDIR` and runs the binary
-  /// from inside `APPDIR`. Both variables pass to whatever ZoroX starts, so
-  /// the binary's own path decides: another AppImage that started ZoroX
+  /// from inside `APPDIR`. Both variables pass to whatever Raja starts, so
+  /// the binary's own path decides: another AppImage that started Raja
   /// leaves them behind for a binary outside its `APPDIR`.
   @visibleForTesting
   static LinuxInstall linuxInstallOf({
@@ -256,8 +256,8 @@ class UpdateService {
     return LinuxInstall.tarball;
   }
 
-  /// Where the .deb installs ZoroX (fastforge's `/opt/<package_name>`).
-  static const _debInstallDir = '/opt/zorox';
+  /// Where the .deb installs Raja (fastforge's `/opt/<package_name>`).
+  static const _debInstallDir = '/opt/raja';
 
   /// The Linux asset an update of [install] downloads: its own format, built
   /// for its architecture, so an update never installs a second copy beside
@@ -286,7 +286,7 @@ class UpdateService {
   }
 }
 
-/// How ZoroX was installed on Linux. An update comes in the same form.
+/// How Raja was installed on Linux. An update comes in the same form.
 enum LinuxInstall {
   /// An AppImage.
   appImage('.appimage'),

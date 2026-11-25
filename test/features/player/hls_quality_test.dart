@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/link_probe_service.dart';
-import 'package:zorox/features/player/domain/hls_quality.dart';
+import 'package:raja/core/network/link_probe_service.dart';
+import 'package:raja/features/player/domain/hls_quality.dart';
 
 void main() {
   group('qualityLadderOf', () {

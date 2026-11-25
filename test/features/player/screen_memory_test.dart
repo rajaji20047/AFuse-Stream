@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/providers/device_memory.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/providers/device_memory.dart';
 
 import 'fake_vlc_engine.dart';
 import 'vlc_screen_harness.dart';

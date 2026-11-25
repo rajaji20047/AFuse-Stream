@@ -28,7 +28,7 @@ import '../../../../core/providers/device_info_provider.dart';
 import '../../../../core/providers/locale_provider.dart';
 import '../../../player/presentation/player_platform_service.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../../core/services/notification_service.dart';
 import '../cache_provider.dart';
@@ -248,7 +248,7 @@ Future<void> showDownloadSettingsDialog(
                       leading: const Icon(Icons.folder_open_rounded),
                       title: const Text('Download location'),
                       subtitle: Text(
-                        directory ?? 'System Downloads/ZoroX',
+                        directory ?? 'System Downloads/Raja',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -333,8 +333,8 @@ Future<void> showDownloadSettingsDialog(
 /// Picks the download location: a preset on iOS, or any folder anywhere.
 ///
 /// On iOS the presets are the design preview's: the default — no custom
-/// directory, files in Documents/ZoroX, which Files shows as
-/// "On My iPhone › ZoroX" — and Files › Downloads, a folder inside the app's
+/// directory, files in Documents/Raja, which Files shows as
+/// "On My iPhone › Raja" — and Files › Downloads, a folder inside the app's
 /// Documents. A folder picked with the file picker is Custom. iCloud Drive
 /// is not offered: the app ships no iCloud entitlement, so there is no
 /// container to write into (see [DownloadLocationPreset]).
@@ -399,8 +399,8 @@ Future<void> showDownloadLocationDialog(
                             for (final option in [
                               (
                                 value: DownloadLocationPreset.defaultLocation,
-                                title: 'On My iPhone › ZoroX',
-                                subtitle: 'Default · Documents/ZoroX',
+                                title: 'On My iPhone › Raja',
+                                subtitle: 'Default · Documents/Raja',
                               ),
                               (
                                 value: DownloadLocationPreset.filesDownloads,
@@ -445,7 +445,7 @@ Future<void> showDownloadLocationDialog(
                       leading: const Icon(Icons.folder_open_rounded),
                       title: const Text('Target Directory'),
                       subtitle: Text(
-                        directory ?? 'System Downloads/ZoroX',
+                        directory ?? 'System Downloads/Raja',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1748,7 +1748,7 @@ void showThemeDialog(
 void showThemeVariantDialog(
   BuildContext context,
   WidgetRef ref,
-  ZoroxThemeVariant current,
+  RajaThemeVariant current,
 ) {
   final l10n = AppLocalizations.of(context)!;
   showDialog<void>(
@@ -1756,7 +1756,7 @@ void showThemeVariantDialog(
     builder: (context) => AlertDialog(
       surfaceTintColor: Colors.transparent,
       title: Text(l10n.themeStyle),
-      content: RadioGroup<ZoroxThemeVariant>(
+      content: RadioGroup<RajaThemeVariant>(
         groupValue: current,
         onChanged: (val) {
           if (val == null) return;
@@ -1766,7 +1766,7 @@ void showThemeVariantDialog(
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: ZoroxThemeVariant.values.map((variant) {
+            children: RajaThemeVariant.values.map((variant) {
               final bool isCurrent = variant == current;
               return currentOption(
                 isCurrent: isCurrent,
@@ -1774,7 +1774,7 @@ void showThemeVariantDialog(
                   autofocus: isCurrent,
                   title: Text(variant.label),
                   subtitle: Text(variant.detail),
-                  leading: Radio<ZoroxThemeVariant>(value: variant),
+                  leading: Radio<RajaThemeVariant>(value: variant),
                   onTap: () {
                     ref
                         .read(themeVariantProvider.notifier)
@@ -2048,14 +2048,14 @@ void showDeveloperDialog(BuildContext context) {
             const SizedBox(height: 20),
             // Name and Title
             Text(
-              'Toji',
+              'Rajaji',
               style: Theme.of(context).textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.5),
             ),
             const SizedBox(height: 24),
             // Social Links — GitHub only. The Discord / Telegram buttons
             // the fork shipped opened SkyStream's own servers; this app
-            // is not SkyStream's, so they stay out until ZoroX has its
+            // is not SkyStream's, so they stay out until Raja has its
             // own community links.
             Wrap(
               alignment: WrapAlignment.center,

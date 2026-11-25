@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/player/presentation/vlc/player_startup_view.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/player/presentation/vlc/player_startup_view.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import 'vlc_screen_harness.dart';

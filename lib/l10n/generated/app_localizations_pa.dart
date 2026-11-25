@@ -868,7 +868,7 @@ class AppLocalizationsPa extends AppLocalizations {
       'Open Add Plugins to add a repository and install extensions.';
 
   @override
-  String get noZoroxReposYet => 'No SkyStream repos yet';
+  String get noRajaReposYet => 'No SkyStream repos yet';
 
   @override
   String get pasteRepoUrlHint =>

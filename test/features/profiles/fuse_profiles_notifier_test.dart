@@ -8,12 +8,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/app_lock/app_lock_controller.dart';
-import 'package:zorox/features/app_lock/app_lock_passcode.dart';
-import 'package:zorox/features/profiles/data/fuse_profile.dart';
-import 'package:zorox/features/profiles/data/fuse_profiles_client.dart';
-import 'package:zorox/features/profiles/data/fuse_profiles_notifier.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/app_lock/app_lock_controller.dart';
+import 'package:raja/features/app_lock/app_lock_passcode.dart';
+import 'package:raja/features/profiles/data/fuse_profile.dart';
+import 'package:raja/features/profiles/data/fuse_profiles_client.dart';
+import 'package:raja/features/profiles/data/fuse_profiles_notifier.dart';
 
 /// In-memory settings box: the notifier only ever touches getString /
 /// setString / the profile-box switches, never Hive itself.

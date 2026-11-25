@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/focus/app_focus.dart';
-import 'package:zorox/shared/widgets/app_sidebar.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/focus/app_focus.dart';
+import 'package:raja/shared/widgets/app_sidebar.dart';
 
 /// The rail as the app installs it: under the root's [FocusVisibilityScope].
 Future<List<FocusNode>> _pump(

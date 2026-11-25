@@ -1,4 +1,4 @@
-/// An extension's own settings screen in ZoroX's sheet, on a device, with ZoroX's own test
+/// An extension's own settings screen in Raja's sheet, on a device, with Raja's own test
 /// extension (test_extension.dart):
 /// - on Android, its windows stay invisible and untouchable while the sheet shows them (elsewhere they're
 ///   the engine's stand-ins, which nothing draws);
@@ -34,10 +34,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 import 'test_extension.dart';
@@ -65,7 +65,7 @@ Future<void> _openSettings(WidgetTester tester) async {
   final button = find.byKey(const ValueKey('cs3_settings_SkyStreamTest'));
   await waitFor(tester, button);
   await tester.tap(button);
-  await waitFor(tester, find.text('ZoroX test settings'), timeout: const Duration(seconds: 30));
+  await waitFor(tester, find.text('Raja test settings'), timeout: const Duration(seconds: 30));
   // The sheet is there before it has slid up: taps wait for it to be in place.
   await tester.pump(const Duration(seconds: 1));
 }
@@ -91,7 +91,7 @@ Future<void> _sheetGone(WidgetTester tester) =>
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets("an extension's settings open in ZoroX's sheet, apply without a restart, and never restart the app", (
+  testWidgets("an extension's settings open in Raja's sheet, apply without a restart, and never restart the app", (
     tester,
   ) async {
     await withApp(tester, (container) async {
@@ -103,7 +103,7 @@ void main() {
         go(tester, '/settings/cloudstream');
         await _openSettings(tester);
 
-        // On Android the extension's own windows are invisible and untouchable: the sheet is ZoroX's
+        // On Android the extension's own windows are invisible and untouchable: the sheet is Raja's
         // drawing. Elsewhere they're the engine's stand-ins, which nothing draws, and say nothing of it.
         if (Platform.isAndroid) expect(lastWindows(events).every((w) => w.hidden == true), isTrue);
         expect(find.text('Second provider'), findsOneWidget);
@@ -149,7 +149,7 @@ void main() {
           () => _providers(container).length == 1,
           what: 'the reload dropped the second provider',
         );
-        expect(_providers(container), ['ZoroX Test A']);
+        expect(_providers(container), ['Raja Test A']);
 
         // Back on, closed with No: a change applies once the screen closes.
         await _openSettings(tester);
@@ -167,7 +167,7 @@ void main() {
           () => _providers(container).length == 2,
           what: 'the reload brought the second provider back',
         );
-        expect(snackBarText(tester), contains("ZoroX Test's settings applied"));
+        expect(snackBarText(tester), contains("Raja Test's settings applied"));
 
         // Back on the alert closes the alert alone, as on any phone (Android 16 sends a dialog no Back key);
         // a swipe down on the sheet's header is Back too, and closes the extension's screen, then the sheet.
@@ -179,7 +179,7 @@ void main() {
         await pumpUntil(tester, () => find.text('Restart required').evaluate().isEmpty, what: 'Back closed the alert');
         expect(find.byType(ExtensionSheet), findsOneWidget, reason: 'its screen stays');
         expect(lastWindows(events), hasLength(1));
-        await tester.fling(_inSheet(find.text('ZoroX Test')), const Offset(0, 300), 1500);
+        await tester.fling(_inSheet(find.text('Raja Test')), const Offset(0, 300), 1500);
         await _sheetGone(tester);
         await pumpUntil(
           tester,

@@ -13,11 +13,11 @@ import 'network_buffer.dart';
 /// libVLC's start threshold for video on demand: files, HLS, DASH and LAN
 /// servers. HLS and DASH ignore it; libVLC fixes their delay at 1 s.
 ///
-/// ZoroX v3: 10 s (was 1 s) so a ±10 s forward double-tap seek lands inside
+/// Raja v3: 10 s (was 1 s) so a ±10 s forward double-tap seek lands inside
 /// the window and plays instantly instead of re-buffering — the Infuse-like
 /// pre-buffer the design asks for. Costs a little start-up latency.
 ///
-/// ZoroX v4 investigated raising this to 30 s for the same ask and did NOT:
+/// Raja v4 investigated raising this to 30 s for the same ask and did NOT:
 /// this value is a latency budget, not just a window. A stream selected
 /// mid-playback — and a seek refills every stream at once — has to
 /// accumulate the whole interval before it emits, so a bigger value makes

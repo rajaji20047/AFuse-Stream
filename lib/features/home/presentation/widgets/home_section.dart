@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:zorox/core/utils/responsive_breakpoints.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/core/utils/image_fallbacks.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
+import 'package:raja/core/utils/responsive_breakpoints.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/core/utils/image_fallbacks.dart';
+import 'package:raja/core/utils/layout_constants.dart';
 
 import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../../shared/widgets/desktop_scroll_wrapper.dart';

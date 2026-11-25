@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_dialogs.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_dialogs.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// The general settings, without Hive underneath them.
 class _FakeGeneralSettings extends GeneralSettingsNotifier {
@@ -144,8 +144,8 @@ void main() {
 
       expect(find.text('Download Location'), findsOneWidget);
       expect(find.text('Target Directory'), findsOneWidget);
-      expect(find.text('System Downloads/ZoroX'), findsOneWidget);
-      expect(find.text('On My iPhone › ZoroX'), findsNothing);
+      expect(find.text('System Downloads/Raja'), findsOneWidget);
+      expect(find.text('On My iPhone › Raja'), findsNothing);
       expect(find.text('Files › Downloads'), findsNothing);
     });
   });

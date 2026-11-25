@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/details/domain/season_download.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart'
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/details/domain/season_download.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart'
     show streamSourceKey;
 
 StreamResult _s(

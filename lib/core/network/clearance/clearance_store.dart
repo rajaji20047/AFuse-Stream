@@ -69,7 +69,7 @@ class StoredCookie {
   };
 }
 
-/// What ZoroX knows about one site's bot check.
+/// What Raja knows about one site's bot check.
 @immutable
 class SiteClearance {
   const SiteClearance({

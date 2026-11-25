@@ -855,7 +855,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   bool _restorePending = false;
 
   /// The subtitle files of what is playing - the source's and any the viewer
-  /// added - which ZoroX draws itself rather than handing to libVLC. See
+  /// added - which Raja draws itself rather than handing to libVLC. See
   /// [SideCarSubtitles].
   late final SideCarSubtitles _sideCars = SideCarSubtitles(
     fetch: (url, headers) => _read(sideCarFetchProvider)(url, headers),
@@ -976,7 +976,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// texture platforms this is the value that does the work.
   late VlcVideoFit _fit;
 
-  /// Pinch-to-zoom scale on the video (ZoroX v3; range widened to 0.5–3.0
+  /// Pinch-to-zoom scale on the video (Raja v3; range widened to 0.5–3.0
   /// in v4, so an inward pinch can also make the picture smaller than the
   /// screen fit): two fingers scale the picture on top of [_fit], like
   /// MX Player / VLC. Reset to 1.0 whenever a new media opens (see
@@ -2042,7 +2042,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // about this one's; a reopen of this one keeps it.
     if (stream.url != _lastStreamUrl) _liveSegment = null;
     _lastStreamUrl = stream.url;
-    // A new media starts un-zoomed (pinch-to-zoom, ZoroX v3).
+    // A new media starts un-zoomed (pinch-to-zoom, Raja v3).
     _videoScale.value = 1.0;
     _isLive = isLiveSource(widget.item, stream.url);
     final languageOption = _audioLanguageOption();
@@ -2182,7 +2182,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       _qualityMedia = (uri: mediaUri, headers: headers, source: stream.url);
     }
 
-    // The source's subtitle files are read and drawn by ZoroX rather than
+    // The source's subtitle files are read and drawn by Raja rather than
     // handed to libVLC, which drew them into the picture - so Zoom cut them
     // off - and could not open the ones behind a playlist or headers at all.
     // Listed here and fetched when first shown; see [SideCarSubtitles].
@@ -2304,7 +2304,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// opened stays on. The viewer is looking at the subtitle list when it
   /// happens, which is the one moment they can undo it.
   ///
-  /// The same rule keeps libVLC's own subtitle off while ZoroX draws a
+  /// The same rule keeps libVLC's own subtitle off while Raja draws a
   /// side-car: two subtitles on screen at once is never what anyone chose,
   /// and the media can put an embedded track on at any time - when its
   /// streams appear, after a seek, at an HLS discontinuity. Picking a track
@@ -2905,7 +2905,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     unawaited(_sideCars.select(sources.last, from: _controller.value.position));
   }
 
-  /// A side-car in a format ZoroX does not read - MicroDVD, VobSub, TTML
+  /// A side-car in a format Raja does not read - MicroDVD, VobSub, TTML
   /// - goes to libVLC, as every side-car once did. libVLC's add selects what
   /// it adds, and it arrives as one of the video's own tracks.
   void _handSideCarToEngine(SideCarTrack track) {
@@ -2997,7 +2997,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // the viewer's play of the parked media: none counts until the park has
     // handed the new media over, as an open's own setup does.
     _handedToEngine = false;
-    // A parked reopen starts un-zoomed too (pinch-to-zoom, ZoroX v3).
+    // A parked reopen starts un-zoomed too (pinch-to-zoom, Raja v3).
     _videoScale.value = 1.0;
     try {
       await _controller.setMedia(
@@ -5907,7 +5907,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     unawaited(() async {
       var playlist = await _readOpenedPlaylist(media.uri, media.headers);
       if (playlist != null && targetDurationOf(playlist) == null) {
-        // A master served through ZoroX's proxy names its variants
+        // A master served through Raja's proxy names its variants
         // relative to the real address, which the proxy carries in its query.
         final real = media.uri.path == '/proxy'
             ? Uri.tryParse(media.uri.queryParameters['url'] ?? '')
@@ -6315,7 +6315,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
               offstage:
                   PlayerDiagnostics.suppressVideoSurface ||
                   _stage != _Stage.playing,
-              // Pinch-to-zoom (ZoroX v3, range widened in v4, re-homed in
+              // Pinch-to-zoom (Raja v3, range widened in v4, re-homed in
               // v8): the zoom itself is a Transform.scale over the picture,
               // driven by [_videoScale] — but the gesture no longer lives
               // here. A scale recognizer under the controls' screen-wide

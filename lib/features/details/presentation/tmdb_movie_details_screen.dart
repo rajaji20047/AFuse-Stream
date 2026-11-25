@@ -14,7 +14,7 @@ import '../../../../core/storage/history_repository.dart';
 import '../../../../core/utils/responsive_breakpoints.dart';
 import '../data/tmdb_details_provider.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../../core/utils/layout_constants.dart';
 import 'widgets/tmdb_details_desktop_hero.dart';
@@ -471,7 +471,7 @@ class _TmdbMovieDetailsScreenState
                       const SizedBox(height: LayoutConstants.spacingMd),
                     ],
                     // The two source systems, as peers and in the same order
-                    // the desktop hero uses: ZoroX providers, then Nuvio. One
+                    // the desktop hero uses: Raja providers, then Nuvio. One
                     // spacing unit above, between and below, so neither card
                     // reads as the page's primary action.
                     ProviderSearchSection(

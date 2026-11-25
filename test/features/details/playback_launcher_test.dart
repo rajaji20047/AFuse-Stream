@@ -8,16 +8,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/core/services/download_service.dart';
-import 'package:zorox/core/services/notification_service.dart';
-import 'package:zorox/features/details/presentation/playback_launcher.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/loading_dialog.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/core/services/download_service.dart';
+import 'package:raja/core/services/notification_service.dart';
+import 'package:raja/features/details/presentation/playback_launcher.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/loading_dialog.dart';
 
 /// Where an already-resolved link goes.
 ///

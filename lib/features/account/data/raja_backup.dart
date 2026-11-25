@@ -1,6 +1,6 @@
 import '../../../core/domain/entity/multimedia_item.dart';
 
-/// One ZoroX backup: everything an account (or a backup file) carries
+/// One Raja backup: everything an account (or a backup file) carries
 /// across an uninstall/reinstall.
 ///
 /// Format version 1. The `format` marker is what the Worker checks before
@@ -13,20 +13,20 @@ import '../../../core/domain/entity/multimedia_item.dart';
 /// positions instead of stamping everything with "now".
 ///
 /// Plugins are backed up as identities, not files: a repository URL plus a
-/// plugin's package name (ZoroX) or internal name (CloudStream). On
+/// plugin's package name (Raja) or internal name (CloudStream). On
 /// restore the app re-adds the repository and re-installs the plugin from
 /// it, so the restored plugins are the current versions, not stale files.
 ///
 /// v9 adds, without changing the format version: Stremio add-ons and
 /// Nuvio repositories (identities again — a manifest URL, re-installed on
 /// restore), and the app's settings from an explicit allow-list (see
-/// `zorox_settings_sync.dart`). The top-level `version` deliberately stays
+/// `raja_settings_sync.dart`). The top-level `version` deliberately stays
 /// 1: the v8 app refuses any other version and, on login, would then
 /// upload its own backup over the newer one. The additions are marked by
 /// [schema] instead. An older app reading a v9 backup simply ignores the
 /// fields it does not know; this app reading an older backup finds the
 /// new sections empty and leaves add-ons and settings alone.
-class ZoroxBackup {
+class RajaBackup {
   static const String format = 'zorox-backup';
   static const int currentVersion = 1;
 
@@ -35,13 +35,13 @@ class ZoroxBackup {
   /// profile the backup belongs to (profiles, Build 1).
   static const int currentSchema = 3;
 
-  const ZoroxBackup({
+  const RajaBackup({
     this.version = currentVersion,
     required this.exportedAt,
     this.history = const [],
     this.library = const [],
-    this.zoroxRepos = const [],
-    this.zoroxPlugins = const [],
+    this.rajaRepos = const [],
+    this.rajaPlugins = const [],
     this.cloudstreamRepos = const [],
     this.cloudstreamPlugins = const [],
     this.schema = currentSchema,
@@ -99,11 +99,11 @@ class ZoroxBackup {
   /// Library items as [MultimediaItem.toJson] maps.
   final List<Map<String, dynamic>> library;
 
-  /// ZoroX repository URLs (SharedPreferences `extension_repo_urls`).
-  final List<String> zoroxRepos;
+  /// Raja repository URLs (SharedPreferences `extension_repo_urls`).
+  final List<String> rajaRepos;
 
-  /// Installed ZoroX plugins: `{'packageName', 'repositoryUrl'}`.
-  final List<Map<String, String>> zoroxPlugins;
+  /// Installed Raja plugins: `{'packageName', 'repositoryUrl'}`.
+  final List<Map<String, String>> rajaPlugins;
 
   /// CloudStream repository URLs.
   final List<String> cloudstreamRepos;
@@ -118,8 +118,8 @@ class ZoroxBackup {
     'exportedAt': exportedAt,
     'history': history,
     'library': library,
-    'zoroxRepos': zoroxRepos,
-    'zoroxPlugins': zoroxPlugins,
+    'zoroxRepos': rajaRepos,
+    'zoroxPlugins': rajaPlugins,
     'cloudstreamRepos': cloudstreamRepos,
     'cloudstreamPlugins': cloudstreamPlugins,
     'schema': schema,
@@ -132,7 +132,7 @@ class ZoroxBackup {
     'profileId': ?profileId,
   };
 
-  factory ZoroxBackup.fromJson(Map<String, dynamic> json) {
+  factory RajaBackup.fromJson(Map<String, dynamic> json) {
     if (json['format'] != format) {
       throw const FormatException('That file is not a Fuse backup.');
     }
@@ -145,7 +145,7 @@ class ZoroxBackup {
       );
     }
     final rawSettings = json['settings'];
-    return ZoroxBackup(
+    return RajaBackup(
       version: version,
       exportedAt: (json['exportedAt'] as num?)?.toInt() ?? 0,
       history: [
@@ -156,11 +156,11 @@ class ZoroxBackup {
         for (final e in (json['library'] as List?) ?? const [])
           if (e is Map) Map<String, dynamic>.from(e),
       ],
-      zoroxRepos: [
+      rajaRepos: [
         for (final e in (json['zoroxRepos'] as List?) ?? const [])
           if (e is String) e,
       ],
-      zoroxPlugins: [
+      rajaPlugins: [
         for (final e in (json['zoroxPlugins'] as List?) ?? const [])
           if (e is Map)
             {for (final kv in e.entries) '${kv.key}': '${kv.value}'},
@@ -216,14 +216,14 @@ class ZoroxBackup {
 /// repository no longer lists, a repository that would not load). It always
 /// starts with "Import successful", so the toast answers the question the
 /// viewer is asking — whether the import worked — before the detail.
-class ZoroxRestoreReport {
-  const ZoroxRestoreReport({
+class RajaRestoreReport {
+  const RajaRestoreReport({
     this.historyRestored = 0,
     this.historySkipped = 0,
     this.historyInBackup = 0,
     this.libraryRestored = 0,
-    this.zoroxReposRestored = 0,
-    this.zoroxPluginsRestored = 0,
+    this.rajaReposRestored = 0,
+    this.rajaPluginsRestored = 0,
     this.cloudstreamReposRestored = 0,
     this.cloudstreamPluginsRestored = 0,
     this.addonsRestored = 0,
@@ -248,8 +248,8 @@ class ZoroxRestoreReport {
   /// apart from a restore that found nothing new.
   final int historyInBackup;
   final int libraryRestored;
-  final int zoroxReposRestored;
-  final int zoroxPluginsRestored;
+  final int rajaReposRestored;
+  final int rajaPluginsRestored;
   final int cloudstreamReposRestored;
   final int cloudstreamPluginsRestored;
   final List<String> errors;
@@ -258,7 +258,7 @@ class ZoroxRestoreReport {
   bool get isEmpty =>
       historyRestored == 0 &&
       libraryRestored == 0 &&
-      zoroxPluginsRestored == 0 &&
+      rajaPluginsRestored == 0 &&
       cloudstreamPluginsRestored == 0 &&
       addonsRestored == 0 &&
       nuvioReposRestored == 0 &&
@@ -270,8 +270,8 @@ class ZoroxRestoreReport {
         '$historyRestored history item${historyRestored == 1 ? '' : 's'}',
       if (libraryRestored > 0)
         '$libraryRestored bookmark${libraryRestored == 1 ? '' : 's'}',
-      if (zoroxPluginsRestored > 0 || cloudstreamPluginsRestored > 0)
-        '${zoroxPluginsRestored + cloudstreamPluginsRestored} plugin${zoroxPluginsRestored + cloudstreamPluginsRestored == 1 ? '' : 's'}',
+      if (rajaPluginsRestored > 0 || cloudstreamPluginsRestored > 0)
+        '${rajaPluginsRestored + cloudstreamPluginsRestored} plugin${rajaPluginsRestored + cloudstreamPluginsRestored == 1 ? '' : 's'}',
       if (addonsRestored + nuvioReposRestored > 0)
         '${addonsRestored + nuvioReposRestored} add-on${addonsRestored + nuvioReposRestored == 1 ? '' : 's'}',
       if (settingsChanged > 0) 'settings',

@@ -18,14 +18,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_client.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/features/addons/presentation/addons_screen.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/addons/data/addon_client.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/features/addons/presentation/addons_screen.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 const int _catalogCount = 40;
 

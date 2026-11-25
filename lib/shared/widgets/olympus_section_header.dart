@@ -9,7 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:zorox/core/theme/olympus.dart';
+import 'package:raja/core/theme/olympus.dart';
 
 class OlympusSectionHeader extends StatelessWidget {
   const OlympusSectionHeader({

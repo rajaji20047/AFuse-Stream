@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/features/details/presentation/tmdb_details_controller.dart';
-import 'package:zorox/features/details/presentation/widgets/episode_picker_sheet.dart';
-import 'package:zorox/features/sources/presentation/source_sheet_widgets.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/features/details/presentation/tmdb_details_controller.dart';
+import 'package:raja/features/details/presentation/widgets/episode_picker_sheet.dart';
+import 'package:raja/features/sources/presentation/source_sheet_widgets.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// The picker is reached with a remote as often as with a finger - it is what
 /// a series opens on a television - so every row has to be exactly one stop of

@@ -10,7 +10,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/domain/temp_download.dart';
+import 'package:raja/features/player/domain/temp_download.dart';
 
 import '../../core/services/stream_cache/fake_host.dart';
 import 'temp_download_test.dart' show kFilmDuration, waitFor;

@@ -16,22 +16,22 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/extensions/models/extension_plugin.dart';
-import 'package:zorox/core/extensions/providers.dart';
-import 'package:zorox/core/extensions/services/plugin_storage_service.dart';
-import 'package:zorox/core/extensions/services/repository_service.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/extensions/providers.dart';
+import 'package:raja/core/extensions/services/plugin_storage_service.dart';
+import 'package:raja/core/extensions/services/repository_service.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
 
 const String _abc = 'https://cutt.ly/sky-abc';
 const String _universe = 'https://cutt.ly/sky-universe';
 const String _a = 'https://a.test/repo.json';
 const String _b = 'https://b.test/repo.json';
 
-/// cutt.ly with ZoroX's `sky-abc`, a repository, and `sky-universe`, a
+/// cutt.ly with Raja's `sky-abc`, a repository, and `sky-universe`, a
 /// collection listing [universeLists] - in lower case only - and the
 /// repositories they lead to. Anything else is a 404. Records every request.
 class _Net implements HttpClientAdapter {

@@ -2,12 +2,12 @@
 // ignore_for_file: riverpod_lint/avoid_public_notifier_properties
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/player/domain/playback_progress.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart';
-import 'package:zorox/features/tracking/domain/sync_progress_item.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/player/domain/playback_progress.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart';
+import 'package:raja/features/tracking/domain/sync_progress_item.dart';
 
 void main() {
   ProgressSample sample(int posMs, int durMs, {int token = 1}) => ProgressSample(

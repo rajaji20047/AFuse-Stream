@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/features/extensions/widgets/installed_other_sources.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/features/extensions/widgets/installed_other_sources.dart';
 
 /// The Plugins tab's Installed segment also lists installed Stremio add-ons
 /// and Nuvio repositories (v5), each with a delete action.

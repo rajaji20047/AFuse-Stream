@@ -6,7 +6,7 @@
 ///
 ///   * `screen_brightness_windows` issued DDC/CI (I²C over the display cable)
 ///     to the monitor's firmware from its constructor, and wrote brightness
-///     back on every `WM_CLOSE`. Users reported ZoroX resetting their
+///     back on every `WM_CLOSE`. Users reported Raja resetting their
 ///     screen brightness. The plugin is gone: the player's brightness comes
 ///     from its own plugin, on Android and iOS only.
 ///   * WebView2 was handed its default user-data folder, `<exe_dir>\WebView2`,

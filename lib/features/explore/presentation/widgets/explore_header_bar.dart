@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:zorox/core/utils/layout_constants.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/cards_wrapper.dart';
-import 'package:zorox/features/explore/presentation/delegates/explore_search_delegate.dart';
-import 'package:zorox/features/explore/presentation/widgets/unified_filter_dialog.dart';
-import 'package:zorox/features/explore/data/explore_filter_provider.dart';
-import 'package:zorox/features/explore/data/explore_mode_provider.dart';
+import 'package:raja/core/utils/layout_constants.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/cards_wrapper.dart';
+import 'package:raja/features/explore/presentation/delegates/explore_search_delegate.dart';
+import 'package:raja/features/explore/presentation/widgets/unified_filter_dialog.dart';
+import 'package:raja/features/explore/data/explore_filter_provider.dart';
+import 'package:raja/features/explore/data/explore_mode_provider.dart';
 
 import 'dart:async';
 

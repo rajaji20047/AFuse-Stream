@@ -1,13 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
 
 /// Which CloudStream extension a bot check belongs to: the engine's requests
 /// don't say, so the calls running decide.

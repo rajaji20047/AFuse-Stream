@@ -19,7 +19,7 @@ part 'accent_color.g.dart';
 /// 8 others, so those two stay gone: a saved Black / Cyan falls back to
 /// Green through [fromName], which is the same landing as an absent
 /// value.
-enum ZoroxAccent {
+enum RajaAccent {
   gold('Gold', Color(0xFFD4AF37)),
   red('Red', Color(0xFFE53935)),
   orange('Orange', Color(0xFFFF9800)),
@@ -30,7 +30,7 @@ enum ZoroxAccent {
   silver('Silver', Color(0xFFE8E8EC)),
   white('White', Color(0xFFFFFFFF));
 
-  const ZoroxAccent(this.label, this.color);
+  const RajaAccent(this.label, this.color);
 
   /// Display name shown under the swatches in Settings.
   final String label;
@@ -42,12 +42,12 @@ enum ZoroxAccent {
   /// Storage outlives downgrades and hand-editing, so an unrecognised value
   /// is reachable; it says no more than an absent one does, and lands in
   /// the same place.
-  static ZoroxAccent fromName(String? name) {
-    if (name == null) return ZoroxAccent.green;
-    for (final accent in ZoroxAccent.values) {
+  static RajaAccent fromName(String? name) {
+    if (name == null) return RajaAccent.green;
+    for (final accent in RajaAccent.values) {
       if (accent.name == name) return accent;
     }
-    return ZoroxAccent.green;
+    return RajaAccent.green;
   }
 }
 
@@ -62,9 +62,9 @@ class AccentColor extends _$AccentColor {
   late SettingsRepository _repository;
 
   @override
-  ZoroxAccent build() {
+  RajaAccent build() {
     _repository = ref.watch(settingsRepositoryProvider);
-    return ZoroxAccent.fromName(_repository.getAccentColor());
+    return RajaAccent.fromName(_repository.getAccentColor());
   }
 
   /// Whether the user has ever picked an accent in Settings (any preset,
@@ -75,7 +75,7 @@ class AccentColor extends _$AccentColor {
   /// "never chose" from "chose Green" — only the stored value can.
   bool get hasExplicitChoice => _repository.getAccentColor() != null;
 
-  Future<void> setAccent(ZoroxAccent accent) async {
+  Future<void> setAccent(RajaAccent accent) async {
     if (state == accent) return;
     state = accent;
     await _repository.saveAccentColor(accent.name);

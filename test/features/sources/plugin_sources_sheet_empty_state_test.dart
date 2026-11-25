@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/link_probe_service.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/features/sources/presentation/plugin_sources_sheet.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/link_probe_service.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/features/sources/presentation/plugin_sources_sheet.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// An empty source list has at least five causes and they need five different
 /// answers. The sheet used to print one sentence for all of them — "No links

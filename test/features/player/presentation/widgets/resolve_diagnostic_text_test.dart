@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/clearance/resolve_diagnostic.dart';
-import 'package:zorox/features/player/presentation/widgets/resolve_diagnostic_text.dart';
+import 'package:raja/core/network/clearance/resolve_diagnostic.dart';
+import 'package:raja/features/player/presentation/widgets/resolve_diagnostic_text.dart';
 
 void main() {
   setUp(() => ResolveDiagnostic.last = null);

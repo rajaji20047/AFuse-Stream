@@ -1,5 +1,5 @@
 /// The 79 extensions with their own settings screen in MegaRepo's 30 repositories (2026-10-05), each
-/// installed, opened through the engine as ZoroX's sheet opens it, read, changed once (its first
+/// installed, opened through the engine as Raja's sheet opens it, read, changed once (its first
 /// ticked toggle, then its save), its restart alert answered Yes if it shows one, closed, and loaded
 /// afresh. Prints one `CS3-UI {json}` line each, then `CS3-UI-END {json}`. Keep the lines: they're
 /// Android's reference trees for the desktop and iOS stand-ins (the spec's part 2). A `CS3-UI-ROUND`
@@ -19,9 +19,9 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
 
 import 'support.dart';
 import 'test_extension.dart' show findNode;
@@ -207,7 +207,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'every settings screen opens hidden in ZoroX, and no restart gets through',
+    'every settings screen opens hidden in Raja, and no restart gets through',
     (tester) async {
       await withApp(tester, (container) async {
         final host = container.read(cloudStreamEngineHostProvider);

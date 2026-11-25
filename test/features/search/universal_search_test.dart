@@ -4,24 +4,24 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_client.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/core/services/tmdb_service.dart';
-import 'package:zorox/features/explore/data/explore_tmdb_provider.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
-import 'package:zorox/features/search/presentation/search_sources.dart';
+import 'package:raja/core/addons/data/addon_client.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/core/services/tmdb_service.dart';
+import 'package:raja/features/explore/data/explore_tmdb_provider.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/search_sources.dart';
 
 /// An extension answering [answer] after [after].
 class _Plugin extends SkyStreamProvider {
@@ -249,7 +249,7 @@ void main() {
     expect(results.map((r) => r.kind), [
       SearchSourceKind.stremio,
       SearchSourceKind.nuvio,
-      SearchSourceKind.zorox,
+      SearchSourceKind.raja,
     ]);
     expect(results[0].source, isA<StremioSearcher>());
     expect(results[0].results.single.url, 'tt0133093');

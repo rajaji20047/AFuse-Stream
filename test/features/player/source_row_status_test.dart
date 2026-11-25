@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/player/domain/source_row_status.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/player/domain/source_row_status.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart';
 
 /// Two facts about each source row, kept apart on purpose: what the
 /// reachability check found, and what happened when the source was played.

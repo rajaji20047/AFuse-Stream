@@ -1,7 +1,7 @@
-name: zorox_mpv_pip
-description: iOS Picture-in-Picture for the mpv player (ZoroX).
+name: raja_mpv_pip
+description: iOS Picture-in-Picture for the mpv player (Raja).
 version: 0.0.1
-repository: https://github.com/kcsuresh18/zorox
+repository: https://github.com/kcsuresh18/raja
 
 environment:
   sdk: ^3.13.0
@@ -20,8 +20,8 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 flutter:
   plugin:
-    implements: zorox_mpv_pip
+    implements: raja_mpv_pip
     platforms:
       ios:
-        package: ZoroxMpvPipPlugin
-        pluginClass: ZoroxMpvPipPlugin
+        package: RajaMpvPipPlugin
+        pluginClass: RajaMpvPipPlugin

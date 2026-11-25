@@ -8,19 +8,19 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/data/addon_stream_service.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart'
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/data/addon_stream_service.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart'
     show kAddonItemSource;
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/network/link_probe_service.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/features/addons/presentation/addon_sources_sheet.dart';
-import 'package:zorox/features/details/presentation/playback_launcher.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/network/link_probe_service.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/features/addons/presentation/addon_sources_sheet.dart';
+import 'package:raja/features/details/presentation/playback_launcher.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 const _torrentioUrl = 'https://torrentio.test/config/manifest.json';
 const _cinemetaUrl = 'https://cinemeta.test/manifest.json';

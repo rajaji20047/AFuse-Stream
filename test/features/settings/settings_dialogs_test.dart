@@ -6,16 +6,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/doh_service.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/player/domain/track_language.dart';
-import 'package:zorox/features/player/presentation/player_platform_service.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/widgets/settings_dialogs.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/l10n/generated/app_localizations_en.dart';
+import 'package:raja/core/network/doh_service.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/player/domain/track_language.dart';
+import 'package:raja/features/player/presentation/player_platform_service.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/settings/presentation/widgets/settings_dialogs.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations_en.dart';
 
 /// Keeps [playerSettingsProvider] off the on-disk repository: these tests are
 /// about what the dialogs *offer*, not about what is stored.

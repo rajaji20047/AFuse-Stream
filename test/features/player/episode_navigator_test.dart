@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/features/player/domain/episode_navigator.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/features/player/domain/episode_navigator.dart';
 
 void main() {
   Episode ep(

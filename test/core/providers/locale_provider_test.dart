@@ -19,9 +19,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:zorox/core/providers/locale_provider.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/providers/locale_provider.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();

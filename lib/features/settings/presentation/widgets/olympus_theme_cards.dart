@@ -17,11 +17,11 @@
 /// The three cards map onto the existing theme system, so no saved
 /// setting is ever lost:
 ///
-/// * Obsidian → [ZoroxThemeVariant.obsidian] (the new Olympus Noir
+/// * Obsidian → [RajaThemeVariant.obsidian] (the new Olympus Noir
 ///   palette, #090B10 / #E7BE63).
-/// * Aurora → [ZoroxThemeVariant.liquidGlass] (the cool blue dark
+/// * Aurora → [RajaThemeVariant.liquidGlass] (the cool blue dark
 ///   theme, closest in spirit to the mockup's aurora card).
-/// * Imperial → [ZoroxThemeVariant.arenaGold] (the warm gold dark
+/// * Imperial → [RajaThemeVariant.arenaGold] (the warm gold dark
 ///   theme, closest to the mockup's imperial card).
 ///
 /// Midnight and Frost are not in the mockup, so they live one line
@@ -29,9 +29,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:zorox/core/theme/accent_color.dart';
-import 'package:zorox/core/theme/olympus.dart';
-import 'package:zorox/core/theme/theme_variant.dart';
+import 'package:raja/core/theme/accent_color.dart';
+import 'package:raja/core/theme/olympus.dart';
+import 'package:raja/core/theme/theme_variant.dart';
 
 class OlympusThemeCards extends StatelessWidget {
   const OlympusThemeCards({
@@ -40,12 +40,12 @@ class OlympusThemeCards extends StatelessWidget {
     required this.onChanged,
   });
 
-  final ZoroxThemeVariant current;
+  final RajaThemeVariant current;
 
   /// A card tap applies the theme and its signature accent together
   /// (so the tap visibly changes the app); a "More themes" chip
   /// passes a null accent and leaves the accent alone.
-  final void Function(ZoroxThemeVariant variant, ZoroxAccent? accent)
+  final void Function(RajaThemeVariant variant, RajaAccent? accent)
   onChanged;
 
   @override
@@ -53,9 +53,9 @@ class OlympusThemeCards extends StatelessWidget {
     const cards = <_OlympusThemeCard>[
       _OlympusThemeCard(
         label: 'Obsidian',
-        variant: ZoroxThemeVariant.obsidian,
+        variant: RajaThemeVariant.obsidian,
         preview: _PreviewKind.obsidian,
-        signatureAccent: ZoroxAccent.gold,
+        signatureAccent: RajaAccent.gold,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -64,9 +64,9 @@ class OlympusThemeCards extends StatelessWidget {
       ),
       _OlympusThemeCard(
         label: 'Aurora',
-        variant: ZoroxThemeVariant.liquidGlass,
+        variant: RajaThemeVariant.liquidGlass,
         preview: _PreviewKind.aurora,
-        signatureAccent: ZoroxAccent.green,
+        signatureAccent: RajaAccent.green,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -75,9 +75,9 @@ class OlympusThemeCards extends StatelessWidget {
       ),
       _OlympusThemeCard(
         label: 'Imperial',
-        variant: ZoroxThemeVariant.arenaGold,
+        variant: RajaThemeVariant.arenaGold,
         preview: _PreviewKind.imperial,
-        signatureAccent: ZoroxAccent.gold,
+        signatureAccent: RajaAccent.gold,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -126,8 +126,8 @@ class OlympusThemeCards extends StatelessWidget {
                 ),
               ),
               for (final variant in [
-                ZoroxThemeVariant.midnight,
-                ZoroxThemeVariant.frost,
+                RajaThemeVariant.midnight,
+                RajaThemeVariant.frost,
               ])
                 _MoreThemeChip(
                   variant: variant,
@@ -152,7 +152,7 @@ class _OlympusThemeCard {
   });
 
   final String label;
-  final ZoroxThemeVariant variant;
+  final RajaThemeVariant variant;
 
   /// Which miniature scene the card shows.
   final _PreviewKind preview;
@@ -160,7 +160,7 @@ class _OlympusThemeCard {
   /// The accent that applies with this theme, so the tap visibly
   /// changes the app (gold for Obsidian and Imperial, jade-green
   /// for Aurora).
-  final ZoroxAccent signatureAccent;
+  final RajaAccent signatureAccent;
   final Gradient gradient;
 }
 
@@ -471,7 +471,7 @@ class _MoreThemeChip extends StatelessWidget {
     required this.onTap,
   });
 
-  final ZoroxThemeVariant variant;
+  final RajaThemeVariant variant;
   final bool selected;
   final VoidCallback onTap;
 

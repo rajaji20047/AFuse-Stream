@@ -1,4 +1,4 @@
-# media_kit_video fork (ZoroX)
+# media_kit_video fork (Raja)
 
 Fork of `media_kit_video` 2.0.1 (pub.dev), vendored under
 `packages/media_kit_video` and wired through `dependency_overrides` in the
@@ -15,7 +15,7 @@ frames the software renderer already produces.
 - `ios/Classes/plugin/common/MediaKitFrameTap.swift` (new; same file also
   copied to `macos/Classes/plugin/common/` and `common/darwin/Classes/plugin/`
   to keep the three copies of this renderer in sync): defines the
-  `Notification.Name.zoroxMpvRenderedFrame` notification.
+  `Notification.Name.rajaMpvRenderedFrame` notification.
 - `TextureSW.render(_:)` (same three copies): after
   `mpv_render_context_render` completes and the buffer is marked ready,
   posts the completed `CVPixelBuffer` on that notification.
@@ -25,12 +25,12 @@ unaffected. The hook fires only on the software-render path
 (`enableHardwareAcceleration: false`), which is what the iOS mpv PiP
 setting selects; the hardware (OpenGL ES) path is untouched. The buffer is
 one of a 3-buffer pool, so the observer must copy it synchronously — the
-PiP plugin (`packages/zorox_mpv_pip`) does exactly that into its own
+PiP plugin (`packages/raja_mpv_pip`) does exactly that into its own
 IOSurface-backed BGRA pool.
 
 ## +32 — render counters in the tap, Worker QoS
 
-- `MediaKitFrameTap.swift`: new `ZoroXMpvRenderStats` (lock-guarded,
+- `MediaKitFrameTap.swift`: new `RajaMpvRenderStats` (lock-guarded,
   shared) — mpv update-callback count, render count, last render
   duration in ms. The tap posts the snapshot in the notification's
   userInfo so the PiP plugin's 1 s native diag can tell a renderer

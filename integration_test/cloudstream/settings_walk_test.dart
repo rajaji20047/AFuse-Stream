@@ -1,7 +1,7 @@
 /// Settings screens that open more screens from their own (StreamPlay's tiles, CineStream's sections),
 /// walked step by step on a device: each tile tapped, then Back, from a freshly opened screen. Each step
 /// prints `CS3-WALK {json}`: the windows the screen showed (all hidden?) and whether it ended. A window
-/// that escapes ZoroX's sheet is logged by the engine ("…'s window shows as Android draws it"), in
+/// that escapes Raja's sheet is logged by the engine ("…'s window shows as Android draws it"), in
 /// logcat beside these lines; on Android, the test fails on any window shown unhidden (the desktops' and
 /// iOS's windows are stand-ins nothing draws).
 ///
@@ -17,9 +17,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
 
 import 'support.dart';
 

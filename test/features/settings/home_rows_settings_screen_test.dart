@@ -3,14 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/features/home/presentation/home_provider.dart';
-import 'package:zorox/features/home/presentation/home_row_prefs.dart';
-import 'package:zorox/features/home/presentation/home_state.dart';
-import 'package:zorox/features/settings/presentation/home_rows_settings_screen.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/features/home/presentation/home_provider.dart';
+import 'package:raja/features/home/presentation/home_row_prefs.dart';
+import 'package:raja/features/home/presentation/home_state.dart';
+import 'package:raja/features/settings/presentation/home_rows_settings_screen.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Settings → General → Home rows (v7): the screen lists the current
 /// source's rows, a switch hides one, Reset to Default clears it, and with

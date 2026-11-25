@@ -9,11 +9,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/theme/accent_color.dart';
-import 'package:zorox/core/theme/app_theme.dart';
-import 'package:zorox/features/account/data/zorox_account_notifier.dart';
-import 'package:zorox/features/account/data/zorox_sync_client.dart';
-import 'package:zorox/features/account/presentation/zorox_account_section.dart';
+import 'package:raja/core/theme/accent_color.dart';
+import 'package:raja/core/theme/app_theme.dart';
+import 'package:raja/features/account/data/raja_account_notifier.dart';
+import 'package:raja/features/account/data/raja_sync_client.dart';
+import 'package:raja/features/account/presentation/raja_account_section.dart';
 
 /// Answers every request with one fixed status and JSON body.
 class _FixedAdapter implements HttpClientAdapter {
@@ -43,27 +43,27 @@ class _FixedAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-class _FakeAccount extends ZoroxAccountNotifier {
+class _FakeAccount extends RajaAccountNotifier {
   _FakeAccount(this._state);
 
-  final ZoroxAccountState _state;
+  final RajaAccountState _state;
 
   @override
-  ZoroxAccountState build() => _state;
+  RajaAccountState build() => _state;
 }
 
 Future<void> _pump(
   WidgetTester tester,
   Widget child, {
-  ZoroxAccountState state = const ZoroxAccountState(),
+  RajaAccountState state = const RajaAccountState(),
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [zoroxAccountProvider.overrideWith(() => _FakeAccount(state))],
+      overrides: [rajaAccountProvider.overrideWith(() => _FakeAccount(state))],
       child: MaterialApp(
         theme: AppTheme.createDarkTheme(
           null,
-          seedColor: ZoroxAccent.green.color,
+          seedColor: RajaAccent.green.color,
         ),
         home: Scaffold(body: child),
       ),
@@ -75,12 +75,12 @@ Future<void> _pump(
 void main() {
   group('which sync server is used', () {
     test('the built-in server when nothing is saved', () {
-      expect(kZoroxSyncWorkerUrl, 'https://zorox-sync.deepace115.workers.dev');
-      expect(effectiveSyncServerUrl(null), kZoroxSyncWorkerUrl);
-      expect(effectiveSyncServerUrl(''), kZoroxSyncWorkerUrl);
-      expect(effectiveSyncServerUrl('   '), kZoroxSyncWorkerUrl);
+      expect(kRajaSyncWorkerUrl, 'https://zorox-sync.deepace115.workers.dev');
+      expect(effectiveSyncServerUrl(null), kRajaSyncWorkerUrl);
+      expect(effectiveSyncServerUrl(''), kRajaSyncWorkerUrl);
+      expect(effectiveSyncServerUrl('   '), kRajaSyncWorkerUrl);
       // It passes the same check every account call makes first.
-      ZoroxSyncClient.checkBaseUrl(effectiveSyncServerUrl(null));
+      RajaSyncClient.checkBaseUrl(effectiveSyncServerUrl(null));
     });
 
     test('a saved server wins, without its trailing slash', () {
@@ -91,17 +91,17 @@ void main() {
     });
 
     test('a fresh account state is already set up, on the default', () {
-      const state = ZoroxAccountState();
+      const state = RajaAccountState();
       expect(state.cloudConfigured, isTrue);
       expect(state.usingDefaultServer, isTrue);
-      expect(state.workerUrl, kZoroxSyncWorkerUrl);
+      expect(state.workerUrl, kRajaSyncWorkerUrl);
     });
   });
 
   testWidgets('the dialog no longer says cloud sync is not set up', (
     tester,
   ) async {
-    await _pump(tester, const ZoroxAccountDialog());
+    await _pump(tester, const RajaAccountDialog());
     expect(find.text('Fuse Account'), findsOneWidget);
     expect(find.textContaining('not set up'), findsNothing);
     expect(find.text('Log in'), findsOneWidget);
@@ -109,7 +109,7 @@ void main() {
   });
 
   testWidgets('the dialog wears the app accent, not gold', (tester) async {
-    await _pump(tester, const ZoroxAccountDialog());
+    await _pump(tester, const RajaAccountDialog());
     final context = tester.element(find.text('Log in'));
     final primary = Theme.of(context).colorScheme.primary;
     final hsl = HSLColor.fromColor(primary);
@@ -124,7 +124,7 @@ void main() {
   });
 
   testWidgets('the Sync server editor is empty on the default', (tester) async {
-    await _pump(tester, const ZoroxWorkerUrlDialog());
+    await _pump(tester, const RajaWorkerUrlDialog());
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
       '',
@@ -135,8 +135,8 @@ void main() {
   testWidgets('the Sync server editor shows a saved server', (tester) async {
     await _pump(
       tester,
-      const ZoroxWorkerUrlDialog(),
-      state: const ZoroxAccountState(
+      const RajaWorkerUrlDialog(),
+      state: const RajaAccountState(
         workerUrl: 'https://my.example.workers.dev',
         usingDefaultServer: false,
       ),
@@ -153,22 +153,22 @@ void main() {
         'ok': false,
         'error': 'Session expired. Log in again.',
       });
-      final client = ZoroxSyncClient(dio: Dio()..httpClientAdapter = adapter);
+      final client = RajaSyncClient(dio: Dio()..httpClientAdapter = adapter);
       Object? caught;
       try {
         await client.upload(effectiveSyncServerUrl(null), 'old-token', {});
       } catch (e) {
         caught = e;
       }
-      expect(caught, isA<ZoroxSyncException>());
-      final error = caught! as ZoroxSyncException;
+      expect(caught, isA<RajaSyncException>());
+      final error = caught! as RajaSyncException;
       expect(error.sessionExpired, isTrue);
       expect(error.message, 'Session expired. Log in again.');
-      expect(adapter.urls.single, '$kZoroxSyncWorkerUrl/sync');
+      expect(adapter.urls.single, '$kRajaSyncWorkerUrl/sync');
     });
 
     test('a server error is not an expired session', () async {
-      final client = ZoroxSyncClient(
+      final client = RajaSyncClient(
         dio: Dio()
           ..httpClientAdapter = _FixedAdapter(500, {
             'ok': false,
@@ -176,9 +176,9 @@ void main() {
           }),
       );
       await expectLater(
-        client.login(kZoroxSyncWorkerUrl, 'a@b.co', 'password1'),
+        client.login(kRajaSyncWorkerUrl, 'a@b.co', 'password1'),
         throwsA(
-          isA<ZoroxSyncException>().having(
+          isA<RajaSyncException>().having(
             (e) => e.sessionExpired,
             'sessionExpired',
             isFalse,
@@ -190,8 +190,8 @@ void main() {
     testWidgets('the Fuse Account card says to log in again', (tester) async {
       await _pump(
         tester,
-        const SingleChildScrollView(child: ZoroxAccountSection()),
-        state: const ZoroxAccountState(
+        const SingleChildScrollView(child: RajaAccountSection()),
+        state: const RajaAccountState(
           email: 'a@b.co',
           sessionExpired: true,
           error: kSessionExpiredMessage,

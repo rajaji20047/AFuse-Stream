@@ -5,11 +5,11 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/config/tmdb_config.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/services/tmdb_service.dart';
-import 'package:zorox/features/details/data/addon_tmdb_id_provider.dart';
-import 'package:zorox/features/details/data/metadata_resolution_service.dart';
+import 'package:raja/core/config/tmdb_config.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/services/tmdb_service.dart';
+import 'package:raja/features/details/data/addon_tmdb_id_provider.dart';
+import 'package:raja/features/details/data/metadata_resolution_service.dart';
 
 /// TMDB answers with the one film the query names, or with nothing.
 class _FakeTmdbService extends TmdbService {

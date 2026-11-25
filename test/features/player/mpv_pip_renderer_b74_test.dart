@@ -1,7 +1,7 @@
 // Build 74: the pure decisions behind the in-place renderer swap and
 // its overlay diagnostics.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_pip_renderer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_pip_renderer.dart';
 
 void main() {
   group('rendererMoveRoute', () {

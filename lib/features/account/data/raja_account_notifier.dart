@@ -29,11 +29,11 @@ import '../../profiles/data/fuse_profiles_notifier.dart';
 import '../../search/domain/search_plugin_filter.dart';
 import '../../settings/presentation/general_settings_provider.dart';
 import '../../settings/presentation/player_settings_provider.dart';
-import 'zorox_backup.dart';
-import 'zorox_settings_sync.dart';
-import 'zorox_sync_client.dart';
+import 'raja_backup.dart';
+import 'raja_settings_sync.dart';
+import 'raja_sync_client.dart';
 
-/// The ZoroX account: login + cloud sync, and Export/Import backup.
+/// The Raja account: login + cloud sync, and Export/Import backup.
 ///
 /// Plain Riverpod ([NotifierProvider]) — no codegen, so no `build_runner`.
 ///
@@ -46,15 +46,15 @@ import 'zorox_sync_client.dart';
 ///   - The backup itself: history box + library box + the two plugin
 ///     systems' own stores; this feature only reads them and restores into
 ///     them through their public APIs.
-class ZoroxAccountState {
-  const ZoroxAccountState({
+class RajaAccountState {
+  const RajaAccountState({
     this.email,
     this.loggedIn = false,
     this.busy = false,
     this.error,
     this.lastSyncedAt,
     this.cloudConfigured = true,
-    this.workerUrl = kZoroxSyncWorkerUrl,
+    this.workerUrl = kRajaSyncWorkerUrl,
     this.usingDefaultServer = true,
     this.sessionExpired = false,
     this.autoSyncEnabled = true,
@@ -85,7 +85,7 @@ class ZoroxAccountState {
   /// background auto-upload. The card says "log in again" until a login.
   final bool sessionExpired;
 
-  ZoroxAccountState copyWith({
+  RajaAccountState copyWith({
     String? email,
     bool? loggedIn,
     bool? busy,
@@ -97,7 +97,7 @@ class ZoroxAccountState {
     bool? usingDefaultServer,
     bool? sessionExpired,
     bool? autoSyncEnabled,
-  }) => ZoroxAccountState(
+  }) => RajaAccountState(
     autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
     email: email ?? this.email,
     loggedIn: loggedIn ?? this.loggedIn,
@@ -111,15 +111,15 @@ class ZoroxAccountState {
   );
 }
 
-final zoroxAccountProvider =
-    NotifierProvider<ZoroxAccountNotifier, ZoroxAccountState>(
-      ZoroxAccountNotifier.new,
+final rajaAccountProvider =
+    NotifierProvider<RajaAccountNotifier, RajaAccountState>(
+      RajaAccountNotifier.new,
     );
 
 /// What the card and the dialog say after the server refused the session.
 const String kSessionExpiredMessage = 'Session expired. Log in again.';
 
-class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
+class RajaAccountNotifier extends Notifier<RajaAccountState> {
   static const String _kTokenKey = 'zorox_account_token';
   static const String _kEmailKey = 'zorox_account_email';
   static const String _kWorkerUrlKey = 'zorox_sync_worker_url';
@@ -149,7 +149,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   /// a row become one upload instead of ten.
   static const Duration _autoSyncDebounce = Duration(seconds: 10);
 
-  final _client = ZoroxSyncClient();
+  final _client = RajaSyncClient();
   Timer? _autoSyncTimer;
   bool _restored = false;
 
@@ -163,7 +163,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   bool _exportInProgress = false;
 
   @override
-  ZoroxAccountState build() {
+  RajaAccountState build() {
     ref.onDispose(() {
       _autoSyncTimer?.cancel();
       unawaited(_settingsWatch?.cancel());
@@ -173,7 +173,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       unawaited(_restoreSession());
     }
     // Auto-upload (debounced) when anything the backup covers changes while
-    // logged in: a watch-history save, a ZoroX plugin install/remove, or
+    // logged in: a watch-history save, a Raja plugin install/remove, or
     // a CloudStream repo/plugin change. requestAutoSync() no-ops when logged
     // out or unconfigured, and debounces 10s, so frequent saves collapse
     // into one upload. The listeners are set up once here — the provider is
@@ -186,7 +186,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     ref.listen(addonRepositoryProvider, (_, _) => requestAutoSync());
     ref.listen(nuvioRepositoryProvider, (_, _) => requestAutoSync());
     _watchSyncedSettings();
-    return const ZoroxAccountState();
+    return const RajaAccountState();
   }
 
   /// Watches the settings box for a change to an allow-listed key: stamps
@@ -204,7 +204,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
             requestAutoSync();
           }, onError: (Object _) {});
     } catch (e) {
-      talker.warning('[ZoroX Account] settings watch not started: $e');
+      talker.warning('[Raja Account] settings watch not started: $e');
     }
   }
 
@@ -277,7 +277,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
         );
       }
     } catch (e) {
-      talker.warning('[ZoroX Account] restoring the session failed: $e');
+      talker.warning('[Raja Account] restoring the session failed: $e');
     }
   }
 
@@ -296,7 +296,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
 
   Future<String> _requireWorkerUrl() async {
     final url = _workerUrl(ref.read(storageServiceProvider));
-    ZoroxSyncClient.checkBaseUrl(url);
+    RajaSyncClient.checkBaseUrl(url);
     return url;
   }
 
@@ -351,7 +351,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       // the first-profile setup, and the migration runs from there.
       await refreshFuseProfiles();
       return true;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) state = state.copyWith(busy: false, error: e.message);
       return false;
     } catch (e) {
@@ -390,7 +390,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       // case) now that the session is live.
       await refreshFuseProfiles();
       return true;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) state = state.copyWith(busy: false, error: e.message);
       return false;
     } catch (e) {
@@ -509,7 +509,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       final baseUrl = await _requireWorkerUrl();
       final token = await _token();
       if (token == null || token.isEmpty) {
-        throw const ZoroxSyncException(
+        throw const RajaSyncException(
           'Session expired. Log in again.',
           statusCode: 401,
         );
@@ -523,7 +523,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     } catch (e) {
       // The profile and its local copy exist; the upload is retried by
       // the next sync round. The legacy boxes stay until it succeeds.
-      talker.warning('[ZoroX Account] profile migration upload failed: $e');
+      talker.warning('[Raja Account] profile migration upload failed: $e');
       if (ref.mounted) {
         state = state.copyWith(
           error:
@@ -621,7 +621,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       final baseUrl = await _requireWorkerUrl();
       final token = await _token();
       if (token == null || token.isEmpty) {
-        throw const ZoroxSyncException(
+        throw const RajaSyncException(
           'Session expired. Log in again.',
           statusCode: 401,
         );
@@ -638,7 +638,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       );
       await _markSynced();
       return true;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (e.sessionExpired) {
         await _expireSession();
       } else if (!silent && ref.mounted) {
@@ -662,7 +662,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     try {
       await ref.read(secureTokenStorageProvider).delete(_kTokenKey);
     } catch (e) {
-      talker.warning('[ZoroX Account] dropping the expired session: $e');
+      talker.warning('[Raja Account] dropping the expired session: $e');
     }
     if (!ref.mounted) return;
     state = state.copyWith(
@@ -675,8 +675,8 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   /// Downloads the cloud backup and restores it. Returns the restore
   /// report, or null when the account has never synced (nothing to
   /// restore) or the download failed ([state.error] says why).
-  Future<ZoroxRestoreReport?> downloadAndRestore() async {
-    ZoroxRestoreReport? report;
+  Future<RajaRestoreReport?> downloadAndRestore() async {
+    RajaRestoreReport? report;
     await _downloadAndRestore(onReport: (r) => report = r);
     return report;
   }
@@ -709,7 +709,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       await _uploadBackup(silent: true);
       return true;
     } catch (e) {
-      talker.warning('[ZoroX Account] profile switch sync failed: $e');
+      talker.warning('[Raja Account] profile switch sync failed: $e');
       return true;
     } finally {
       _autoSyncRunning = false;
@@ -729,7 +729,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   Future<_DownloadOutcome> _downloadAndRestore({
     bool cloudSettingsWin = false,
     bool silent = false,
-    void Function(ZoroxRestoreReport report)? onReport,
+    void Function(RajaRestoreReport report)? onReport,
   }) async {
     if (!state.loggedIn) return _DownloadOutcome.failed;
     if (!silent) state = state.copyWith(busy: true, clearError: true);
@@ -737,7 +737,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       final baseUrl = await _requireWorkerUrl();
       final token = await _token();
       if (token == null || token.isEmpty) {
-        throw const ZoroxSyncException(
+        throw const RajaSyncException(
           'Session expired. Log in again.',
           statusCode: 401,
         );
@@ -751,7 +751,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       );
       if (remote == null) return _DownloadOutcome.nothingStored;
       final report = await restoreBackup(
-        ZoroxBackup.fromJson(remote),
+        RajaBackup.fromJson(remote),
         settings: cloudSettingsWin
             ? SettingsRestore.always
             : SettingsRestore.ifNewer,
@@ -759,7 +759,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       onReport?.call(report);
       await _markSynced();
       return _DownloadOutcome.restored;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (e.sessionExpired) {
         await _expireSession();
       } else if (!silent && ref.mounted) {
@@ -821,7 +821,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       await _uploadBackup(silent: true);
       return true;
     } catch (e) {
-      talker.warning('[ZoroX Account] automatic sync failed: $e');
+      talker.warning('[Raja Account] automatic sync failed: $e');
       return true;
     } finally {
       _autoSyncRunning = false;
@@ -842,7 +842,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       try {
         await _uploadBackup(silent: true);
       } catch (e) {
-        talker.warning('[ZoroX Account] auto-upload failed: $e');
+        talker.warning('[Raja Account] auto-upload failed: $e');
       }
     });
   }
@@ -852,7 +852,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   /// Reads everything the backup covers. Plugin collection never fails the
   /// backup: a repository that will not load is skipped and the rest still
   /// goes in (the restore step reports what is missing).
-  Future<ZoroxBackup> collectBackup() async {
+  Future<RajaBackup> collectBackup() async {
     final storage = ref.read(storageServiceProvider);
     final history = storage.getAllHistoryEntries();
     final library = ref
@@ -861,14 +861,14 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
         .map((item) => item.toJson())
         .toList();
 
-    var zoroxRepos = <String>[];
-    var zoroxPlugins = <Map<String, String>>[];
+    var rajaRepos = <String>[];
+    var rajaPlugins = <Map<String, String>>[];
     try {
       final extensions = ref.read(extensionsControllerProvider.notifier);
       await extensions.ensureInitialized();
       final extensionsState = ref.read(extensionsControllerProvider);
-      zoroxRepos = [for (final repo in extensionsState.repositories) repo.url];
-      zoroxPlugins = [
+      rajaRepos = [for (final repo in extensionsState.repositories) repo.url];
+      rajaPlugins = [
         for (final plugin in extensionsState.installedPlugins)
           {
             'packageName': plugin.packageName,
@@ -876,7 +876,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
           },
       ];
     } catch (e) {
-      talker.warning('[ZoroX Account] ZoroX plugins not backed up: $e');
+      talker.warning('[Raja Account] Raja plugins not backed up: $e');
     }
 
     var cloudstreamRepos = <String>[];
@@ -898,7 +898,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
           },
       ];
     } catch (e) {
-      talker.warning('[ZoroX Account] CloudStream plugins not backed up: $e');
+      talker.warning('[Raja Account] CloudStream plugins not backed up: $e');
     }
 
     // v9: Stremio add-ons, as manifest URLs in the user's order. An
@@ -920,7 +920,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       }
     } catch (e) {
       stremioAddons = [];
-      talker.warning('[ZoroX Account] add-ons not backed up: $e');
+      talker.warning('[Raja Account] add-ons not backed up: $e');
     }
 
     // v9: Nuvio repositories and which of their providers are on or off.
@@ -944,7 +944,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       }
     } catch (e) {
       nuvioRepos = [];
-      talker.warning('[ZoroX Account] Nuvio repositories not backed up: $e');
+      talker.warning('[Raja Account] Nuvio repositories not backed up: $e');
     }
 
     // v9: the allow-listed settings, and when they last changed here.
@@ -952,15 +952,15 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     try {
       settings = collectSyncedSettings(storage.getRawSetting);
     } catch (e) {
-      talker.warning('[ZoroX Account] settings not backed up: $e');
+      talker.warning('[Raja Account] settings not backed up: $e');
     }
 
-    return ZoroxBackup(
+    return RajaBackup(
       exportedAt: DateTime.now().millisecondsSinceEpoch,
       history: history,
       library: library,
-      zoroxRepos: zoroxRepos,
-      zoroxPlugins: zoroxPlugins,
+      rajaRepos: rajaRepos,
+      rajaPlugins: rajaPlugins,
       cloudstreamRepos: cloudstreamRepos,
       cloudstreamPlugins: cloudstreamPlugins,
       stremioAddons: stremioAddons,
@@ -988,8 +988,8 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   /// follow [settings] — a backup file and a login apply the backup's
   /// settings; a routine sync applies them only when they are newer than
   /// this device's last settings change.
-  Future<ZoroxRestoreReport> restoreBackup(
-    ZoroxBackup backup, {
+  Future<RajaRestoreReport> restoreBackup(
+    RajaBackup backup, {
     SettingsRestore settings = SettingsRestore.always,
   }) async {
     _restoring = true;
@@ -1003,16 +1003,16 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     }
   }
 
-  Future<ZoroxRestoreReport> _restoreBackup(
-    ZoroxBackup backup,
+  Future<RajaRestoreReport> _restoreBackup(
+    RajaBackup backup,
     SettingsRestore settingsRule,
   ) async {
     final errors = <String>[];
     var historyRestored = 0;
     var historySkipped = 0;
     var libraryRestored = 0;
-    var zoroxReposRestored = 0;
-    var zoroxPluginsRestored = 0;
+    var rajaReposRestored = 0;
+    var rajaPluginsRestored = 0;
     var cloudstreamReposRestored = 0;
     var cloudstreamPluginsRestored = 0;
 
@@ -1055,24 +1055,24 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       }
     }
 
-    // ZoroX repositories, then their plugins.
+    // Raja repositories, then their plugins.
     try {
       final extensions = ref.read(extensionsControllerProvider.notifier);
       await extensions.ensureInitialized();
       var extensionsState = ref.read(extensionsControllerProvider);
-      for (final url in backup.zoroxRepos) {
+      for (final url in backup.rajaRepos) {
         if (extensionsState.repositories.any((repo) => repo.url == url)) {
           continue;
         }
         try {
           await extensions.addRepository(url);
-          zoroxReposRestored++;
+          rajaReposRestored++;
         } catch (e) {
           errors.add('Could not add repository $url: $e');
         }
         extensionsState = ref.read(extensionsControllerProvider);
       }
-      for (final saved in backup.zoroxPlugins) {
+      for (final saved in backup.rajaPlugins) {
         final packageName = saved['packageName'];
         if (packageName == null || packageName.isEmpty) continue;
         if (extensionsState.installedPlugins.any(
@@ -1080,7 +1080,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
         )) {
           continue;
         }
-        final found = _findZoroXPlugin(extensionsState, packageName);
+        final found = _findRajaPlugin(extensionsState, packageName);
         if (found == null) {
           errors.add(
             'Plugin $packageName is no longer listed by its repository, so it was not restored.',
@@ -1089,7 +1089,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
         }
         try {
           await extensions.installPlugin(found);
-          zoroxPluginsRestored++;
+          rajaPluginsRestored++;
         } catch (e) {
           errors.add('Could not install ${found.name}: $e');
         }
@@ -1263,13 +1263,13 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       ref.read(libraryProvider.notifier).refresh();
     }
 
-    return ZoroxRestoreReport(
+    return RajaRestoreReport(
       historyRestored: historyRestored,
       historySkipped: historySkipped,
       historyInBackup: backup.history.length,
       libraryRestored: libraryRestored,
-      zoroxReposRestored: zoroxReposRestored,
-      zoroxPluginsRestored: zoroxPluginsRestored,
+      rajaReposRestored: rajaReposRestored,
+      rajaPluginsRestored: rajaPluginsRestored,
       cloudstreamReposRestored: cloudstreamReposRestored,
       cloudstreamPluginsRestored: cloudstreamPluginsRestored,
       addonsRestored: addonsRestored,
@@ -1286,7 +1286,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
       try {
         invalidate();
       } catch (e) {
-        talker.warning('[ZoroX Account] a settings refresh failed: $e');
+        talker.warning('[Raja Account] a settings refresh failed: $e');
       }
     }
 
@@ -1299,7 +1299,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     refresh(() => ref.invalidate(searchDisabledSourcesProvider));
   }
 
-  static ExtensionPlugin? _findZoroXPlugin(
+  static ExtensionPlugin? _findRajaPlugin(
     ExtensionsState extensionsState,
     String packageName,
   ) {
@@ -1367,7 +1367,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
         return (path: uri.toFilePath(), openedShareSheet: false);
       }
     } catch (e) {
-      talker.warning('[ZoroX Account] save dialog failed: $e');
+      talker.warning('[Raja Account] save dialog failed: $e');
     }
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$fileName');
@@ -1384,9 +1384,9 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
   bool get importInProgress => _importInProgress;
 
   /// Picks a backup file and restores it. Returns the restore report, or
-  /// null when the user cancels the picker. Throws [ZoroxSyncException]
-  /// when the file is not a ZoroX backup.
-  Future<ZoroxRestoreReport?> importBackupFile() async {
+  /// null when the user cancels the picker. Throws [RajaSyncException]
+  /// when the file is not a Raja backup.
+  Future<RajaRestoreReport?> importBackupFile() async {
     final backup = await pickBackupFile();
     if (backup == null) return null;
     return await restoreBackup(backup);
@@ -1394,9 +1394,9 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
 
   /// Picks a backup file and parses it, without restoring it — so the UI can
   /// show progress while the (slow, network) restore runs. Returns null when
-  /// the user cancels the picker. Throws [ZoroxSyncException] when the file
-  /// is not a ZoroX backup, [PlatformException] when the picker itself fails.
-  Future<ZoroxBackup?> pickBackupFile() async {
+  /// the user cancels the picker. Throws [RajaSyncException] when the file
+  /// is not a Raja backup, [PlatformException] when the picker itself fails.
+  Future<RajaBackup?> pickBackupFile() async {
     if (_importInProgress) return null;
     _importInProgress = true;
     try {
@@ -1406,7 +1406,7 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
     }
   }
 
-  Future<ZoroxBackup?> _pickBackupFile() async {
+  Future<RajaBackup?> _pickBackupFile() async {
     try {
       // file_picker throws PlatformException(multiple_request) when a pick
       // is started while another pick is still open (a stale pending
@@ -1427,12 +1427,12 @@ class ZoroxAccountNotifier extends Notifier<ZoroxAccountState> {
           : await picked.xFile.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
       if (decoded is! Map) {
-        throw const ZoroxSyncException('That file is not a Fuse backup.');
+        throw const RajaSyncException('That file is not a Fuse backup.');
       }
-      return ZoroxBackup.fromJson(Map<String, dynamic>.from(decoded));
+      return RajaBackup.fromJson(Map<String, dynamic>.from(decoded));
     } on PlatformException catch (e) {
       if (e.code == 'multiple_request') {
-        throw const ZoroxSyncException(
+        throw const RajaSyncException(
           'The file picker was already open — please tap Import again.',
         );
       }

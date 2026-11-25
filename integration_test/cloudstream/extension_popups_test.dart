@@ -1,6 +1,6 @@
 /// The test extension's own windows outside its settings, on a device (the spec's pop-up rules):
 /// - Home's support pop-up shows nothing over the app: the extension's row gains Support, which opens it live in
-///   ZoroX's sheet; closing the sheet puts it back behind Support, which opens it again as it was; its own
+///   Raja's sheet; closing the sheet puts it back behind Support, which opens it again as it was; its own
 ///   Later closes it, and the button goes; the same pop-up again (from each provider, and from Home loaded twice)
 ///   is kept once;
 /// - the page dialog its search shows is dropped once sorted (5 s on, its call still waiting), so the search doesn't
@@ -29,10 +29,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 import 'test_extension.dart';
@@ -75,7 +75,7 @@ Future<void> _homeLoads(
   }
   await pumpUntil(tester, () => _kept(container, path).isNotEmpty, what: 'the support pop-up kept');
   await pumpFor(tester, const Duration(seconds: 1));
-  expect(_kept(container, path), ['Support ZoroX Test'], reason: 'the same pop-up twice is kept once');
+  expect(_kept(container, path), ['Support Raja Test'], reason: 'the same pop-up twice is kept once');
   expect(events.where((e) => e['event'] == 'uiOpened'), isEmpty, reason: 'Home is a background call');
   expect(events.where((e) => e['event'] == 'popupEscaped'), isEmpty, reason: 'nothing showed over the app');
   expect(find.byType(ExtensionSheet), findsNothing);
@@ -135,7 +135,7 @@ void main() {
           final searching = Stopwatch()..start();
           await whilePumping(
             tester,
-            host.run(path, (e) => e.search('ZoroX Test A', 'anything', plugin: path), kind: 'search'),
+            host.run(path, (e) => e.search('Raja Test A', 'anything', plugin: path), kind: 'search'),
           );
           expect(searching.elapsed, lessThan(const Duration(seconds: 10)));
           expect(events.where((e) => e['event'] == 'popupDropped' && e['reason'] == 'page'), isNotEmpty);
@@ -144,7 +144,7 @@ void main() {
           // Links: the person waits, so the extension's choice opens in the sheet, and their pick reaches it.
           final links = host.run(
             path,
-            (e) => e.loadLinks('ZoroX Test A', 'https://zorox.invalid/play/1', plugin: path),
+            (e) => e.loadLinks('Raja Test A', 'https://raja.invalid/play/1', plugin: path),
             kind: 'loadLinks',
           );
           await waitFor(tester, _inSheet(find.text('Pick a server')), timeout: const Duration(seconds: 30));

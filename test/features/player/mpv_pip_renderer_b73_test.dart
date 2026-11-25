@@ -1,8 +1,8 @@
 // Build 73: the pure decisions behind the fast renderer move, the small
 // PiP render and "PiP only from the button".
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_ios_options.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_pip_renderer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_ios_options.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_pip_renderer.dart';
 
 void main() {
   group('softwareRenderSize', () {

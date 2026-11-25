@@ -15,9 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/main.dart' as app;
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/main.dart' as app;
 
 import 'frame_watch.dart';
 
@@ -32,7 +32,7 @@ const String? skipReason = cloudStreamTests ? null : 'CloudStream end-to-end tes
 const englishRepository = 'https://raw.githubusercontent.com/recloudstream/extensions/master/repo.json';
 
 /// Starts the app, runs [body] with its provider container, and puts back the error widget
-/// ZoroX's main() installs: the test framework checks it was, failure or not.
+/// Raja's main() installs: the test framework checks it was, failure or not.
 Future<void> withApp(WidgetTester tester, Future<void> Function(ProviderContainer container) body) async {
   final errorWidgetBuilder = ErrorWidget.builder;
   keepFramesComing();

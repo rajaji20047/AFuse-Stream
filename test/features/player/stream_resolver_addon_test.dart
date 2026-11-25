@@ -8,19 +8,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart'
     show ProviderListenable;
-import 'package:zorox/core/addons/data/addon_playback_launcher.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/data/addon_stream_service.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/features/player/domain/episode_navigator.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/addons/data/addon_playback_launcher.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/data/addon_stream_service.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/features/player/domain/episode_navigator.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 const _bridgeUrl = 'https://bridge.test/u/a/manifest.json';
 

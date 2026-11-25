@@ -53,11 +53,11 @@ import 'core/widgets/update_dialog.dart';
 import 'core/widgets/app_error_boundary.dart';
 import 'core/services/download_service.dart';
 import 'core/services/notification_service.dart';
-import 'features/account/data/zorox_account_notifier.dart';
+import 'features/account/data/raja_account_notifier.dart';
 import 'features/player/domain/qoe_log.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'core/providers/locale_provider.dart';
 import 'core/network/clearance/clearance.dart';
@@ -363,14 +363,14 @@ class _MyAppState extends ConsumerState<MyApp> {
     // Applied here rather than in `main` because it reads through a provider,
     // which needs the scope this widget sits inside.
     ref.read(fullScreenModeProvider.notifier).initialize();
-    // A page's own dialog its extension left to the app: ZoroX's, over whatever shows (Phase 7c).
+    // A page's own dialog its extension left to the app: Raja's, over whatever shows (Phase 7c).
     ExtensionPages.shared.dialogs = _showPageDialog;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(downloadServiceProvider).init();
-      // ZoroX Account (v2.9.4): build the account provider at startup so
+      // Raja Account (v2.9.4): build the account provider at startup so
       // the session is restored and the auto-sync listeners are live even
       // if the user never opens the Account screen.
-      ref.read(zoroxAccountProvider);
+      ref.read(rajaAccountProvider);
       unawaited(_loadInstalledExtensions());
       // CloudStream providers are listed from what was installed; no engine starts here.
       // Repositories its plugins add (MegaRepo's) are announced like a collection's.
@@ -539,7 +539,7 @@ class _MyAppState extends ConsumerState<MyApp> {
   /// screen, so it waits until the launch is over rather than racing it.
   static const Duration _extensionsCheckDelay = Duration(seconds: 15);
 
-  /// Brings every extension system up to date in the background - ZoroX
+  /// Brings every extension system up to date in the background - Raja
   /// plugins, Nuvio scrapers, Stremio add-ons and CloudStream extensions - and
   /// says what changed: what was updated, which repositories a followed
   /// collection (or a CloudStream plugin like MegaRepo's) brought in, and

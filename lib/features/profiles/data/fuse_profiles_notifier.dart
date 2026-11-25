@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/storage_service.dart';
-import '../../account/data/zorox_sync_client.dart';
+import '../../account/data/raja_sync_client.dart';
 import '../../app_lock/app_lock_controller.dart';
 import '../../app_lock/app_lock_passcode.dart';
 import 'fuse_profile.dart';
@@ -23,7 +23,7 @@ final fuseProfilesProvider =
 /// What the picker and the gate know about profiles.
 ///
 /// Plain Riverpod ([NotifierProvider]) — no codegen, so no `build_runner`,
-/// like [ZoroxAccountNotifier].
+/// like [RajaAccountNotifier].
 class FuseProfilesState {
   const FuseProfilesState({
     this.profiles = const [],
@@ -201,7 +201,7 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
         legacyDataPendingMove: legacyPending,
         localMode: false,
       );
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) {
         state = state.copyWith(loading: false, error: e.message);
       }
@@ -365,7 +365,7 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
         );
       }
       return profile;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) {
         state = state.copyWith(loading: false, error: e.message);
       }
@@ -434,7 +434,7 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
         state = state.copyWith(profiles: profiles, loading: false);
       }
       return true;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) {
         state = state.copyWith(loading: false, error: e.message);
       }
@@ -483,7 +483,7 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
           profileId,
           accountPassword,
         );
-      } on ZoroxSyncException catch (e) {
+      } on RajaSyncException catch (e) {
         if (ref.mounted) {
           state = state.copyWith(loading: false, error: e.message);
         }
@@ -690,7 +690,7 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
         state = state.copyWith(profiles: profiles, loading: false);
       }
       return true;
-    } on ZoroxSyncException catch (e) {
+    } on RajaSyncException catch (e) {
       if (ref.mounted) {
         state = state.copyWith(loading: false, error: e.message);
       }

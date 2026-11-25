@@ -5,18 +5,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart' hide Step;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/features/home/presentation/home_provider.dart';
-import 'package:zorox/features/home/presentation/home_state.dart';
-import 'package:zorox/features/home/presentation/widgets/home_check_card.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/features/home/presentation/home_provider.dart';
+import 'package:raja/features/home/presentation/home_state.dart';
+import 'package:raja/features/home/presentation/widgets/home_check_card.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../core/network/clearance/fakes.dart';
 
@@ -184,7 +184,7 @@ void main() {
   });
 
   testWidgets(
-    'an outdated browser, a site that refuses ZoroX, and one that keeps '
+    'an outdated browser, a site that refuses Raja, and one that keeps '
     'asking each say so; only the last offers Verify',
     (tester) async {
       await pumpGate(tester, provider: _plugin('a'), onRetry: () {});

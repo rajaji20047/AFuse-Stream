@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/utils/motion.dart';
-import 'package:zorox/shared/widgets/branch_cross_fade.dart';
+import 'package:raja/core/utils/motion.dart';
+import 'package:raja/shared/widgets/branch_cross_fade.dart';
 
 /// A tab with state of its own: a counter that must survive tab switches.
 class _Tab extends StatefulWidget {

@@ -2,7 +2,7 @@
 // from mpv's `demuxer-cache-state` (build 75 read `stream-pos`, which
 // never moves back, and every figure came out "?").
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_pip_renderer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_pip_renderer.dart';
 
 String _state({
   required int seeks,

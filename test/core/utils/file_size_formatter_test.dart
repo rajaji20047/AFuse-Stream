@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/utils/file_size_formatter.dart';
+import 'package:raja/core/utils/file_size_formatter.dart';
 
 void main() {
   group('formatFileSize', () {

@@ -4,7 +4,7 @@
 # - Super Mario opens full screen (landscape), starts, and saves and closes on two Backs. Played again, it offers
 #   "RESUME SAVE", which resumes it, and two Backs close it again.
 # After each game its title page shows again, with no "No streams found".
-#   (cd OUT_DIR && maestro test -e APP_ID=com.toji.zorox PATH_TO/extension_games_release.yaml)
+#   (cd OUT_DIR && maestro test -e APP_ID=com.raja.fuse PATH_TO/extension_games_release.yaml)
 appId: ${APP_ID}
 ---
 - launchApp:

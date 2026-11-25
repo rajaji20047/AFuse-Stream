@@ -1,5 +1,5 @@
 /// Every real settings screen Android captured (the corpus run's trees, kept locally in
-/// docs/superpowers/plans/2026-10-05-extension-ui-corpus-android.jsonl) drawn by ZoroX's renderer
+/// docs/superpowers/plans/2026-10-05-extension-ui-corpus-android.jsonl) drawn by Raja's renderer
 /// without a layout error. Skipped where that file isn't present.
 library;
 
@@ -8,10 +8,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_ui_session.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/ui_node_view.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_ui_session.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/ui_node_view.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 const _corpus = 'docs/superpowers/plans/2026-10-05-extension-ui-corpus-android.jsonl';
 

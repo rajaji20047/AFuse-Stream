@@ -7,8 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_subtitle_style.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_subtitle_style.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 void main() {
   const settings = PlayerSettings();

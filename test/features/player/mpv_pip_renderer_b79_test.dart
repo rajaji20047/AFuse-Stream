@@ -2,7 +2,7 @@
 // phone still holds the film around it (the stream cache proxy), and
 // on the keyframe before it otherwise (build 76).
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/player/presentation/mpv/mpv_pip_renderer.dart';
+import 'package:raja/features/player/presentation/mpv/mpv_pip_renderer.dart';
 
 const _mb = 1024 * 1024;
 

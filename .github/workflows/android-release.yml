@@ -84,10 +84,20 @@ jobs:
 
       # The build file warns but still builds (debug-signed) without a
       # keystore; this step proves the APK actually carries the Fuse
-      # release key before it is handed over as an artifact.
+      # release key before it is handed over as an artifact. apksigner,
+      # not keytool -printcert -jarfile: keytool reads the v1 (JAR)
+      # signature, which a modern AGP build does not reliably carry,
+      # so the keytool check failed on a correctly signed APK (run
+      # 45607443765). apksigner reads v1/v2/v3 and prints the signer
+      # certificate, so the log shows who signed it; the SHA-256
+      # fingerprint below is the Fuse release key's (a public identifier
+      # of the key, printed in every APK signed with it).
       - name: Verify release signature
         run: |
-          keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk | grep -q "Owner: CN=Fuse" && echo "APK signed with the Fuse release key" || { echo "::error::APK is not signed with the Fuse release key"; exit 1; }
+          APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then echo "::error::apksigner not found in the Android SDK"; exit 1; fi
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee /tmp/apksigner-certs.txt
+          grep -q "d7b07563e0c600d80b3619e33024cbc039e2e9145ff45fbe89e7b491cdbb4b54" /tmp/apksigner-certs.txt && echo "APK signed with the Fuse release key" || { echo "::error::APK is not signed with the Fuse release key"; exit 1; }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

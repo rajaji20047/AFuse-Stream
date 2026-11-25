@@ -3,9 +3,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/secure_token_storage.dart';
-import 'package:zorox/features/tracking/data/trakt_service.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/secure_token_storage.dart';
+import 'package:raja/features/tracking/data/trakt_service.dart';
 
 /// Trakt access tokens expire: after 7 days since Trakt's 2026 authentication
 /// change, 90 before it. Before this suite the service stored only

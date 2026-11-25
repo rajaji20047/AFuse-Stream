@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/app_lock/app_lock_controller.dart';
+import 'package:raja/features/app_lock/app_lock_controller.dart';
 
 /// App lock (v7): the lock state machine, with a fake authenticator and a
 /// fake clock.

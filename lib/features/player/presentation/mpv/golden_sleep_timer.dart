@@ -7,7 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../domain/sleep_timer.dart';
 import 'golden_player_theme.dart';

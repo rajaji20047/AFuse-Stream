@@ -2,15 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/features/extensions/providers/extensions_controller.dart';
-import 'package:zorox/features/home/presentation/home_provider.dart';
-import 'package:zorox/features/home/presentation/home_screen.dart';
-import 'package:zorox/features/home/presentation/home_state.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/features/extensions/providers/extensions_controller.dart';
+import 'package:raja/features/home/presentation/home_provider.dart';
+import 'package:raja/features/home/presentation/home_screen.dart';
+import 'package:raja/features/home/presentation/home_state.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Enough rows to overflow the dialog so the list can actually fling.
 const int _providerCount = 40;

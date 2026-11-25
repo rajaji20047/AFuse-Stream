@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/services/download_service.dart';
+import 'package:raja/core/services/download_service.dart';
 
 /// The download-location presets, resolved against a Documents directory —
 /// no device, no Hive, no picker.
@@ -57,7 +57,7 @@ void main() {
         DownloadLocationPreset.custom,
         reason:
             'the Documents folder itself is not a preset — the default '
-            'already means Documents/ZoroX, so storing it as custom would '
+            'already means Documents/Raja, so storing it as custom would '
             'be a second name for the same place',
       );
     });

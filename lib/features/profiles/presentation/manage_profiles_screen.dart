@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/notification_service.dart';
 import '../../app_lock/app_lock_passcode_flow.dart';
 import '../../app_lock/app_lock_provider.dart';
-import '../../account/data/zorox_account_notifier.dart';
+import '../../account/data/raja_account_notifier.dart';
 import '../data/fuse_profile.dart';
 import '../data/fuse_profiles_notifier.dart';
 import 'profile_create_screen.dart';
@@ -158,7 +158,7 @@ class _FuseProfileEditScreenState extends ConsumerState<FuseProfileEditScreen> {
   Widget build(BuildContext context) {
     final profiles = ref.watch(fuseProfilesProvider);
     final profile = _currentProfile(profiles);
-    final account = ref.watch(zoroxAccountProvider);
+    final account = ref.watch(rajaAccountProvider);
 
     // Deleted on another device (or just now): leave.
     if (profile == null) {
@@ -410,7 +410,7 @@ class _FuseProfileEditScreenState extends ConsumerState<FuseProfileEditScreen> {
   /// the collected account password, or null for a local profile.
   /// Null means the gate was cancelled.
   Future<String?> _passAuthGate(FuseProfile profile) async {
-    final loggedIn = ref.read(zoroxAccountProvider).loggedIn;
+    final loggedIn = ref.read(rajaAccountProvider).loggedIn;
     if (loggedIn) {
       return _askAccountPassword();
     }

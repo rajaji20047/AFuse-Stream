@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/features/explore/data/explore_mode_provider.dart';
+import 'package:raja/features/explore/data/explore_mode_provider.dart';
 
 /// Explore has one source (v5): Stremio add-ons. The TMDB "Movies & Shows"
 /// and AniList "Anime" sources were removed, so whatever an older build

@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/theme/theme_provider.dart';
-import 'package:zorox/features/player/domain/qoe_log.dart';
-import 'package:zorox/features/settings/presentation/app_version_provider.dart';
-import 'package:zorox/features/settings/presentation/cache_provider.dart';
-import 'package:zorox/features/settings/presentation/developer_options_provider.dart';
-import 'package:zorox/features/settings/presentation/developer_options_screen.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/settings_screen.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/theme/theme_provider.dart';
+import 'package:raja/features/player/domain/qoe_log.dart';
+import 'package:raja/features/settings/presentation/app_version_provider.dart';
+import 'package:raja/features/settings/presentation/cache_provider.dart';
+import 'package:raja/features/settings/presentation/developer_options_provider.dart';
+import 'package:raja/features/settings/presentation/developer_options_screen.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/features/settings/presentation/settings_screen.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// Answers the settings screens' reads without a storage stack, and keeps
 /// what the Developer Options switch writes. (The real StorageService over

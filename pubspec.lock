@@ -2066,10 +2066,10 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.4"
-  zorox_mpv_pip:
+  raja_mpv_pip:
     dependency: "direct main"
     description:
-      path: "packages/zorox_mpv_pip"
+      path: "packages/raja_mpv_pip"
       relative: true
     source: path
     version: "0.0.1"

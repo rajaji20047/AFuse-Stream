@@ -40,7 +40,7 @@
 ///     Settings → Player, off by default: the player then runs the
 ///     software renderer (GPU work is not allowed in the background)
 ///     and a native plugin taps the rendered frames into a
-///     sample-buffer PiP window (see `packages/zorox_mpv_pip`). Android
+///     sample-buffer PiP window (see `packages/raja_mpv_pip`). Android
 ///     PiP exists as before: the activity enters it through
 ///     [PlayerPlatformService] — a button in the top bar only, no
 ///     auto-enter when the viewer leaves the app mid-play (user
@@ -71,7 +71,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart'
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:vlc_player/vlc_player.dart';
-import 'package:zorox_mpv_pip/zorox_mpv_pip.dart';
+import 'package:raja_mpv_pip/raja_mpv_pip.dart';
 
 import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../../core/providers/device_info_provider.dart';
@@ -425,7 +425,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   bool _proxyRetrying = false;
 
   /// What the reachability check found per source, while resolving: the
-  /// original ZoroX's rows read "Checking…" (spinner) while a source is
+  /// original Raja's rows read "Checking…" (spinner) while a source is
   /// probed, then a green check when it answers — the viewer watches the
   /// sources resolve and picks one before anything plays. mpv used to mark
   /// every row `notChecked` (blank), so the list said nothing and flashed

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/clearance/sheet_strings.dart';
+import 'package:raja/core/network/clearance/sheet_strings.dart';
 
 void main() {
   tearDown(() => debugDefaultTargetPlatformOverride = null);

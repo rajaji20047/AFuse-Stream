@@ -7,7 +7,7 @@
 /// - Its page comes from the extension's own files (served by the app on the JVM). It reads the file beside it, asks
 ///   its interface and opens its dialogs. What it reports matches Android's own bridge, on all five, and a chrome
 ///   client takes its dialogs on the dialogs title.
-/// - On the JVM a chrome client that leaves the page's dialogs to the app gets ZoroX's own dialog, which the person
+/// - On the JVM a chrome client that leaves the page's dialogs to the app gets Raja's own dialog, which the person
 ///   answers; on Windows and Linux the page, a window of its own, steps aside while it shows.
 /// - A game that swallows Back goes after two Backs and 3 s.
 /// - Through the app's own screens the title page shows after, never "No streams found".
@@ -32,19 +32,19 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/extension_pages.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
-import 'package:zorox/shared/widgets/custom_widgets.dart';
-import 'package:zorox/shared/widgets/multimedia_card.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/extension_pages.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_full_screen.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/shared/widgets/custom_widgets.dart';
+import 'package:raja/shared/widgets/multimedia_card.dart';
 
 import 'support.dart';
 import 'test_extension.dart';
 
 const _holdS = int.fromEnvironment('CS3_GAME_HOLD_S');
-const _provider = 'ZoroX Test A';
+const _provider = 'Raja Test A';
 const _ask = 'Press back again to save & exit';
 
 /// What the game's page reports (Phase 7c part 2): the same on every platform, Android's own bridge included.
@@ -191,7 +191,7 @@ void main() {
 
         try {
           // Back once, then again.
-          final game = await play('https://zorox.invalid/game/1');
+          final game = await play('https://raja.invalid/game/1');
           var ended = false;
           game.call.whenComplete(() => ended = true).ignore();
           expect(game.window['fullScreen'], isTrue);
@@ -245,7 +245,7 @@ void main() {
 
           // Its own EXIT GAME button (the JVM: the page is the app's own).
           if (!Platform.isAndroid) {
-            final exit = await play('https://zorox.invalid/game/1');
+            final exit = await play('https://raja.invalid/game/1');
             final page = await loaded(exit);
             await whilePumping(tester, page.browser.evaluate("document.getElementById('exit').click()"));
             await whilePumping(tester, exit.call);
@@ -253,8 +253,8 @@ void main() {
             print('CS3-GAMES its EXIT GAME: saved and closed');
           }
 
-          // A game that swallows Back: ZoroX's escape.
-          final stuck = await play('https://zorox.invalid/game/stuck');
+          // A game that swallows Back: Raja's escape.
+          final stuck = await play('https://raja.invalid/game/stuck');
           await back();
           await pumpFor(tester, const Duration(milliseconds: 700));
           await back();
@@ -264,7 +264,7 @@ void main() {
           print('CS3-GAMES a game that swallows Back: closed after two Backs and 3 s');
 
           // A game whose chrome client takes its page's dialogs: the prompt answered later, with what it heard.
-          final withDialogs = await play('https://zorox.invalid/game/dialogs');
+          final withDialogs = await play('https://raja.invalid/game/dialogs');
           expect(await seen(), {..._seen, 'confirm': true, 'prompt': 'heard: Game ready'});
           await back();
           await pumpFor(tester, const Duration(seconds: 1));
@@ -273,17 +273,17 @@ void main() {
           expect(await state(), 'Game: saved by back');
           print('CS3-GAMES its chrome client: the dialogs answered as on Android');
 
-          // A game whose chrome client leaves the page's dialogs to the app: ZoroX's own dialog, which the person
+          // A game whose chrome client leaves the page's dialogs to the app: Raja's own dialog, which the person
           // answers (Android's WebView shows its own then). Its page waits in each dialog, so nothing here waits on a
           // script in it.
           if (!Platform.isAndroid) {
-            final left = await play('https://zorox.invalid/game/appdialogs');
+            final left = await play('https://raja.invalid/game/appdialogs');
             await pumpUntil(tester, () => pageOf(left) != null, what: "the game's page");
             final shown = find.byKey(ValueKey('extension-page-${pageOf(left)!.rid}'));
             final nativeWindow = Platform.isWindows || Platform.isLinux;
             Future<void> answer(String message, String button, {String? field, String? text}) async {
               final dialog = find.ancestor(of: find.text(message), matching: find.byType(AlertDialog));
-              await pumpUntil(tester, () => dialog.evaluate().isNotEmpty, what: "ZoroX's dialog: $message");
+              await pumpUntil(tester, () => dialog.evaluate().isNotEmpty, what: "Raja's dialog: $message");
               // A page that is a window of its own would cover it.
               if (nativeWindow) expect(shown, findsNothing, reason: 'the page steps aside');
               final input = find.descendant(of: dialog, matching: find.byType(TextField));
@@ -303,7 +303,7 @@ void main() {
             await back();
             await whilePumping(tester, left.call);
             expect(await state(), 'Game: saved by back');
-            print("CS3-GAMES ZoroX's own dialog: the page's dialogs answered by the person");
+            print("CS3-GAMES Raja's own dialog: the page's dialogs answered by the person");
           }
 
           // Through the app's own screens: Search, the title, Play, Back twice, and the title page again.

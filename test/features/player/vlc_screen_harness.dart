@@ -28,35 +28,35 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/services/download_service.dart';
-import 'package:zorox/core/storage/episode_watch_repository.dart';
-import 'package:zorox/core/storage/history_repository.dart';
-import 'package:zorox/core/storage/settings_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/providers/device_info_provider.dart';
-import 'package:zorox/core/providers/device_memory.dart';
-import 'package:zorox/features/library/presentation/history_provider.dart';
-import 'package:zorox/features/player/domain/source_check.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart'
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/services/download_service.dart';
+import 'package:raja/core/storage/episode_watch_repository.dart';
+import 'package:raja/core/storage/history_repository.dart';
+import 'package:raja/core/storage/settings_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/providers/device_memory.dart';
+import 'package:raja/features/library/presentation/history_provider.dart';
+import 'package:raja/features/player/domain/source_check.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart'
     show ProbeOutcome;
-import 'package:zorox/features/player/presentation/vlc/panel/player_panel.dart'
+import 'package:raja/features/player/presentation/vlc/panel/player_panel.dart'
     show SubtitleStyleBinding;
-import 'package:zorox/features/player/presentation/vlc/side_car_fetch.dart';
-import 'package:zorox/features/player/presentation/vlc/source_check_provider.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_screen.dart';
-import 'package:zorox/features/player/presentation/vlc/vlc_player_controls.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/tracking/data/sync_manager.dart';
-import 'package:zorox/features/tracking/data/tracking_service.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/features/player/presentation/vlc/side_car_fetch.dart';
+import 'package:raja/features/player/presentation/vlc/source_check_provider.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
+import 'package:raja/features/player/presentation/vlc/vlc_player_controls.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/tracking/data/sync_manager.dart';
+import 'package:raja/features/tracking/data/tracking_service.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'fake_vlc_engine.dart';
 
 const MethodChannel vlcChannel = MethodChannel('vlc_player');
 const MethodChannel pipChannel = MethodChannel(
-  'dev.toji.zorox.player/pip',
+  'dev.rajaji.raja.player/pip',
 );
 
 /// The texture path names its own view: `create` answers with the id, so a

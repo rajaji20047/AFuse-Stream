@@ -9,11 +9,11 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_client.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/features/addons/presentation/addon_providers.dart';
+import 'package:raja/core/addons/data/addon_client.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/features/addons/presentation/addon_providers.dart';
 
 const _bridgeUrl = 'https://bridge.test/manifest.json';
 

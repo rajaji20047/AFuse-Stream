@@ -34,7 +34,7 @@ class SyncConfig {
   );
 
   /// The redirect MyAnimeList's and AniList's clients have registered.
-  /// ZoroX's own browser catches it before it loads, so nothing listens
+  /// Raja's own browser catches it before it loads, so nothing listens
   /// there: lib/features/tracking/sign_in/.
   static const String signInRedirect = 'http://localhost';
 

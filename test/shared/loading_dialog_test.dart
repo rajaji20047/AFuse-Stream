@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/loading_dialog.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/loading_dialog.dart';
 
 /// Hosts the dialog behind a button so the test drives it the way the app
 /// does - `LoadingDialog.show` on a real route, barrier and all - rather than

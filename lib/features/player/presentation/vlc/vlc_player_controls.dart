@@ -158,7 +158,7 @@ class VlcPlayerControls extends ConsumerStatefulWidget {
   /// the button is absent.
   final ValueListenable<bool>? hasSubtitles;
 
-  /// The subtitle files ZoroX draws, for the subtitles button's lit
+  /// The subtitle files Raja draws, for the subtitles button's lit
   /// state. The engine's own track id says nothing about a file: the screen
   /// keeps libVLC's subtitle off under one, so without this the button reads
   /// as off while subtitles are on screen. Null where the screen does not
@@ -2283,7 +2283,7 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
       // Sources - so without this, a subtitle is two taps away behind a tab
       // a viewer has no reason to open, and a subtitle that is on but not in
       // the viewer's language looks like no subtitle at all. Lit while one
-      // is on - the engine's track or a file ZoroX is drawing (see
+      // is on - the engine's track or a file Raja is drawing (see
       // [_SubtitlesButton]). Only in the list while there is one to pick
       // (see [_onHasSubtitlesChanged]): the row has no width to spare on a
       // handset, and a hidden button still counts as an action for the
@@ -3144,7 +3144,7 @@ class _HoverChromeHoldState extends State<_HoverChromeHold> {
 ///
 /// Lit while any subtitle is on. Two sources, and the engine's track id
 /// covers only one of them: the screen keeps libVLC's subtitle off under a
-/// file ZoroX is drawing, so a file on screen reads as off through the
+/// file Raja is drawing, so a file on screen reads as off through the
 /// engine alone. The side-car list is a [ChangeNotifier], so it is read
 /// through a [ListenableBuilder]; the engine id through a
 /// [PlayerValueSelector], so a position tick four times a second is not a

@@ -7,7 +7,7 @@ import '../../../core/utils/layout_constants.dart';
 import '../../../core/utils/source_language.dart';
 import '../../../core/utils/stream_quality_sorter.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'player_settings_provider.dart';
 import 'widgets/source_language_dialog.dart';

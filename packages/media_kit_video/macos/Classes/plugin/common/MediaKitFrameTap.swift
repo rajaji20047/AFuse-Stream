@@ -1,11 +1,11 @@
 import CoreVideo
 import Foundation
 
-/// Frame-export tap for ZoroX's iOS mpv Picture-in-Picture.
+/// Frame-export tap for Raja's iOS mpv Picture-in-Picture.
 ///
-/// ZoroX fork addition (see FORK.md): the software renderer ([TextureSW])
-/// posts every completed frame on this notification. The ZoroX PiP plugin
-/// (`zorox_mpv_pip`) observes it and copies the frame into its own pool —
+/// Raja fork addition (see FORK.md): the software renderer ([TextureSW])
+/// posts every completed frame on this notification. The Raja PiP plugin
+/// (`raja_mpv_pip`) observes it and copies the frame into its own pool —
 /// it must copy synchronously on receipt, because [TextureSW] reuses a
 /// 3-buffer pool and the next render may overwrite this buffer.
 ///
@@ -18,12 +18,12 @@ import Foundation
 /// render, while the buffer is still locked by the renderer, so the memory
 /// is stable for the observer's synchronous copy.
 public extension Notification.Name {
-  static let zoroxMpvRenderedFrame = Notification.Name(
-    "ZoroXMpvRenderedFrame",
+  static let rajaMpvRenderedFrame = Notification.Name(
+    "RajaMpvRenderedFrame",
   )
 }
 
-/// Lock-guarded counters for the software render loop (+32, ZoroX).
+/// Lock-guarded counters for the software render loop (+32, Raja).
 ///
 /// The PiP plugin reads these from the frame tap's userInfo and prints
 /// them in its 1 s native diag snapshot, so a stall can be told apart
@@ -35,8 +35,8 @@ public extension Notification.Name {
 /// lives behind a lock. A single shared instance: the class reference
 /// is a `let` and the mutable state is locked, so it is safe to touch
 /// from any thread (Swift 6 concurrency-safe by construction).
-public final class ZoroXMpvRenderStats {
-  public static let shared = ZoroXMpvRenderStats()
+public final class RajaMpvRenderStats {
+  public static let shared = RajaMpvRenderStats()
 
   private let lock = NSLock()
   private var updateCount = 0

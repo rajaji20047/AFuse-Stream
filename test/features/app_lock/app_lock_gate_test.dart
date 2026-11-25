@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/features/app_lock/app_lock_controller.dart';
-import 'package:zorox/features/app_lock/app_lock_gate.dart';
-import 'package:zorox/features/app_lock/app_lock_provider.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/features/app_lock/app_lock_controller.dart';
+import 'package:raja/features/app_lock/app_lock_gate.dart';
+import 'package:raja/features/app_lock/app_lock_provider.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 /// App lock (v7): the gate over the app - lock screen on a cold start,
 /// one automatic prompt, Unlock after a failure, the privacy cover, and

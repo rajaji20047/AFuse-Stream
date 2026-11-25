@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/search/domain/search_plugin_filter.dart';
+import 'package:raja/features/search/domain/search_plugin_filter.dart';
 
 void main() {
   group('Search in plugins', () {

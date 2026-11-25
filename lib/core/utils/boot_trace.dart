@@ -7,8 +7,8 @@ import 'package:path_provider/path_provider.dart';
 /// Persistent startup breadcrumb log, added for the +18/+19 loading freeze
 /// (v20+20 diagnostic).
 ///
-/// Writes SYNCHRONOUSLY to Documents/zorox_boot.log — readable in
-/// Files → ZoroX (UIFileSharingEnabled is on) — so the last line shows
+/// Writes SYNCHRONOUSLY to Documents/raja_boot.log — readable in
+/// Files → Raja (UIFileSharingEnabled is on) — so the last line shows
 /// exactly where a stuck launch stopped, even if the app is force-closed
 /// afterwards. Every call is try/catch-guarded: logging must never break
 /// startup. Lines also go to stderr (and debugPrint, which is a no-op in
@@ -23,9 +23,9 @@ class BootTrace {
   static Future<void> init() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      _file = File('${dir.path}/zorox_boot.log');
+      _file = File('${dir.path}/raja_boot.log');
       mark('=== NEW LAUNCH ${DateTime.now().toIso8601String()} ===');
-      mark('BOOT TRACE INIT: ${dir.path}/zorox_boot.log');
+      mark('BOOT TRACE INIT: ${dir.path}/raja_boot.log');
     } catch (e) {
       // No file: stderr-only mode. Startup must go on.
       try {

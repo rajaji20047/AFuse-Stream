@@ -3,11 +3,11 @@
 // ahead of the v7 quality order, and nothing is hidden. "Last used" still
 // goes first and the mobile-data limit still splits the list.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/models/addon_stream_source.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/utils/source_language.dart';
-import 'package:zorox/features/player/domain/stream_resolver.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/addons/models/addon_stream_source.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/utils/source_language.dart';
+import 'package:raja/features/player/domain/stream_resolver.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 StreamResult s(String label) => StreamResult(
   url: 'https://a/${label.hashCode}.mkv',

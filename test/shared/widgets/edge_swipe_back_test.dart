@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/shared/widgets/edge_swipe_back.dart';
+import 'package:raja/shared/widgets/edge_swipe_back.dart';
 
 void main() {
   Future<int Function()> pump(WidgetTester tester, {bool enabled = true}) async {

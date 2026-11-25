@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/account/data/zorox_settings_sync.dart';
-import 'package:zorox/features/app_lock/app_lock_controller.dart';
-import 'package:zorox/features/app_lock/app_lock_passcode.dart';
-import 'package:zorox/features/app_lock/app_lock_provider.dart';
+import 'package:raja/features/account/data/raja_settings_sync.dart';
+import 'package:raja/features/app_lock/app_lock_controller.dart';
+import 'package:raja/features/app_lock/app_lock_passcode.dart';
+import 'package:raja/features/app_lock/app_lock_provider.dart';
 
 /// App lock (v1.0.1): the app's own passcode - how it is kept, how wrong
 /// tries are counted, and what happens to a lock switched on before it.

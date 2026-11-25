@@ -19,11 +19,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/router/app_router.dart';
-import 'package:zorox/features/details/presentation/widgets/premium_details_widgets.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/router/app_router.dart';
+import 'package:raja/features/details/presentation/widgets/premium_details_widgets.dart';
 
 import 'support.dart';
 import 'test_extension.dart';
@@ -32,7 +32,7 @@ import 'test_extension.dart';
 CloudStreamProvider? _providerA(ProviderContainer container) => container
     .read(extensionManagerProvider)
     .whereType<CloudStreamProvider>()
-    .where((p) => p.plugin.info.internalName == testExtensionInfo.internalName && p.info.name == 'ZoroX Test A')
+    .where((p) => p.plugin.info.internalName == testExtensionInfo.internalName && p.info.name == 'Raja Test A')
     .firstOrNull;
 
 void main() {
@@ -46,7 +46,7 @@ void main() {
         await pumpUntil(tester, () => _providerA(container) != null, what: 'the test extension listed');
         final item = MultimediaItem(
           title: 'Rich Title',
-          url: 'https://zorox.invalid/anime/rich',
+          url: 'https://raja.invalid/anime/rich',
           posterUrl: '',
           provider: _providerA(container)!.packageName,
           contentType: MultimediaContentType.anime,

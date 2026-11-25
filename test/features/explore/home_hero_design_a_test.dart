@@ -13,14 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart' show kAddonItemSource;
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/storage/library_repository.dart';
-import 'package:zorox/core/storage/storage_service.dart';
-import 'package:zorox/core/theme/olympus.dart';
-import 'package:zorox/features/explore/presentation/widgets/explore_carousel.dart';
-import 'package:zorox/features/explore/presentation/widgets/home_hero_meta.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/addons/models/addon_meta.dart' show kAddonItemSource;
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/storage/library_repository.dart';
+import 'package:raja/core/storage/storage_service.dart';
+import 'package:raja/core/theme/olympus.dart';
+import 'package:raja/features/explore/presentation/widgets/explore_carousel.dart';
+import 'package:raja/features/explore/presentation/widgets/home_hero_meta.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 MultimediaItem _bare(int i) => MultimediaItem(
   title: 'Title $i',

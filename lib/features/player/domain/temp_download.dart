@@ -20,7 +20,7 @@
 /// ranges after all. A new film gets its own file (the name is a
 /// stable key for the film + source — see [tempFileKeyFor]); the old
 /// file stays until Fuse closes.
-/// It never lands in Documents/ZoroX. Stale files from a crashed
+/// It never lands in Documents/Raja. Stale files from a crashed
 /// session are swept at app launch (see [sweepStale]).
 ///
 /// Re-opening a film whose temp file is already on disk opens the

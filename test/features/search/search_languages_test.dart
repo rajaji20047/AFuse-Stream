@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
 
 /// A title, a query, and whether the title answers it.
 typedef _Case = (String kind, String title, String query, bool answers);

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/network/clearance/resolve_diagnostic.dart';
+import 'package:raja/core/network/clearance/resolve_diagnostic.dart';
 
 void main() {
   ResolveDiagnostic diagnostic({Map<String, bool>? probe, bool failed = false, String stage = 'timed-out', Duration ago = const Duration(seconds: 42)}) {

@@ -13,37 +13,37 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zorox/core/addons/data/addon_client.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/extensions/base_provider.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/core/network/link_probe_service.dart';
-import 'package:zorox/core/nuvio/data/nuvio_repository.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/core/services/tmdb_service.dart';
-import 'package:zorox/features/cloudstream/presentation/cloudstream_badge.dart';
-import 'package:zorox/features/details/presentation/widgets/episode_picker_sheet.dart';
-import 'package:zorox/features/explore/data/explore_language_provider.dart';
-import 'package:zorox/features/explore/data/explore_tmdb_provider.dart';
-import 'package:zorox/features/search/data/search_history_store.dart';
-import 'package:zorox/features/search/presentation/search_provider.dart';
-import 'package:zorox/features/search/presentation/search_screen.dart';
-import 'package:zorox/features/search/presentation/search_sources.dart';
-import 'package:zorox/features/search/presentation/widgets/search_result_section.dart';
-import 'package:zorox/features/search/presentation/widgets/search_source_row.dart';
-import 'package:zorox/features/settings/presentation/general_settings_provider.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
-import 'package:zorox/features/sources/presentation/plugin_sources_sheet.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
-import 'package:zorox/shared/widgets/multimedia_card.dart';
+import 'package:raja/core/addons/data/addon_client.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/extensions/base_provider.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/core/network/link_probe_service.dart';
+import 'package:raja/core/nuvio/data/nuvio_repository.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/core/services/tmdb_service.dart';
+import 'package:raja/features/cloudstream/presentation/cloudstream_badge.dart';
+import 'package:raja/features/details/presentation/widgets/episode_picker_sheet.dart';
+import 'package:raja/features/explore/data/explore_language_provider.dart';
+import 'package:raja/features/explore/data/explore_tmdb_provider.dart';
+import 'package:raja/features/search/data/search_history_store.dart';
+import 'package:raja/features/search/presentation/search_provider.dart';
+import 'package:raja/features/search/presentation/search_screen.dart';
+import 'package:raja/features/search/presentation/search_sources.dart';
+import 'package:raja/features/search/presentation/widgets/search_result_section.dart';
+import 'package:raja/features/search/presentation/widgets/search_source_row.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/features/sources/presentation/plugin_sources_sheet.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/multimedia_card.dart';
 
 class _Manager extends ExtensionManager {
   @override
@@ -286,7 +286,7 @@ void main() {
     ) async {
       tvSize(tester);
       for (final (kind, id, label) in [
-        (SearchSourceKind.zorox, 'p.a', 'Fuse'),
+        (SearchSourceKind.raja, 'p.a', 'Fuse'),
         (SearchSourceKind.stremio, 'stremio:x', 'Stremio'),
         (SearchSourceKind.nuvio, 'nuvio', 'Nuvio'),
       ]) {

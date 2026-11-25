@@ -1,4 +1,4 @@
-/// Linux, in a GNOME session: ZoroX keeps the screen awake with one portal inhibitor however often it asks (the
+/// Linux, in a GNOME session: Raja keeps the screen awake with one portal inhibitor however often it asks (the
 /// player as playback goes on, a full-screen game back from the background), and a disable lets the screen sleep.
 /// wakelock_plus' own Linux plugin opens one per enable and closes only the newest: the first is shown leaking, then
 /// the app's wrapper ([installLinuxWakelock]) holding one.
@@ -17,7 +17,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/utils/linux_wakelock.dart';
+import 'package:raja/core/utils/linux_wakelock.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 

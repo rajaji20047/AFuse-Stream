@@ -7,8 +7,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/features/app_lock/app_lock_passcode.dart';
-import 'package:zorox/features/profiles/data/fuse_profile.dart';
+import 'package:raja/features/app_lock/app_lock_passcode.dart';
+import 'package:raja/features/profiles/data/fuse_profile.dart';
 
 void main() {
   group('FuseProfile', () {

@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/utils/image_fallbacks.dart';
-import 'package:zorox/shared/widgets/cards_wrapper.dart';
-import 'package:zorox/shared/widgets/shimmer_placeholder.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/utils/image_fallbacks.dart';
+import 'package:raja/shared/widgets/cards_wrapper.dart';
+import 'package:raja/shared/widgets/shimmer_placeholder.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:zorox/shared/widgets/thumbnail_error_placeholder.dart';
-import 'package:zorox/core/utils/responsive_breakpoints.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/shared/widgets/thumbnail_error_placeholder.dart';
+import 'package:raja/core/utils/responsive_breakpoints.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'details_layout_widgets.dart';

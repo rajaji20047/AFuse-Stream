@@ -1,9 +1,9 @@
 # An extension's pop-up in a release build (R8 on), through the UI, which `flutter test` cannot run:
 # add CNC's repository, install HDrezka, load its Home, see nothing of its own over the app, then open
-# its support pop-up from its row's Support button in ZoroX's sheet, close it, and open it again: closing puts
+# its support pop-up from its row's Support button in Raja's sheet, close it, and open it again: closing puts
 # it back behind Support (the owner, 2026-10-08). HDrezka shows the
 # pop-up once a day per install (clearState makes a fresh one); a pop-up it changes changes the text.
-#   (cd OUT_DIR && maestro test -e APP_ID=com.toji.zorox PATH_TO/extension_popups_release.yaml)
+#   (cd OUT_DIR && maestro test -e APP_ID=com.raja.fuse PATH_TO/extension_popups_release.yaml)
 appId: ${APP_ID}
 ---
 - launchApp:
@@ -57,7 +57,7 @@ appId: ${APP_ID}
     optional: true
 - assertNotVisible: ".*SUPPORT THE REPO.*"
 - takeScreenshot: popups-home
-# Its row now has Support, which opens the kept pop-up live in ZoroX's sheet.
+# Its row now has Support, which opens the kept pop-up live in Raja's sheet.
 - tapOn:
     point: "85%,92%"
 - scrollUntilVisible:

@@ -5,10 +5,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/features/addons/presentation/addon_sources_sheet.dart';
-import 'package:zorox/features/addons/presentation/widgets/addon_episode_card.dart';
-import 'package:zorox/features/details/presentation/widgets/hero_details_widgets.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/features/addons/presentation/addon_sources_sheet.dart';
+import 'package:raja/features/addons/presentation/widgets/addon_episode_card.dart';
+import 'package:raja/features/details/presentation/widgets/hero_details_widgets.dart';
 
 import 'stremio_page_fakes.dart';
 

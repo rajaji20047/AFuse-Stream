@@ -9,12 +9,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/builtin_addons.dart';
-import 'package:zorox/core/addons/data/merged_source_service.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/nuvio/data/nuvio_stream_service.dart';
-import 'package:zorox/core/nuvio/models/nuvio_models.dart';
-import 'package:zorox/features/addons/presentation/addon_sources_sheet.dart';
+import 'package:raja/core/addons/data/builtin_addons.dart';
+import 'package:raja/core/addons/data/merged_source_service.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/nuvio/data/nuvio_stream_service.dart';
+import 'package:raja/core/nuvio/models/nuvio_models.dart';
+import 'package:raja/features/addons/presentation/addon_sources_sheet.dart';
 
 import 'stremio_page_fakes.dart';
 

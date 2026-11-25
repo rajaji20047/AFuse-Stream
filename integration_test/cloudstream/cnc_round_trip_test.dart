@@ -1,4 +1,4 @@
-/// CNC Verse's settings, round trip, through ZoroX's sheet as a person uses it (the spec's "CNC
+/// CNC Verse's settings, round trip, through Raja's sheet as a person uses it (the spec's "CNC
 /// Verse's round trip"): its Settings button, Disney ticked the other way, Save settings, the restart
 /// alert's Yes. The app runs on, the extension reloads with Disney's provider gone (or back), Home's
 /// providers follow, and the way back restores them. Live: CNC's repository and CNC Verse come from
@@ -19,11 +19,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_provider.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/extensions/extension_manager.dart';
-import 'package:zorox/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_provider.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/features/cloudstream/presentation/extension_ui/extension_sheet.dart';
 
 import 'support.dart';
 

@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/domain/entity/multimedia_item.dart';
-import 'package:zorox/core/utils/stream_quality_sorter.dart';
-import 'package:zorox/features/settings/presentation/player_settings_provider.dart';
+import 'package:raja/core/domain/entity/multimedia_item.dart';
+import 'package:raja/core/utils/stream_quality_sorter.dart';
+import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 
 StreamResult sourceLabelled(String label, {String url = 'https://a/b.mkv'}) =>
     StreamResult(url: url, source: label, providerName: 'Plugin');

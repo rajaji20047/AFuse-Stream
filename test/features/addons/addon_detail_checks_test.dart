@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/addons/data/addon_repository.dart';
-import 'package:zorox/core/addons/models/addon_manifest.dart';
-import 'package:zorox/core/addons/models/addon_meta.dart';
-import 'package:zorox/core/network/clearance/clearance.dart';
-import 'package:zorox/core/network/clearance/clearance_solver.dart';
-import 'package:zorox/core/network/clearance/clearance_store.dart';
-import 'package:zorox/core/network/clearance/site_checks.dart';
-import 'package:zorox/core/network/clearance/site_keys.dart';
-import 'package:zorox/features/addons/presentation/addon_detail_screen.dart';
-import 'package:zorox/features/addons/presentation/addon_providers.dart';
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/core/addons/data/addon_repository.dart';
+import 'package:raja/core/addons/models/addon_manifest.dart';
+import 'package:raja/core/addons/models/addon_meta.dart';
+import 'package:raja/core/network/clearance/clearance.dart';
+import 'package:raja/core/network/clearance/clearance_solver.dart';
+import 'package:raja/core/network/clearance/clearance_store.dart';
+import 'package:raja/core/network/clearance/site_checks.dart';
+import 'package:raja/core/network/clearance/site_keys.dart';
+import 'package:raja/features/addons/presentation/addon_detail_screen.dart';
+import 'package:raja/features/addons/presentation/addon_providers.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 class _Repo extends AddonRepository {
   @override

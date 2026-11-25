@@ -227,7 +227,7 @@ class StorageService {
     return _settingsBox.get('theme_mode') as String?;
   }
 
-  /// Accent color (ZoroX v7, 2.9.6): the selected [ZoroxAccent] preset name
+  /// Accent color (Raja v7, 2.9.6): the selected [RajaAccent] preset name
   /// (e.g. 'gold', 'red'). `null` means the user never picked one — Gold.
   /// Stored by name (not by ARGB value) so a preset's shade can be tuned
   /// later without orphaning saved choices. Survives app restart; it does
@@ -1160,7 +1160,7 @@ class StorageService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // If keepRepos is true, preserve ZoroX extensions, Nuvio plugins, and Stremio addons
+      // If keepRepos is true, preserve Raja extensions, Nuvio plugins, and Stremio addons
       List<String>? savedExtensionRepos;
       List<String>? savedRemovedExtensionRepos;
       final savedExtensionRepoStrings = <String, String>{};
@@ -1312,7 +1312,7 @@ class StorageService {
         if (kDebugMode) debugPrint("Error clearing cache manager: $e");
       }
 
-      // ZoroX's own temporary files (downloaded subtitles and plugins).
+      // Raja's own temporary files (downloaded subtitles and plugins).
       await _clearAppTemp();
     } catch (e) {
       if (kDebugMode) debugPrint('Error clearing preferences: $e');
@@ -1348,7 +1348,7 @@ class StorageService {
     try {
       final supportDir = await getApplicationSupportDirectory();
 
-      // 1. Delete the extensions folder (ZoroX plugins, CloudStream's
+      // 1. Delete the extensions folder (Raja plugins, CloudStream's
       //    extensions) and 2. Nuvio's plugins folder. A file still open
       //    (Windows will not delete one) must not keep the steps below from
       //    running, so each folder fails on its own.
@@ -1414,7 +1414,7 @@ class StorageService {
     await _clearAppTemp();
   }
 
-  /// Deletes ZoroX's own temporary files ([appTempDirectory]), and on the
+  /// Deletes Raja's own temporary files ([appTempDirectory]), and on the
   /// desktops nothing else in the temporary directory.
   Future<void> _clearAppTemp() async {
     try {

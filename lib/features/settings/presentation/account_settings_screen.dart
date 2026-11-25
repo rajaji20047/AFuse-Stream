@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/layout_constants.dart';
 import '../../../core/router/app_router.dart';
 
-import 'package:zorox/l10n/generated/app_localizations.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import 'widgets/settings_widgets.dart';
 import 'widgets/settings_dialogs.dart';
@@ -28,7 +28,7 @@ import '../../tracking/sign_in/tracker_sign_in.dart';
 import '../../../core/providers/device_info_provider.dart';
 import '../../../core/storage/settings_repository.dart';
 import '../../../core/services/notification_service.dart';
-import '../../account/presentation/zorox_account_section.dart';
+import '../../account/presentation/raja_account_section.dart';
 
 class AccountSettingsScreen extends ConsumerStatefulWidget {
   final bool isEmbedded;
@@ -57,7 +57,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     super.dispose();
   }
 
-  /// Signs in to [provider] in ZoroX's own browser, in the check sheet.
+  /// Signs in to [provider] in Raja's own browser, in the check sheet.
   /// See lib/features/tracking/sign_in/.
   Future<SignInResult> _signIn(
     BuildContext context,
@@ -129,7 +129,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
             ),
             children: [
               const SizedBox(height: LayoutConstants.spacingXs),
-              const ZoroxAccountSection(),
+              const RajaAccountSection(),
               const SizedBox(height: LayoutConstants.spacingLg),
               SettingsGroup(
                 title: 'Subtitle Accounts',
@@ -766,7 +766,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                     title: 'Download location',
                     value:
                         generalSettings.downloadDirectory ??
-                        'On My iPhone › ZoroX',
+                        'On My iPhone › Raja',
                     onTap: () => showDownloadLocationDialog(
                       context,
                       ref,

@@ -1,4 +1,4 @@
-/// ZoroX's own test extension (packages/cs3_engine/test_extension, built by
+/// Raja's own test extension (packages/cs3_engine/test_extension, built by
 /// packages/cs3_engine/tool/build_test_extension.sh), installed straight into CloudStream's folder: the
 /// app installs extensions only from HTTPS repositories, and the tests serve this one from the computer
 /// running them. Pass its URL with `--dart-define=CS3_TEST_EXTENSION=http://10.0.2.2:8765/SkyStreamTest.cs3`
@@ -10,10 +10,10 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:zorox/core/cloudstream/cloudstream_engine.dart';
-import 'package:zorox/core/cloudstream/cloudstream_models.dart';
-import 'package:zorox/core/cloudstream/cloudstream_repository.dart';
-import 'package:zorox/core/cloudstream/extension_ui/ui_tree.dart';
+import 'package:raja/core/cloudstream/cloudstream_engine.dart';
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
+import 'package:raja/core/cloudstream/extension_ui/ui_tree.dart';
 
 import 'support.dart';
 
@@ -21,9 +21,9 @@ const testExtensionUrl = String.fromEnvironment('CS3_TEST_EXTENSION');
 
 const testExtensionInfo = CsPluginInfo(
   internalName: 'SkyStreamTest',
-  name: 'ZoroX Test',
+  name: 'Raja Test',
   url: testExtensionUrl,
-  repositoryUrl: 'https://zorox.invalid/test/repo.json',
+  repositoryUrl: 'https://raja.invalid/test/repo.json',
   version: 1,
   tvTypes: ['Movie'],
 );
