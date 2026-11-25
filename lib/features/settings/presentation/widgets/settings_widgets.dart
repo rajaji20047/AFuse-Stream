@@ -294,11 +294,14 @@ class _SettingsTileState extends State<SettingsTile> {
                       : Icon(widget.icon, color: primary, size: 21),
                 ),
                 title: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Flexible(
+                      flex: 2,
+                      fit: FlexFit.loose,
                       child: Text(
                         widget.title,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14.5,
@@ -328,6 +331,42 @@ class _SettingsTileState extends State<SettingsTile> {
                         ),
                       ),
                     ],
+                    // The row's value lives here, in the title's own Row,
+                    // not in ListTile.trailing: trailing takes its full
+                    // intrinsic width first, so a long value (a download
+                    // path, a custom URL) starved the title to a sliver
+                    // and the title wrapped one letter per line. Here the
+                    // two share the width and the value ellipsizes
+                    // instead, on every row that shows one.
+                    if (widget.value != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        flex: 1,
+                        fit: FlexFit.tight,
+                        child: Text(
+                          widget.value!,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (widget.showChevron && widget.trailing == null) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                      ),
+                    ],
                   ],
                 ),
                 subtitle: widget.subtitle != null
@@ -339,89 +378,46 @@ class _SettingsTileState extends State<SettingsTile> {
                         ),
                       )
                     : null,
+                // The value and the chevron live in the title Row now (see
+                // above); the trailing slot holds only a caller's own
+                // widget — a Switch, a swatch — which is fixed-size and
+                // cannot starve the title. A trailing on its own still
+                // replaces the chevron, as before: a Switch tile's
+                // `value:` belongs to the Switch itself, not to this
+                // tile, so `widget.value` is null there and nothing
+                // changes. The subtitle Text Colour row keeps its value
+                // ("Yellow") beside its swatch — the value is in the
+                // title Row, the swatch here.
                 trailing: widget.trailing != null
                     ? ExcludeFocus(
                         excluding: true,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // A value and a trailing widget together: the
-                            // value names the choice, the trailing shows
-                            // it. The subtitle Text Colour row is the one
-                            // that has both — "Yellow" beside its swatch.
-                            // A trailing on its own (a Switch) still
-                            // replaces the value + chevron, as before: a
-                            // Switch tile's `value:` belongs to the Switch
-                            // itself, not to this tile, so `widget.value`
-                            // is null there and nothing changes.
-                            if (widget.value != null) ...[
-                              Text(
-                                widget.value!,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                        child: showFocus
+                            ? SwitchTheme(
+                                data: SwitchThemeData(
+                                  thumbIcon:
+                                      WidgetStateProperty.resolveWith<Icon?>((
+                                        states,
+                                      ) {
+                                        if (states.contains(
+                                          WidgetState.selected,
+                                        )) {
+                                          return const Icon(
+                                            Icons.check_rounded,
+                                            size: 14,
+                                          );
+                                        } else {
+                                          return const Icon(
+                                            Icons.close_rounded,
+                                            size: 14,
+                                          );
+                                        }
+                                      }),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            showFocus
-                                ? SwitchTheme(
-                                    data: SwitchThemeData(
-                                      thumbIcon:
-                                          WidgetStateProperty.resolveWith<
-                                            Icon?
-                                          >((states) {
-                                            if (states.contains(
-                                              WidgetState.selected,
-                                            )) {
-                                              return const Icon(
-                                                Icons.check_rounded,
-                                                size: 14,
-                                              );
-                                            } else {
-                                              return const Icon(
-                                                Icons.close_rounded,
-                                                size: 14,
-                                              );
-                                            }
-                                          }),
-                                    ),
-                                    child: widget.trailing!,
-                                  )
-                                : widget.trailing!,
-                          ],
-                        ),
+                                child: widget.trailing!,
+                              )
+                            : widget.trailing!,
                       )
-                    : widget.value != null
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.value!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                          if (widget.showChevron) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              size: 20,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ],
-                        ],
-                      )
-                    : widget.showChevron
-                    ? const Icon(Icons.chevron_right_rounded, size: 20)
-                    : const SizedBox.shrink(),
+                    : null,
                 onTap: widget.onTap,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
