@@ -1,0 +1,5236 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_ar.dart';
+import 'app_localizations_as.dart';
+import 'app_localizations_az.dart';
+import 'app_localizations_be.dart';
+import 'app_localizations_bg.dart';
+import 'app_localizations_bn.dart';
+import 'app_localizations_cs.dart';
+import 'app_localizations_de.dart';
+import 'app_localizations_el.dart';
+import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_gu.dart';
+import 'app_localizations_he.dart';
+import 'app_localizations_hi.dart';
+import 'app_localizations_hr.dart';
+import 'app_localizations_hu.dart';
+import 'app_localizations_id.dart';
+import 'app_localizations_it.dart';
+import 'app_localizations_ja.dart';
+import 'app_localizations_kn.dart';
+import 'app_localizations_ko.dart';
+import 'app_localizations_lv.dart';
+import 'app_localizations_mk.dart';
+import 'app_localizations_ml.dart';
+import 'app_localizations_mr.dart';
+import 'app_localizations_nl.dart';
+import 'app_localizations_pa.dart';
+import 'app_localizations_pl.dart';
+import 'app_localizations_pt.dart';
+import 'app_localizations_ro.dart';
+import 'app_localizations_ru.dart';
+import 'app_localizations_sv.dart';
+import 'app_localizations_ta.dart';
+import 'app_localizations_te.dart';
+import 'app_localizations_tr.dart';
+import 'app_localizations_uk.dart';
+import 'app_localizations_ur.dart';
+import 'app_localizations_vi.dart';
+import 'app_localizations_zh.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'generated/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
+    Locale('ar', 'apc'),
+    Locale('as'),
+    Locale('az'),
+    Locale('be'),
+    Locale('bg'),
+    Locale('bn'),
+    Locale('cs'),
+    Locale('de'),
+    Locale('el'),
+    Locale('en'),
+    Locale('es'),
+    Locale('fr'),
+    Locale('gu'),
+    Locale('he'),
+    Locale('hi'),
+    Locale('hr'),
+    Locale('hu'),
+    Locale('id'),
+    Locale('it'),
+    Locale('ja'),
+    Locale('kn'),
+    Locale('ko'),
+    Locale('lv'),
+    Locale('mk'),
+    Locale('ml'),
+    Locale('mr'),
+    Locale('nl'),
+    Locale('pa'),
+    Locale('pl'),
+    Locale('pt'),
+    Locale('pt', 'BR'),
+    Locale('ro'),
+    Locale('ru'),
+    Locale('sv'),
+    Locale('ta'),
+    Locale('te'),
+    Locale('tr'),
+    Locale('uk'),
+    Locale('ur'),
+    Locale('vi'),
+    Locale('zh'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  ];
+
+  /// No description provided for @appTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse'**
+  String get appTitle;
+
+  /// No description provided for @languageName.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageName;
+
+  /// Manage tab, Stremio add-ons: the liveness probe for an installed add-on is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking add-on…'**
+  String get addonHealthChecking;
+
+  /// Manage tab, Stremio add-ons: the add-on answered its manifest ping. {ms} is the round-trip latency in milliseconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Working · {ms} ms'**
+  String addonHealthWorking(int ms);
+
+  /// Manage tab, Stremio add-ons: the add-on did not answer its manifest ping (offline, moved, or wrong URL).
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get addonHealthUnavailable;
+
+  /// No description provided for @home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get home;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @explore.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get explore;
+
+  /// No description provided for @exploreAnime.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore Anime'**
+  String get exploreAnime;
+
+  /// No description provided for @exploreMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore Movies'**
+  String get exploreMovies;
+
+  /// No description provided for @browse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get browse;
+
+  /// Subtitle under the Browse title: what the screen holds.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore by category'**
+  String get exploreByCategory;
+
+  /// Browse tab row title: Cinemeta's movie/top catalog.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular Movies'**
+  String get browsePopularMovies;
+
+  /// Browse tab row title: Cinemeta's series/top catalog.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular Series'**
+  String get browsePopularSeries;
+
+  /// Browse tab row title: Cinemeta's movie/imdbRating catalog, which Cinemeta names Featured.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured Movies'**
+  String get browseFeaturedMovies;
+
+  /// Browse tab row title: Cinemeta's series/imdbRating catalog, which Cinemeta names Featured.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured Series'**
+  String get browseFeaturedSeries;
+
+  /// Browse tab row title: Cinemeta's movie/year catalog for the current year.
+  ///
+  /// In en, this message translates to:
+  /// **'New Movies'**
+  String get browseNewMovies;
+
+  /// Browse tab row title: Cinemeta's series/year catalog for the current year.
+  ///
+  /// In en, this message translates to:
+  /// **'New Series'**
+  String get browseNewSeries;
+
+  /// Browse tab row title: Cinemeta's movie/top catalog, genre Action.
+  ///
+  /// In en, this message translates to:
+  /// **'Action Movies'**
+  String get browseActionMovies;
+
+  /// Browse tab row title: Cinemeta's movie/top catalog, genre Comedy.
+  ///
+  /// In en, this message translates to:
+  /// **'Comedy Movies'**
+  String get browseComedyMovies;
+
+  /// Browse tab row title: Cinemeta's series/top catalog, genre Drama.
+  ///
+  /// In en, this message translates to:
+  /// **'Drama Series'**
+  String get browseDramaSeries;
+
+  /// Browse tab row title: Cinemeta's movie/top catalog, genre Animation.
+  ///
+  /// In en, this message translates to:
+  /// **'Animation'**
+  String get browseAnimation;
+
+  /// Browse tab: shown under a row's title when its Cinemeta catalog request failed, next to a Retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this row'**
+  String get browseRowLoadFailed;
+
+  /// Shown on the Browse tab when no Stremio add-on with catalogs is installed.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet. Install a catalog add-on and its rows show up on this page.'**
+  String get browseEmptyHint;
+
+  /// Button and tooltip on the Browse tab that opens the Stremio add-ons screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Stremio add-ons'**
+  String get browseOpenAddons;
+
+  /// Subtitle of the Settings row on the Browse screen's APP card.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme, player, accounts, extensions & more'**
+  String get browseSettingsSubtitle;
+
+  /// Header of the APP card on the Browse screen (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get appSection;
+
+  /// No description provided for @library.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get library;
+
+  /// Subtitle under the Library title: what the screen holds.
+  ///
+  /// In en, this message translates to:
+  /// **'Your list, history and downloads'**
+  String get librarySubtitle;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @extensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions'**
+  String get extensions;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Available'**
+  String get updateAvailable;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @factoryReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory Reset'**
+  String get factoryReset;
+
+  /// No description provided for @startupError.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup Error'**
+  String get startupError;
+
+  /// No description provided for @general.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get general;
+
+  /// No description provided for @appTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'App Theme'**
+  String get appTheme;
+
+  /// Title of the Settings > General row and dialog that pick the named theme variant: Midnight / Arena Gold / Frost / Liquid Glass.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme style'**
+  String get themeStyle;
+
+  /// No description provided for @recordWatchHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Watch History'**
+  String get recordWatchHistory;
+
+  /// Title of the Settings > General switch that chooses between full screen and windowed. Desktop only: a phone, a tablet and an Android TV never see this row.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen mode'**
+  String get fullScreenMode;
+
+  /// Subtitle of that switch. Names both states and says what full screen costs/buys: the ten-foot TV layout comes with it, not just a bigger window.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen brings the ten-foot TV layout with it, for a computer plugged into a television. Off, the app stays windowed.'**
+  String get fullScreenModeSubtitle;
+
+  /// No description provided for @defaultHomeScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Home Screen'**
+  String get defaultHomeScreen;
+
+  /// No description provided for @titlePosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Title Position'**
+  String get titlePosition;
+
+  /// No description provided for @titlePositionBelowPoster.
+  ///
+  /// In en, this message translates to:
+  /// **'Below Poster'**
+  String get titlePositionBelowPoster;
+
+  /// No description provided for @titlePositionInsidePoster.
+  ///
+  /// In en, this message translates to:
+  /// **'Inside Poster'**
+  String get titlePositionInsidePoster;
+
+  /// Player settings group title: the playback group (default player, gestures, PiP).
+  ///
+  /// In en, this message translates to:
+  /// **'Playback'**
+  String get playback;
+
+  /// No description provided for @player.
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get player;
+
+  /// No description provided for @defaultPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Player'**
+  String get defaultPlayer;
+
+  /// No description provided for @playerEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'Player Engine'**
+  String get playerEngine;
+
+  /// Label of the libmpv engine segment in Player settings.
+  ///
+  /// In en, this message translates to:
+  /// **'libmpv Golden'**
+  String get playerEngineMpv;
+
+  /// Label of the libVLC engine segment in Player settings.
+  ///
+  /// In en, this message translates to:
+  /// **'libVLC'**
+  String get playerEngineVlc;
+
+  /// Label of the mpv PiP-mode segment in Player settings.
+  ///
+  /// In en, this message translates to:
+  /// **'mpv'**
+  String get pipModeMpv;
+
+  /// Label of the iOS PiP-mode segment in Player settings.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS'**
+  String get pipModeIos;
+
+  /// No description provided for @playerEngineMpvDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Golden player · PiP on Android'**
+  String get playerEngineMpvDetail;
+
+  /// No description provided for @playerEngineVlcDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'PiP on Android & iOS'**
+  String get playerEngineVlcDetail;
+
+  /// No description provided for @playerEngineNextVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Takes effect on the next video'**
+  String get playerEngineNextVideo;
+
+  /// No description provided for @leftGesture.
+  ///
+  /// In en, this message translates to:
+  /// **'Left Gesture'**
+  String get leftGesture;
+
+  /// No description provided for @rightGesture.
+  ///
+  /// In en, this message translates to:
+  /// **'Right Gesture'**
+  String get rightGesture;
+
+  /// No description provided for @doubleTapToSeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Double Tap to Seek'**
+  String get doubleTapToSeek;
+
+  /// No description provided for @swipeToSeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to Seek'**
+  String get swipeToSeek;
+
+  /// No description provided for @seekDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Seek Duration'**
+  String get seekDuration;
+
+  /// No description provided for @defaultResizeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Resize Mode'**
+  String get defaultResizeMode;
+
+  /// No description provided for @hardwareDecoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware Decoding'**
+  String get hardwareDecoding;
+
+  /// No description provided for @network.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get network;
+
+  /// No description provided for @dnsOverHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS over HTTPS'**
+  String get dnsOverHttps;
+
+  /// No description provided for @dohProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'DoH Provider'**
+  String get dohProvider;
+
+  /// No description provided for @githubProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Proxy'**
+  String get githubProxy;
+
+  /// No description provided for @githubProxySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route extension downloads through jsDelivr to bypass ISP blocks.'**
+  String get githubProxySubtitle;
+
+  /// No description provided for @manageExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Extensions'**
+  String get manageExtensions;
+
+  /// No description provided for @appData.
+  ///
+  /// In en, this message translates to:
+  /// **'App Data'**
+  String get appData;
+
+  /// No description provided for @resetDataKeepExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Data (Keep Extensions)'**
+  String get resetDataKeepExtensions;
+
+  /// No description provided for @developer.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer'**
+  String get developer;
+
+  /// No description provided for @developerOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer Options'**
+  String get developerOptions;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @version.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get version;
+
+  /// No description provided for @openSourceLicences.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licences'**
+  String get openSourceLicences;
+
+  /// No description provided for @openSourceLicencesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse is free software under the GNU GPL v3'**
+  String get openSourceLicencesSubtitle;
+
+  /// The GPL notice on the licence page: copyright, the licence, no warranty, where the source is.
+  ///
+  /// In en, this message translates to:
+  /// **'Copyright © 2025–2026 Fuse contributors.\nFuse is free software: you can redistribute it and modify it under the terms of the GNU General Public License, version 3. It comes with ABSOLUTELY NO WARRANTY. Its source code is at github.com/techforfriend/Fuse_android.'**
+  String get appLegalese;
+
+  /// No description provided for @enabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get enabled;
+
+  /// No description provided for @disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get disabled;
+
+  /// No description provided for @discord.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord'**
+  String get discord;
+
+  /// No description provided for @discordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join our server'**
+  String get discordSubtitle;
+
+  /// No description provided for @telegram.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram'**
+  String get telegram;
+
+  /// No description provided for @telegramSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join our channel'**
+  String get telegramSubtitle;
+
+  /// No description provided for @developedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Developed by {name}'**
+  String developedBy(String name);
+
+  /// No description provided for @system.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get system;
+
+  /// No description provided for @dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get dark;
+
+  /// No description provided for @light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get light;
+
+  /// No description provided for @later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get later;
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Now'**
+  String get updateNow;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @viewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get viewDetails;
+
+  /// The hero's My List button: saves the title to the user's list, or removes it.
+  ///
+  /// In en, this message translates to:
+  /// **'My List'**
+  String get myList;
+
+  /// The hero's Info button: opens the title's details page.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get info;
+
+  /// The compact banner on Home when no provider is installed: the title of the call to add one.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a plugin'**
+  String get addPlugin;
+
+  /// The compact banner on Home when no provider is installed: what adding a provider unlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a provider to unlock more'**
+  String get addPluginSubtitle;
+
+  /// The badge on the first hero slide, as the design draws it. A rank badge, not a sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'#1 TRENDING TODAY'**
+  String get trendingTodayBadge;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAll;
+
+  /// No description provided for @clearAllHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All History'**
+  String get clearAllHistory;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @none.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get none;
+
+  /// No description provided for @confirmDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Download'**
+  String get confirmDownload;
+
+  /// No description provided for @downloadNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Now'**
+  String get downloadNow;
+
+  /// No description provided for @selectSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Source'**
+  String get selectSource;
+
+  /// No description provided for @downloadUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Unavailable'**
+  String get downloadUnavailable;
+
+  /// No description provided for @selectAnotherSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Another Source'**
+  String get selectAnotherSource;
+
+  /// No description provided for @watchHistoryCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch history cleared'**
+  String get watchHistoryCleared;
+
+  /// No description provided for @downloadingUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update...'**
+  String get downloadingUpdate;
+
+  /// No description provided for @errorPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {message}'**
+  String errorPrefix(String message);
+
+  /// No description provided for @updateAvailableTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Available: {tag}'**
+  String updateAvailableTag(String tag);
+
+  /// No description provided for @selectProviderToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a provider to start watching'**
+  String get selectProviderToStart;
+
+  /// No description provided for @tapExtensionIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the extension icon in the corner'**
+  String get tapExtensionIcon;
+
+  /// No description provided for @continueWatching.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Watching'**
+  String get continueWatching;
+
+  /// No description provided for @noInternetConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'No Internet Connection'**
+  String get noInternetConnection;
+
+  /// No description provided for @siteNotReachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Site Not Reachable'**
+  String get siteNotReachable;
+
+  /// No description provided for @checkConnectionOrDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection or view your downloaded content.'**
+  String get checkConnectionOrDownloads;
+
+  /// No description provided for @tryVpnOrConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try accessing the site with a VPN or checking your internet connection.'**
+  String get tryVpnOrConnection;
+
+  /// No description provided for @errorDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error Details: {error}'**
+  String errorDetails(String error);
+
+  /// No description provided for @goToDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Downloads'**
+  String get goToDownloads;
+
+  /// No description provided for @selectProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Provider'**
+  String get selectProvider;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search movies, series...'**
+  String get searchHint;
+
+  /// No description provided for @searchFavoriteContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for your favorite content'**
+  String get searchFavoriteContent;
+
+  /// No description provided for @pressSearchOrEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Press the Search key or Enter to start'**
+  String get pressSearchOrEnter;
+
+  /// Header above the list of the user's previously submitted search queries.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent searches'**
+  String get recentSearches;
+
+  /// Tooltip and screen-reader label for the button that deletes one recent search.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {query} from search history'**
+  String removeFromSearchHistory(String query);
+
+  /// No description provided for @noResultsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found.'**
+  String get noResultsFound;
+
+  /// No description provided for @couldNotLoadTrending.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load trending items'**
+  String get couldNotLoadTrending;
+
+  /// No description provided for @popularMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular Movies'**
+  String get popularMovies;
+
+  /// No description provided for @popularTVShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular TV Shows'**
+  String get popularTVShows;
+
+  /// No description provided for @newMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'New Movies'**
+  String get newMovies;
+
+  /// No description provided for @newTVShows.
+  ///
+  /// In en, this message translates to:
+  /// **'New TV Shows'**
+  String get newTVShows;
+
+  /// No description provided for @featuredMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured Movies'**
+  String get featuredMovies;
+
+  /// No description provided for @featuredTVShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured TV Shows'**
+  String get featuredTVShows;
+
+  /// No description provided for @lastVideosTVShows.
+  ///
+  /// In en, this message translates to:
+  /// **'Last videos TV Shows'**
+  String get lastVideosTVShows;
+
+  /// No description provided for @downloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get downloads;
+
+  /// No description provided for @bookmarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks'**
+  String get bookmarks;
+
+  /// No description provided for @noDownloadsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No downloads yet'**
+  String get noDownloadsYet;
+
+  /// No description provided for @episodesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Episodes • {done} Done'**
+  String episodesCount(int count, int done);
+
+  /// No description provided for @deleteAllEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All Episodes'**
+  String get deleteAllEpisodes;
+
+  /// No description provided for @confirmDeleteAllEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all {count} episodes of \"{title}\" and their files?'**
+  String confirmDeleteAllEpisodes(int count, String title);
+
+  /// No description provided for @deleteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All'**
+  String get deleteAll;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @statusQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued...'**
+  String get statusQueued;
+
+  /// No description provided for @statusDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading...'**
+  String get statusDownloading;
+
+  /// No description provided for @statusFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get statusFinished;
+
+  /// No description provided for @statusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get statusFailed;
+
+  /// No description provided for @statusCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get statusCanceled;
+
+  /// No description provided for @statusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get statusPaused;
+
+  /// No description provided for @statusWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting...'**
+  String get statusWaiting;
+
+  /// No description provided for @fileNotFoundRemoving.
+  ///
+  /// In en, this message translates to:
+  /// **'File not found on disk. Removing record.'**
+  String get fileNotFoundRemoving;
+
+  /// No description provided for @fileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'File not found'**
+  String get fileNotFound;
+
+  /// No description provided for @deleteDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Download'**
+  String get deleteDownload;
+
+  /// No description provided for @confirmDeleteDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this download and its file?'**
+  String get confirmDeleteDownload;
+
+  /// No description provided for @libraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your library is empty'**
+  String get libraryEmpty;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @hindi.
+  ///
+  /// In en, this message translates to:
+  /// **'Hindi (हिंदी)'**
+  String get hindi;
+
+  /// No description provided for @kannada.
+  ///
+  /// In en, this message translates to:
+  /// **'Kannada (ಕನ್ನಡ)'**
+  String get kannada;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
+
+  /// No description provided for @recommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get recommended;
+
+  /// No description provided for @on.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get on;
+
+  /// No description provided for @off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get off;
+
+  /// No description provided for @installRemoveProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Install or remove providers'**
+  String get installRemoveProviders;
+
+  /// No description provided for @resetDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear settings & database, keep plugin'**
+  String get resetDataSubtitle;
+
+  /// No description provided for @factoryResetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all data, settings, and extensions'**
+  String get factoryResetSubtitle;
+
+  /// No description provided for @developerOptionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug tools & local play'**
+  String get developerOptionsSubtitle;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loading;
+
+  /// No description provided for @sec.
+  ///
+  /// In en, this message translates to:
+  /// **'sec'**
+  String get sec;
+
+  /// No description provided for @min.
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get min;
+
+  /// Tooltip on the player's rewind button, which Tooltip also publishes as the button's screen-reader label - so it names the action rather than showing a signed amount. {count} is the viewer's configured seek step: the picker offers 5, 10, 15, 20, 30, 60 and 120, so nothing here may hardcode ten. Counted in seconds at every step, including 60 and 120, because seconds are what the seek toast, the seek burst and the D-pad chain already count in; the settings row is the only place that says "2 min". Keep it to two or three words plus the number - it sits under a 48 dp glyph in a crowded transport row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Rewind 1 second} other{Rewind {count} seconds}}'**
+  String playerRewindSeconds(int count);
+
+  /// Tooltip on the player's fast-forward button, and its screen-reader label. The mirror of playerRewindSeconds in every respect: same {count}, same unit, same length budget.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Forward 1 second} other{Forward {count} seconds}}'**
+  String playerForwardSeconds(int count);
+
+  /// No description provided for @internalPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal (VLC)'**
+  String get internalPlayer;
+
+  /// The built-in player using the mpv engine, in the Default Player picker and its Settings row. The mirror of internalPlayer (VLC).
+  ///
+  /// In en, this message translates to:
+  /// **'Internal (mpv)'**
+  String get internalPlayerMpv;
+
+  /// No description provided for @builtInPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in player'**
+  String get builtInPlayer;
+
+  /// Label of the Home header's provider chip when plugins are installed but none is active. Tapping it opens the Select Provider dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get homeProviderSelect;
+
+  /// Lower-case lead-in of the Home header's provider line, followed by the active plugin's name: 'from Anikoto'. Tapping the line opens the Select Provider dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'from'**
+  String get homeProviderFrom;
+
+  /// The Home header's provider line when plugins are installed but none is active. Tapping it opens the Select Provider dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Select source'**
+  String get homeProviderSelectSource;
+
+  /// Empty state of the sources list for a title opened from Browse, when no installed plugin, Nuvio provider or Stremio add-on returned a link.
+  ///
+  /// In en, this message translates to:
+  /// **'No sources found — install a plugin or addon'**
+  String get sourcesNoneFound;
+
+  /// Title of the sources card on a title opened from Browse: plugins, Nuvio providers and Stremio add-ons together.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get sourcesCardTitle;
+
+  /// Action on the sources card of a movie opened from Browse; opens the list of sources from plugins, Nuvio and Stremio add-ons.
+  ///
+  /// In en, this message translates to:
+  /// **'Find sources'**
+  String get sourcesFind;
+
+  /// Action on the sources card of a series opened from Browse, naming the episode it looks up.
+  ///
+  /// In en, this message translates to:
+  /// **'Find sources: S{season} E{episode}'**
+  String sourcesFindForEpisode(int season, int episode);
+
+  /// Button in the empty sources state that opens the Plugins tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Plugins'**
+  String get sourcesOpenPlugins;
+
+  /// Loading line of the sources list for a title opened from Browse, while installed plugins, Nuvio providers and Stremio add-ons are being asked.
+  ///
+  /// In en, this message translates to:
+  /// **'Asking your plugins and add-ons…'**
+  String get sourcesAskingAll;
+
+  /// Toast when a plugin's home page fails to load and Home falls back to the key-free default feed. {name} is the plugin's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load {name} — showing the default feed instead'**
+  String homeFallbackToDefault(String name);
+
+  /// No description provided for @customNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom (not set)'**
+  String get customNotSet;
+
+  /// No description provided for @selectGesture.
+  ///
+  /// In en, this message translates to:
+  /// **'Select {side} Gesture'**
+  String selectGesture(String side);
+
+  /// No description provided for @left.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get left;
+
+  /// No description provided for @right.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get right;
+
+  /// No description provided for @selectSeekDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Seek Duration'**
+  String get selectSeekDuration;
+
+  /// No description provided for @subtitleSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Settings'**
+  String get subtitleSettings;
+
+  /// No description provided for @size.
+  ///
+  /// In en, this message translates to:
+  /// **'Size: {size}'**
+  String size(int size);
+
+  /// No description provided for @background.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get background;
+
+  /// No description provided for @customDohUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom DoH URL'**
+  String get customDohUrlLabel;
+
+  /// No description provided for @enterCustomDohUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your own DoH URL'**
+  String get enterCustomDohUrl;
+
+  /// No description provided for @chooseTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Theme'**
+  String get chooseTheme;
+
+  /// No description provided for @resetDataDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Data?'**
+  String get resetDataDialogTitle;
+
+  /// No description provided for @resetDataDialogContent.
+  ///
+  /// In en, this message translates to:
+  /// **'This will clear Settings, Favorites, and History. Your installed Extensions will NOT be deleted.'**
+  String get resetDataDialogContent;
+
+  /// No description provided for @factoryResetDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory Reset?'**
+  String get factoryResetDialogTitle;
+
+  /// No description provided for @factoryResetDialogContent.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete EVERYTHING: Favorites, History, Settings, and ALL Extensions. This cannot be undone.'**
+  String get factoryResetDialogContent;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language'**
+  String get selectLanguage;
+
+  /// No description provided for @synopsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Synopsis'**
+  String get synopsis;
+
+  /// No description provided for @noDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No description available.'**
+  String get noDescription;
+
+  /// No description provided for @videoAlreadyDownloadedPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'This video is already downloaded. What would you like to do?'**
+  String get videoAlreadyDownloadedPrompt;
+
+  /// No description provided for @playNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Play Now'**
+  String get playNow;
+
+  /// No description provided for @upNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Up Next'**
+  String get upNext;
+
+  /// No description provided for @deleteDownloadPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Download?'**
+  String get deleteDownloadPrompt;
+
+  /// No description provided for @deleteDownloadConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this file? This cannot be undone.'**
+  String get deleteDownloadConfirmation;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
+  /// No description provided for @yesDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Delete'**
+  String get yesDelete;
+
+  /// No description provided for @downloadPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Paused'**
+  String get downloadPaused;
+
+  /// No description provided for @downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get downloading;
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get remaining;
+
+  /// No description provided for @resume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resume;
+
+  /// No description provided for @pause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pause;
+
+  /// No description provided for @torrentContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Torrent Content'**
+  String get torrentContent;
+
+  /// No description provided for @audioTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Tracks'**
+  String get audioTracks;
+
+  /// No description provided for @noAudioTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio tracks found'**
+  String get noAudioTracks;
+
+  /// No description provided for @subtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles'**
+  String get subtitles;
+
+  /// No description provided for @options.
+  ///
+  /// In en, this message translates to:
+  /// **'Options'**
+  String get options;
+
+  /// No description provided for @noSubtitlesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No subtitle tracks found'**
+  String get noSubtitlesFound;
+
+  /// No description provided for @playbackSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback Speed'**
+  String get playbackSpeed;
+
+  /// No description provided for @subtitleOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Options'**
+  String get subtitleOptions;
+
+  /// No description provided for @hlsSubtitleWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'External subtitle files are not supported on the active HLS player on this platform.'**
+  String get hlsSubtitleWarning;
+
+  /// No description provided for @loadFromDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Load from Device'**
+  String get loadFromDevice;
+
+  /// No description provided for @syncDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync / Delay'**
+  String get syncDelay;
+
+  /// No description provided for @styleSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Style Settings'**
+  String get styleSettings;
+
+  /// No description provided for @searchOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Online (Subtitle Search)'**
+  String get searchOnline;
+
+  /// No description provided for @subtitleSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Sync'**
+  String get subtitleSync;
+
+  /// No description provided for @subtitleDelayWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle delay is not supported by the active playback engine.'**
+  String get subtitleDelayWarning;
+
+  /// No description provided for @resetDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Delay'**
+  String get resetDelay;
+
+  /// No description provided for @subtitleStyles.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Styles'**
+  String get subtitleStyles;
+
+  /// No description provided for @resetToDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to Default'**
+  String get resetToDefault;
+
+  /// No description provided for @fontSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Size'**
+  String get fontSize;
+
+  /// No description provided for @verticalPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical Position'**
+  String get verticalPosition;
+
+  /// No description provided for @textColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Color'**
+  String get textColor;
+
+  /// No description provided for @backgroundColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Background Color'**
+  String get backgroundColor;
+
+  /// No description provided for @backgroundOpacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Background Opacity'**
+  String get backgroundOpacity;
+
+  /// No description provided for @subtitleSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Search'**
+  String get subtitleSearch;
+
+  /// No description provided for @searchSubtitleNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search subtitle name...'**
+  String get searchSubtitleNameHint;
+
+  /// No description provided for @enterSearchSubtitlePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name or search to find subtitles.'**
+  String get enterSearchSubtitlePrompt;
+
+  /// No description provided for @noSubtitleResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found. Try another query.'**
+  String get noSubtitleResults;
+
+  /// No description provided for @downloadingApplyingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading & applying subtitle...'**
+  String get downloadingApplyingSubtitle;
+
+  /// No description provided for @failedToDownloadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download subtitle.'**
+  String get failedToDownloadSubtitle;
+
+  /// No description provided for @failedToLoadSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load subtitles. Please try again.'**
+  String get failedToLoadSubtitles;
+
+  /// No description provided for @noReposFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No repositories or plugins found'**
+  String get noReposFound;
+
+  /// No description provided for @downloadAllProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Download All'**
+  String get downloadAllProviders;
+
+  /// No description provided for @removeRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Repository'**
+  String get removeRepository;
+
+  /// No description provided for @addRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Repo'**
+  String get addRepo;
+
+  /// No description provided for @extensionsNotInRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions Not in Repositories'**
+  String get extensionsNotInRepos;
+
+  /// No description provided for @noLongerInRepo.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer listed in any repository'**
+  String get noLongerInRepo;
+
+  /// No description provided for @addRepoToBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a repository to browse and update plugins'**
+  String get addRepoToBrowse;
+
+  /// No description provided for @debugExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug Extensions'**
+  String get debugExtensions;
+
+  /// No description provided for @removeRepoConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {repoName}?'**
+  String removeRepoConfirm(String repoName);
+
+  /// No description provided for @removeRepoWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This will remove the repository and uninstall ALL its plugins.'**
+  String get removeRepoWarning;
+
+  /// No description provided for @addRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Repository'**
+  String get addRepository;
+
+  /// Short action label for a confirm button, e.g. adding a repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// Subtitle under the Extensions title: which plugin sources the screen lists.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse Repo, CloudStream (.cs3), Nuvio & Stremio'**
+  String get extensionsSubtitle;
+
+  /// No description provided for @pluginsSegmentInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get pluginsSegmentInstalled;
+
+  /// No description provided for @pluginsSegmentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Plugins'**
+  String get pluginsSegmentAdd;
+
+  /// No description provided for @pluginsEmptyInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Add Plugins to add a repository and install extensions.'**
+  String get pluginsEmptyInstalledHint;
+
+  /// Empty state of the Extensions > Repositories section: no repository added yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No SkyStream repos yet'**
+  String get noZoroxReposYet;
+
+  /// Helper text under the Add Repository URL field on the Extensions screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a CloudStream repository URL — its .cs3 extensions install from here using the repo.json + .cs3 flow.'**
+  String get pasteRepoUrlHint;
+
+  /// No description provided for @repoUrlOrShortcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository URL or Shortcode'**
+  String get repoUrlOrShortcode;
+
+  /// No description provided for @assetPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset Plugin'**
+  String get assetPlugin;
+
+  /// No description provided for @installed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get installed;
+
+  /// No description provided for @repositories.
+  ///
+  /// In en, this message translates to:
+  /// **'Repositories'**
+  String get repositories;
+
+  /// No description provided for @noExtensionsInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No Extensions Installed'**
+  String get noExtensionsInstalled;
+
+  /// No description provided for @browseRepositoriesToInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a repository below to discover and install extensions.'**
+  String get browseRepositoriesToInstall;
+
+  /// No description provided for @browseRepositories.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse Repositories'**
+  String get browseRepositories;
+
+  /// No description provided for @addRepoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a repository URL or shortcode to discover and install extension plugins.'**
+  String get addRepoDescription;
+
+  /// No description provided for @updateTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Update to {version}'**
+  String updateTo(String version);
+
+  /// No description provided for @install.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get install;
+
+  /// Extensions screen, a repository's plugin row: the button for a plugin the user installed from another repository. It installs this repository's copy in its place, and its updates then come from this repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Install from this repository'**
+  String get installFromThisRepository;
+
+  /// Title of the dialog that confirms installing a repository's copy of a plugin the user installed from another repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Install {pluginName} from this repository?'**
+  String installFromThisRepositoryTitle(String pluginName);
+
+  /// Body of the same dialog. {source} is the web address of the repository the installed copy came from, {version} the version this repository lists, {repoName} this repository's name.
+  ///
+  /// In en, this message translates to:
+  /// **'The copy you have came from {source}. This installs version {version} from {repoName} in its place, and from then on its updates come from {repoName} only.'**
+  String installFromThisRepositoryMessage(
+    String source,
+    String version,
+    String repoName,
+  );
+
+  /// No description provided for @discoverSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search community add-ons'**
+  String get discoverSearchHint;
+
+  /// No description provided for @discoverClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get discoverClearSearch;
+
+  /// No description provided for @discoverNeedsWebSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs quick setup on the add-on\'s website'**
+  String get discoverNeedsWebSetup;
+
+  /// No description provided for @discoverOpenSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up on the add-on website'**
+  String get discoverOpenSetup;
+
+  /// No description provided for @error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get error;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @pluginSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'{pluginName} Settings'**
+  String pluginSettings(String pluginName);
+
+  /// No description provided for @movies.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get movies;
+
+  /// No description provided for @series.
+  ///
+  /// In en, this message translates to:
+  /// **'Series'**
+  String get series;
+
+  /// No description provided for @anime.
+  ///
+  /// In en, this message translates to:
+  /// **'Anime'**
+  String get anime;
+
+  /// No description provided for @liveStreams.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Streams'**
+  String get liveStreams;
+
+  /// No description provided for @debug.
+  ///
+  /// In en, this message translates to:
+  /// **'DEBUG'**
+  String get debug;
+
+  /// No description provided for @extensionsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Updated 1 extension} other{Updated {count} extensions}}'**
+  String extensionsUpdated(num count);
+
+  /// Title of a toast shown after launch: a repository collection the user follows (a repository that lists other repositories, like the one the 'universe' shortcode adds) listed repositories it had not listed before, and the app added them. {source} is the collection's name, or a few names separated by commas; names are proper nouns and never translated. The toast's body lists the new repositories' names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{New repository in {source}} other{{count} new repositories in {source}}}'**
+  String extensionsNewRepositories(int count, String source);
+
+  /// Title of a toast shown after launch: a repository the user has added lists plugins it did not list before. They are available to install, not installed. {repository} is the repository's name, or a few names separated by commas; names are proper nouns and never translated. The toast's body lists the new plugins' names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{New plugin in {repository}} other{{count} new plugins in {repository}}}'**
+  String extensionsNewPlugins(int count, String repository);
+
+  /// No description provided for @invalidNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid navigation. Please go back.'**
+  String get invalidNavigation;
+
+  /// No description provided for @startOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Over'**
+  String get startOver;
+
+  /// No description provided for @goBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Back'**
+  String get goBack;
+
+  /// Button on the app-wide error screen that tears the widget tree down and rebuilds it. Recovery action, not a device reboot and not a retry of one request; sits next to goBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart App'**
+  String get restartApp;
+
+  /// No description provided for @resolving.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolving...'**
+  String get resolving;
+
+  /// No description provided for @downloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded'**
+  String get downloaded;
+
+  /// No description provided for @download.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get download;
+
+  /// No description provided for @debugOnlyFeature.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature is only available in Debug builds'**
+  String get debugOnlyFeature;
+
+  /// No description provided for @streamUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream URL'**
+  String get streamUrl;
+
+  /// No description provided for @play.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get play;
+
+  /// No description provided for @verifyingSourceSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying source & size...'**
+  String get verifyingSourceSize;
+
+  /// No description provided for @fileSaveLocationNotification.
+  ///
+  /// In en, this message translates to:
+  /// **'The file will be saved in your Downloads folder.'**
+  String get fileSaveLocationNotification;
+
+  /// No description provided for @resumingPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Resuming Playback'**
+  String get resumingPlayback;
+
+  /// No description provided for @pausedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused at {time}'**
+  String pausedAt(String time);
+
+  /// No description provided for @resumesAutomatically.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Resumes automatically in 1 second} other{Resumes automatically in {count} seconds}}'**
+  String resumesAutomatically(int count);
+
+  /// No description provided for @resumeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume Now'**
+  String get resumeNow;
+
+  /// No description provided for @playbackError.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback Error'**
+  String get playbackError;
+
+  /// No description provided for @confirmClearHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to remove all items from your watch history?'**
+  String get confirmClearHistory;
+
+  /// No description provided for @seasonWithNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {number}'**
+  String seasonWithNumber(Object number);
+
+  /// No description provided for @starting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting...'**
+  String get starting;
+
+  /// No description provided for @percentWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% watched'**
+  String percentWatched(int percent);
+
+  /// No description provided for @sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub'**
+  String get sub;
+
+  /// No description provided for @dub.
+  ///
+  /// In en, this message translates to:
+  /// **'Dub'**
+  String get dub;
+
+  /// No description provided for @playEpisode.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} S{season} E{episode}'**
+  String playEpisode(String label, Object season, Object episode);
+
+  /// No description provided for @playEpisodeOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} E{episode}'**
+  String playEpisodeOnly(String label, int episode);
+
+  /// No description provided for @debugTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug Tools'**
+  String get debugTools;
+
+  /// No description provided for @playLocalVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Play local video file'**
+  String get playLocalVideo;
+
+  /// No description provided for @playLocalVideoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play any video from device'**
+  String get playLocalVideoSubtitle;
+
+  /// No description provided for @streamUrlSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Play from network URL'**
+  String get streamUrlSubtitle;
+
+  /// No description provided for @streamTorrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream torrent'**
+  String get streamTorrent;
+
+  /// No description provided for @streamTorrentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a local torrent file to play'**
+  String get streamTorrentSubtitle;
+
+  /// No description provided for @loadPluginFromAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Load plugin from assets'**
+  String get loadPluginFromAssets;
+
+  /// No description provided for @enterVideoUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter video URL (http, magnet, etc.)'**
+  String get enterVideoUrlHint;
+
+  /// No description provided for @networkStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Network Stream'**
+  String get networkStream;
+
+  /// No description provided for @removedFromHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {title} from history'**
+  String removedFromHistory(String title);
+
+  /// No description provided for @custom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get custom;
+
+  /// No description provided for @refreshingLiveStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing live stream...'**
+  String get refreshingLiveStream;
+
+  /// No description provided for @removeFromHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from History'**
+  String get removeFromHistory;
+
+  /// No description provided for @live.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE'**
+  String get live;
+
+  /// No description provided for @volume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get volume;
+
+  /// Tooltip on the minus button of the player's speed and volume dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get decrease;
+
+  /// Tooltip on the plus button of the player's speed and volume dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get increase;
+
+  /// No description provided for @brightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get brightness;
+
+  /// No description provided for @fit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit'**
+  String get fit;
+
+  /// No description provided for @zoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get zoom;
+
+  /// No description provided for @stretch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stretch'**
+  String get stretch;
+
+  /// No description provided for @titleWithParam.
+  ///
+  /// In en, this message translates to:
+  /// **'Title: {title}'**
+  String titleWithParam(String title);
+
+  /// No description provided for @sourceWithParam.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {source}'**
+  String sourceWithParam(String source);
+
+  /// No description provided for @sizeWithParam.
+  ///
+  /// In en, this message translates to:
+  /// **'Size: {size}'**
+  String sizeWithParam(String size);
+
+  /// No description provided for @usingInternalPlayerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}. Using internal player.'**
+  String usingInternalPlayerError(String error);
+
+  /// Shown instead of handing a source to an external player, when the request the source only answers to cannot survive the hand-off. {headers} is a comma-separated list of HTTP header names - Referer, User-Agent, Cookie - left untranslated because they are protocol field names. Distinct from playerNotDetected: the other player may well be installed, and the reason is the request rather than the app.
+  ///
+  /// In en, this message translates to:
+  /// **'{playerName} cannot send {headers}. Using internal player.'**
+  String externalPlayerCannotSendHeaders(String playerName, String headers);
+
+  /// No description provided for @playerNotDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'{playerName} not detected. Starting internal player.'**
+  String playerNotDetected(String playerName);
+
+  /// No description provided for @seasonWithEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {number} ({count} Episodes)'**
+  String seasonWithEpisodes(Object number, int count);
+
+  /// No description provided for @cloudflare.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare'**
+  String get cloudflare;
+
+  /// No description provided for @google.
+  ///
+  /// In en, this message translates to:
+  /// **'Google'**
+  String get google;
+
+  /// No description provided for @adguard.
+  ///
+  /// In en, this message translates to:
+  /// **'AdGuard'**
+  String get adguard;
+
+  /// No description provided for @dnsWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS.Watch'**
+  String get dnsWatch;
+
+  /// No description provided for @quad9.
+  ///
+  /// In en, this message translates to:
+  /// **'Quad9'**
+  String get quad9;
+
+  /// No description provided for @dnsSb.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS.SB'**
+  String get dnsSb;
+
+  /// No description provided for @canadianShield.
+  ///
+  /// In en, this message translates to:
+  /// **'Canadian Shield'**
+  String get canadianShield;
+
+  /// No description provided for @tmdb.
+  ///
+  /// In en, this message translates to:
+  /// **'TMDB'**
+  String get tmdb;
+
+  /// No description provided for @selectSourceForPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Source for {playerName}'**
+  String selectSourceForPlayer(String playerName);
+
+  /// No description provided for @noPluginsInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins installed'**
+  String get noPluginsInstalled;
+
+  /// No description provided for @noPluginsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Install extensions to browse and stream content.'**
+  String get noPluginsMessage;
+
+  /// No description provided for @goToExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Extensions'**
+  String get goToExtensions;
+
+  /// No description provided for @availableSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Sources'**
+  String get availableSources;
+
+  /// No description provided for @seasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons'**
+  String get seasons;
+
+  /// No description provided for @episodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Episodes'**
+  String get episodes;
+
+  /// No description provided for @selectSourceToPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a source from \'Available Sources\' above to play.'**
+  String get selectSourceToPlay;
+
+  /// No description provided for @episodeCountOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 Episode} other{{count} Episodes}}'**
+  String episodeCountOnly(num count);
+
+  /// No description provided for @noEpisodesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No episodes found'**
+  String get noEpisodesFound;
+
+  /// No description provided for @local.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get local;
+
+  /// No description provided for @remote.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get remote;
+
+  /// No description provided for @torrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Torrent'**
+  String get torrent;
+
+  /// No description provided for @unlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get unlock;
+
+  /// No description provided for @lock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get lock;
+
+  /// No description provided for @sources.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get sources;
+
+  /// No description provided for @tracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks'**
+  String get tracks;
+
+  /// No description provided for @content.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get content;
+
+  /// No description provided for @stats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get stats;
+
+  /// No description provided for @resize.
+  ///
+  /// In en, this message translates to:
+  /// **'Resize'**
+  String get resize;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// Tooltip on the player control that plays the episode before this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @pip.
+  ///
+  /// In en, this message translates to:
+  /// **'PiP'**
+  String get pip;
+
+  /// No description provided for @rotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate'**
+  String get rotate;
+
+  /// No description provided for @windowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Windowed'**
+  String get windowed;
+
+  /// No description provided for @fullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen'**
+  String get fullscreen;
+
+  /// No description provided for @movieDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie Details'**
+  String get movieDetails;
+
+  /// No description provided for @showDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Details'**
+  String get showDetails;
+
+  /// No description provided for @tagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Tagline'**
+  String get tagline;
+
+  /// No description provided for @status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get status;
+
+  /// No description provided for @releaseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Release Date'**
+  String get releaseDate;
+
+  /// No description provided for @firstAirDate.
+  ///
+  /// In en, this message translates to:
+  /// **'First Air Date'**
+  String get firstAirDate;
+
+  /// No description provided for @originalLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Original Language'**
+  String get originalLanguage;
+
+  /// No description provided for @originCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin Country'**
+  String get originCountry;
+
+  /// No description provided for @budgetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get budgetLabel;
+
+  /// No description provided for @revenueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get revenueLabel;
+
+  /// No description provided for @paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get paused;
+
+  /// No description provided for @watched.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched'**
+  String get watched;
+
+  /// No description provided for @watching.
+  ///
+  /// In en, this message translates to:
+  /// **'Watching'**
+  String get watching;
+
+  /// No description provided for @lastWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Watched'**
+  String get lastWatched;
+
+  /// No description provided for @movie.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie'**
+  String get movie;
+
+  /// No description provided for @tvShow.
+  ///
+  /// In en, this message translates to:
+  /// **'TV Show'**
+  String get tvShow;
+
+  /// No description provided for @failedToLoadContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load content'**
+  String get failedToLoadContent;
+
+  /// No description provided for @director.
+  ///
+  /// In en, this message translates to:
+  /// **'Director'**
+  String get director;
+
+  /// No description provided for @creator.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator'**
+  String get creator;
+
+  /// No description provided for @showMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show More'**
+  String get showMore;
+
+  /// No description provided for @showLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Less'**
+  String get showLess;
+
+  /// No description provided for @viewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View All'**
+  String get viewAll;
+
+  /// No description provided for @seasonsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Seasons'**
+  String seasonsCount(int count);
+
+  /// No description provided for @noInternetError.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get noInternetError;
+
+  /// No description provided for @timeoutError.
+  ///
+  /// In en, this message translates to:
+  /// **'Request timed out. Please try again.'**
+  String get timeoutError;
+
+  /// No description provided for @serverError.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error. Please try again later.'**
+  String get serverError;
+
+  /// No description provided for @contentNotFoundError.
+  ///
+  /// In en, this message translates to:
+  /// **'Content not found.'**
+  String get contentNotFoundError;
+
+  /// No description provided for @accessDeniedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Access denied. Check your credentials.'**
+  String get accessDeniedError;
+
+  /// No description provided for @serviceUnavailableError.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is unavailable. Try again later.'**
+  String get serviceUnavailableError;
+
+  /// No description provided for @generalError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get generalError;
+
+  /// No description provided for @skip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get skip;
+
+  /// No description provided for @skipIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip Intro'**
+  String get skipIntro;
+
+  /// No description provided for @skipOutro.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip Outro'**
+  String get skipOutro;
+
+  /// No description provided for @skipRecap.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip Recap'**
+  String get skipRecap;
+
+  /// No description provided for @goLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Go Live'**
+  String get goLive;
+
+  /// No description provided for @dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
+
+  /// No description provided for @nextUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Up'**
+  String get nextUp;
+
+  /// No description provided for @sourceAttempt.
+  ///
+  /// In en, this message translates to:
+  /// **'Source {index} of {total}'**
+  String sourceAttempt(int index, int total);
+
+  /// No description provided for @trying.
+  ///
+  /// In en, this message translates to:
+  /// **'Trying'**
+  String get trying;
+
+  /// No description provided for @failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get failed;
+
+  /// No description provided for @selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get selected;
+
+  /// No description provided for @playing.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing'**
+  String get playing;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @openSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenSubtitles'**
+  String get openSubtitles;
+
+  /// No description provided for @subDl.
+  ///
+  /// In en, this message translates to:
+  /// **'SubDL'**
+  String get subDl;
+
+  /// No description provided for @subSource.
+  ///
+  /// In en, this message translates to:
+  /// **'SubSource'**
+  String get subSource;
+
+  /// Player settings row: the quality tier to prefer on a connection the viewer does not pay for by the byte. Named for the two transports a viewer recognises; the branch behind it is metered vs unmetered, so it also covers a VPN tunnel and offline playback. Its pair is mobileQualityPreference. Also the title of the dialog the row opens.
+  ///
+  /// In en, this message translates to:
+  /// **'Wi-Fi & Wired Quality Preference'**
+  String get unmeteredQualityPreference;
+
+  /// Subtitle on the Default Player row for a player the settings still point at but this platform does not list - a build that dropped it, or a settings box carried over. Shown so the choice the user made is still visible and still the selected one, rather than the dialog opening with nothing selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not offered on this device'**
+  String get playerNotOnThisDevice;
+
+  /// No description provided for @mobileQualityPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile Quality Preference'**
+  String get mobileQualityPreference;
+
+  /// No description provided for @anyNoPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'Any (no preference)'**
+  String get anyNoPreference;
+
+  /// No description provided for @subtitleAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle Accounts'**
+  String get subtitleAccounts;
+
+  /// No description provided for @accounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get accounts;
+
+  /// No description provided for @notLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Not logged in'**
+  String get notLoggedIn;
+
+  /// No description provided for @loggedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in as {username}'**
+  String loggedInAs(String username);
+
+  /// No description provided for @apiKeyConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key configured'**
+  String get apiKeyConfigured;
+
+  /// No description provided for @keyNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Key not set'**
+  String get keyNotSet;
+
+  /// No description provided for @testConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Connection'**
+  String get testConnection;
+
+  /// No description provided for @connectedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected Successfully'**
+  String get connectedSuccessfully;
+
+  /// No description provided for @connectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Failed'**
+  String get connectionFailed;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
+
+  /// No description provided for @noAccountRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? Register here'**
+  String get noAccountRegister;
+
+  /// No description provided for @apiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get apiKey;
+
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// No description provided for @fetchMyApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch My API Key'**
+  String get fetchMyApiKey;
+
+  /// No description provided for @keyVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Key Verified'**
+  String get keyVerified;
+
+  /// No description provided for @invalidApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid API Key'**
+  String get invalidApiKey;
+
+  /// No description provided for @openSubtitlesAuthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your account credentials for higher limits and ad-free subtitles.'**
+  String get openSubtitlesAuthSubtitle;
+
+  /// No description provided for @subDlAuthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your SubDL API Key directly, or fetch it using your account credentials below.'**
+  String get subDlAuthSubtitle;
+
+  /// No description provided for @orFetchViaAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'OR FETCH VIA ACCOUNT'**
+  String get orFetchViaAccount;
+
+  /// No description provided for @subSourceAuthSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SubSource works out-of-the-box, but you can add a personal official API key to override the default for better reliability.'**
+  String get subSourceAuthSubtitle;
+
+  /// No description provided for @apiKeyOptionalOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key (Optional Override)'**
+  String get apiKeyOptionalOverride;
+
+  /// No description provided for @enterKeyToOverrideDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter key to override default'**
+  String get enterKeyToOverrideDefault;
+
+  /// No description provided for @getApiKeyFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Get your API Key from SubSource Profile'**
+  String get getApiKeyFromProfile;
+
+  /// Note under the Wi-Fi & Wired and Mobile quality preference pickers: sources are sorted by the preference, and a stream offering several qualities (HLS) plays at it or the nearest below.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality is not guaranteed. Sources are sorted by this preference, and a stream that offers several qualities plays at it, or the nearest below. Playback depends on what the provider actually offers.'**
+  String get qualityNotGuaranteed;
+
+  /// No description provided for @keepSourcesOriginalOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep sources in original order'**
+  String get keepSourcesOriginalOrder;
+
+  /// No description provided for @openLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get openLink;
+
+  /// No description provided for @diagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get diagnostics;
+
+  /// No description provided for @viewLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View Logs'**
+  String get viewLogs;
+
+  /// No description provided for @viewLogsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View application activity & errors'**
+  String get viewLogsSubtitle;
+
+  /// No description provided for @clearCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear image and video cache'**
+  String get clearCache;
+
+  /// No description provided for @clearCacheSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Frees up storage used by cached images and videos'**
+  String get clearCacheSubtitle;
+
+  /// No description provided for @clearCacheDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cache?'**
+  String get clearCacheDialogTitle;
+
+  /// No description provided for @clearCacheDialogContent.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete cached images and video files. Your settings, history, and extensions will not be affected.'**
+  String get clearCacheDialogContent;
+
+  /// No description provided for @clearCacheNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get clearCacheNow;
+
+  /// No description provided for @cacheCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cleared'**
+  String get cacheCleared;
+
+  /// No description provided for @calculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating…'**
+  String get calculating;
+
+  /// No description provided for @playerControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Player Controls'**
+  String get playerControls;
+
+  /// No description provided for @playerControlsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show or hide player control buttons'**
+  String get playerControlsSubtitle;
+
+  /// No description provided for @showPip.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture-in-Picture button'**
+  String get showPip;
+
+  /// No description provided for @showResize.
+  ///
+  /// In en, this message translates to:
+  /// **'Resize button'**
+  String get showResize;
+
+  /// No description provided for @showRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate button'**
+  String get showRotate;
+
+  /// No description provided for @showPlaybackSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback speed button'**
+  String get showPlaybackSpeed;
+
+  /// Player Controls toggle for the volume button. Does not disable volume gestures or keyboard shortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume button'**
+  String get showVolume;
+
+  /// Player Controls toggle for previous and next episode transport buttons. The Episodes tab in Options remains available.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous / next episode buttons'**
+  String get showEpisodeNavigation;
+
+  /// Playback cannot start because no extension is selected to resolve the link.
+  ///
+  /// In en, this message translates to:
+  /// **'No provider selected.'**
+  String get playerNoProviderSelected;
+
+  /// Playback was requested with neither a link nor any already-resolved sources.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to play.'**
+  String get playerNothingToPlay;
+
+  /// The extension threw while listing sources. {error} is the raw, untranslated plugin message.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load sources: {error}'**
+  String playerCouldNotLoadSources(String error);
+
+  /// Source resolution was abandoned because the viewer left the player before it finished.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get playerResolutionCancelled;
+
+  /// The extension answered, but with nothing playable for this title.
+  ///
+  /// In en, this message translates to:
+  /// **'No streams found.'**
+  String get playerNoStreamsFound;
+
+  /// Why an encrypted stream will never open. Naming the scheme matters: Widevine is permanently out of reach.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel uses Widevine DRM, which needs a licence module this player does not have.'**
+  String get playerDrmWidevine;
+
+  /// Why an encrypted stream will never open. Naming the scheme matters: PlayReady is permanently out of reach.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel uses PlayReady DRM, which needs a licence module this player does not have.'**
+  String get playerDrmPlayReady;
+
+  /// Why an encrypted stream will not open: the player did ask the licence server, and what came back was not a key it could use.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel needs a decryption key from a licence server, and the server did not provide a usable one.'**
+  String get playerDrmLicenceServer;
+
+  /// Why an encrypted stream will not open: it is encrypted but nothing says how, so no key can be found.
+  ///
+  /// In en, this message translates to:
+  /// **'This channel is encrypted and no usable decryption key was provided.'**
+  String get playerDrmUnknown;
+
+  /// A failure during setup that carries no better explanation. {error} is a raw, untranslated engine message.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback failed: {error}'**
+  String playerPlaybackFailed(String error);
+
+  /// Every candidate has been tried and failed, with no single reason worth naming. {count} is how many were tried.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The only source would not play.} other{None of the {count} sources would play.}}'**
+  String playerNoSourcesPlayable(int count);
+
+  /// Every candidate has been tried and failed. {reason} is why the last one gave up - one of the playerReason* or playerDrm* strings.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The only source would not play - {reason}} other{None of the {count} sources would play - {reason}}}'**
+  String playerNoSourcesPlayableWithReason(int count, String reason);
+
+  /// Progress note while a magnet is being seeded, before the engine has anything to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing torrent…'**
+  String get playerPreparingTorrent;
+
+  /// Under 'Preparing torrent…' while a torrent gets ready: peers connected out of those known, the download speed (for example '1.4 MB/s') and how much of the torrent is loaded (for example '24 MB').
+  ///
+  /// In en, this message translates to:
+  /// **'{connected}/{total} peers · {speed} · {loaded} loaded'**
+  String playerTorrentPeers(
+    int connected,
+    int total,
+    String speed,
+    String loaded,
+  );
+
+  /// Why one source gave up. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'torrent could not be prepared'**
+  String get playerReasonTorrentNotPrepared;
+
+  /// Why one source gave up. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'source has no playable address'**
+  String get playerReasonNoPlayableAddress;
+
+  /// Why one source gave up. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'live feed dropped repeatedly'**
+  String get playerReasonLiveFeedDropped;
+
+  /// Why one source gave up. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'stream ended before its duration'**
+  String get playerReasonStreamEndedEarly;
+
+  /// Why one source gave up, when the engine reported a failure but described it in no way. A lowercase fragment, used like the other playerReason strings.
+  ///
+  /// In en, this message translates to:
+  /// **'playback error'**
+  String get playerReasonPlaybackError;
+
+  /// Why one source gave up: it played and then went quiet. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'the source stopped responding'**
+  String get playerReasonSourceStoppedResponding;
+
+  /// Why one source gave up: it never produced a frame at all. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'the source never started'**
+  String get playerReasonSourceNeverStarted;
+
+  /// Why one source gave up: the device lost connectivity while it was playing. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'the network dropped'**
+  String get playerReasonNetworkDropped;
+
+  /// Why one source gave up: the viewer pressed Skip rather than wait for it to open. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'you skipped this source'**
+  String get playerReasonSkipped;
+
+  /// Button that stops waiting on the source the player is opening and moves to the next candidate. Named for the source rather than just Skip, which on this screen already means Skip Intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip source'**
+  String get playerSkipSource;
+
+  /// Badge on a candidate whose health probe answered. Sits beside the existing trying and failed badges in the startup source list.
+  ///
+  /// In en, this message translates to:
+  /// **'Reachable'**
+  String get playerSourceReachable;
+
+  /// Why one source gave up: the engine reported the end of the media without ever showing a frame. A lowercase fragment: it is shown alone when there is only one source, or after a dash in playerNoSourcesPlayableWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'stream ended before it played'**
+  String get playerReasonStreamEndedBeforePlaying;
+
+  /// Headline on the card that replaces the frozen last frame when playback runs out with nothing queued behind it: a film, the last episode of a series, or an episode whose automatic advance the viewer declined during the credits. Below it sit startOver and close, plus a next-episode action when one was declined.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve finished {title}'**
+  String playerFinished(String title);
+
+  /// Status pill over a picture that has stopped moving while the player recovers the same source: from the moment it first re-issues its request, or checks the source after a failure, until the position moves again or another source is opened.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get playerReconnecting;
+
+  /// Status pill over the last picture while the device reports no network and the player waits for it to come back; also the start-up view's status line when nothing has played yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for network…'**
+  String get playerWaitingForNetwork;
+
+  /// The 1x entry in the playback speed list, named rather than numbered.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get playerSpeedNormal;
+
+  /// Tooltip for the button that reveals peer and download figures for a torrent source.
+  ///
+  /// In en, this message translates to:
+  /// **'Torrent stats'**
+  String get torrentStats;
+
+  /// Video fit mode that presents the picture at its native size. Sits alongside fit, zoom and stretch.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get original;
+
+  /// The engine refused to list its audio and subtitle tracks. {error} is a raw, untranslated engine message.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read tracks: {error}'**
+  String playerCouldNotReadTracks(String error);
+
+  /// Fallback name for an audio or subtitle track the stream left unnamed. {id} is the engine's track number.
+  ///
+  /// In en, this message translates to:
+  /// **'Track {id}'**
+  String playerTrackNumber(int id);
+
+  /// Label for the control that shifts subtitles earlier or later against the picture.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle delay'**
+  String get subtitleDelay;
+
+  /// A source the viewer picked by hand failed, so the session it interrupted was put back. Shown as a brief notice over the video.
+  ///
+  /// In en, this message translates to:
+  /// **'That source would not play. Restored the previous one.'**
+  String get playerSourceRestoredPrevious;
+
+  /// A file picked out of a torrent pack has no seeded bytes yet, so the torrent server cannot serve it.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not ready to stream yet.'**
+  String get playerTorrentFileNotReady;
+
+  /// Tooltip for the button that lists the files inside the torrent being played, so another one can be opened.
+  ///
+  /// In en, this message translates to:
+  /// **'Torrent files'**
+  String get torrentFiles;
+
+  /// Section heading over the audio tracks in the track sheet. Sits above the subtitles heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get audio;
+
+  /// The engine answered the track query with an empty audio list, which is not the same as the query failing.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio tracks reported'**
+  String get noAudioTracksReported;
+
+  /// Opens the device file picker to add a subtitle from storage as a track.
+  ///
+  /// In en, this message translates to:
+  /// **'Load subtitle file'**
+  String get loadSubtitleFile;
+
+  /// Opens the online subtitle search from the track sheet. Sits directly under loadSubtitleFile, hence the short wording.
+  ///
+  /// In en, this message translates to:
+  /// **'Search online'**
+  String get searchSubtitlesOnline;
+
+  /// Label on the query field of the online subtitle search sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Search online subtitles'**
+  String get searchOnlineSubtitles;
+
+  /// Title of the dialog that picks which language the online subtitle search asks for.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle language'**
+  String get subtitleLanguage;
+
+  /// A chosen search result could not be fetched or unpacked. The other results are still worth trying, so this says so.
+  ///
+  /// In en, this message translates to:
+  /// **'That subtitle could not be downloaded. Try another result.'**
+  String get subtitleDownloadFailed;
+
+  /// The online subtitle search itself failed rather than one provider within it. {error} is a raw, untranslated message.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed: {error}'**
+  String subtitleSearchFailed(String error);
+
+  /// The online subtitle search has not been run yet, so there is nothing to list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for a title to find subtitles for it.'**
+  String get subtitleSearchPrompt;
+
+  /// The online subtitle search ran and matched nothing. Names both things worth changing, because the language filter is the usual culprit.
+  ///
+  /// In en, this message translates to:
+  /// **'No subtitles found. Try a different title or language.'**
+  String get noSubtitlesFoundTryAnother;
+
+  /// Label under the seed and peer counts on the torrent stats card, shown as "12 / 34".
+  ///
+  /// In en, this message translates to:
+  /// **'Seeds / Peers'**
+  String get seedsPeers;
+
+  /// Under the subtitle preview in Subtitle Settings. A change takes effect at once, and the same settings are on the player's Subtitle style page (subtitleStyle), opened from its Subtitles tab, for changing them while watching.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes show at once. While a video plays, Subtitle style in the player\'s Subtitles tab changes them too.'**
+  String get subtitleAppearanceNote;
+
+  /// The subtitle font size row, and the title of the dialog it opens.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get textSize;
+
+  /// The subtitle glyph colour row, and the title of the dialog it opens.
+  ///
+  /// In en, this message translates to:
+  /// **'Text colour'**
+  String get subtitleTextColour;
+
+  /// Puts every subtitle appearance setting - size, text colour, background, outline, position, bold, font, text opacity and encoding - back to what a fresh install uses.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset subtitle appearance'**
+  String get resetSubtitleAppearance;
+
+  /// What resetSubtitleAppearance will actually do, named rather than left to be discovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to white text at size 22'**
+  String get resetSubtitleAppearanceSubtitle;
+
+  /// The caption drawn in the appearance preview. A pangram-style phrase in the reader's own script is worth more than a translation of this one.
+  ///
+  /// In en, this message translates to:
+  /// **'The quick brown fox'**
+  String get subtitlePreviewSample;
+
+  /// One-line summary of the subtitle background box. {color} is one of the color* strings, {percent} its opacity.
+  ///
+  /// In en, this message translates to:
+  /// **'{color} · {percent}%'**
+  String subtitleBackgroundSummary(String color, int percent);
+
+  /// Zero opacity is the only way to get no background box at all, so it is spelled out rather than shown as 0%.
+  ///
+  /// In en, this message translates to:
+  /// **'Opacity: off'**
+  String get opacityOff;
+
+  /// Live readout above the subtitle background opacity slider. {percent} is 0 to 100.
+  ///
+  /// In en, this message translates to:
+  /// **'Opacity: {percent}%'**
+  String opacityPercent(int percent);
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get colorWhite;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get colorYellow;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyan'**
+  String get colorCyan;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get colorGreen;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Magenta'**
+  String get colorMagenta;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get colorRed;
+
+  /// A caption colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get colorBlack;
+
+  /// A caption background colour the viewer can pick. Named, not shown as a hex value.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark grey'**
+  String get colorDarkGrey;
+
+  /// The row in the player's Subtitles tab that opens a page of every subtitle look setting, and that page's title. Style here is how subtitles look: size, colours, outline, position, font.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle style'**
+  String get subtitleStyle;
+
+  /// Second line of the Subtitle style row in the player: the text size and the text colour's name, for example "22 · White". {color} is one of the color* strings.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} · {color}'**
+  String subtitleStyleSummary(int size, String color);
+
+  /// How see-through the box behind subtitle text is. A row of the player's Subtitle style page, shown only while the box is on.
+  ///
+  /// In en, this message translates to:
+  /// **'Background opacity'**
+  String get subtitleBackgroundOpacity;
+
+  /// How thick the dark edge drawn around each subtitle letter is. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline'**
+  String get subtitleOutline;
+
+  /// Outline choice: no edge around the letters.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get subtitleOutlineNone;
+
+  /// Outline choice: a thin edge around the letters. What a fresh install uses.
+  ///
+  /// In en, this message translates to:
+  /// **'Thin'**
+  String get subtitleOutlineThin;
+
+  /// Outline choice: a medium edge around the letters.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get subtitleOutlineNormal;
+
+  /// Outline choice: a thick edge around the letters.
+  ///
+  /// In en, this message translates to:
+  /// **'Thick'**
+  String get subtitleOutlineThick;
+
+  /// How high subtitles sit above the bottom of the picture. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get subtitlePosition;
+
+  /// Position choice: subtitles in their usual place at the bottom of the picture, not lifted.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get subtitlePositionBottom;
+
+  /// Position choice: subtitles lifted from the bottom by {percent} percent of the picture's height, for example "+10%".
+  ///
+  /// In en, this message translates to:
+  /// **'+{percent}%'**
+  String subtitlePositionRaised(int percent);
+
+  /// Whether subtitle letters are bold. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog; its choices are the existing Off and On.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold'**
+  String get subtitleBold;
+
+  /// The typeface subtitles are drawn in. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get subtitleFont;
+
+  /// Font choice: the device's own typeface for subtitles. What a fresh install uses.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get subtitleFontDefault;
+
+  /// Font choice: a typeface with serifs, such as Times New Roman.
+  ///
+  /// In en, this message translates to:
+  /// **'Serif'**
+  String get subtitleFontSerif;
+
+  /// Font choice: a typeface whose letters are all the same width, such as Courier.
+  ///
+  /// In en, this message translates to:
+  /// **'Monospace'**
+  String get subtitleFontMonospace;
+
+  /// Font choice: the clean sans-serif Netflix subtitles are set in (the bundled Roboto face).
+  ///
+  /// In en, this message translates to:
+  /// **'Netflix'**
+  String get subtitleFontNetflix;
+
+  /// How see-through subtitle letters are. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Text opacity'**
+  String get subtitleTextOpacity;
+
+  /// An opacity as a percentage, for example "75%": the value of the opacity rows and the choices in their dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String subtitlePercent(int percent);
+
+  /// The character set subtitle files that are not Unicode are read in. Only old files need it: a wrong one shows letters as gibberish. A row of the player's Subtitle style page and of Subtitle Settings, and the title of its dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding'**
+  String get subtitleEncoding;
+
+  /// Encoding choice and the default: Unicode files are read as Unicode, and any other file as Western.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get subtitleEncodingAuto;
+
+  /// Encoding choice: the Windows-1250 code page, for Polish, Czech, Slovak, Hungarian, Croatian, Romanian and the like.
+  ///
+  /// In en, this message translates to:
+  /// **'Central European'**
+  String get subtitleEncodingCentralEuropean;
+
+  /// Encoding choice: the Windows-1251 code page, for Russian, Ukrainian, Bulgarian, Serbian and the like.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyrillic'**
+  String get subtitleEncodingCyrillic;
+
+  /// Encoding choice: the Windows-1252 code page, for English, French, German, Spanish and the like.
+  ///
+  /// In en, this message translates to:
+  /// **'Western'**
+  String get subtitleEncodingWestern;
+
+  /// Encoding choice: the Windows-1253 code page.
+  ///
+  /// In en, this message translates to:
+  /// **'Greek'**
+  String get subtitleEncodingGreek;
+
+  /// Encoding choice: the Windows-1254 code page.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish'**
+  String get subtitleEncodingTurkish;
+
+  /// Encoding choice: the Windows-1255 code page.
+  ///
+  /// In en, this message translates to:
+  /// **'Hebrew'**
+  String get subtitleEncodingHebrew;
+
+  /// Encoding choice: the Windows-1256 code page, for Arabic, Persian and Urdu.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get subtitleEncodingArabic;
+
+  /// Encoding choice: the Windows-1257 code page, for Estonian, Latvian and Lithuanian.
+  ///
+  /// In en, this message translates to:
+  /// **'Baltic'**
+  String get subtitleEncodingBaltic;
+
+  /// Encoding choice: the Windows-1258 code page.
+  ///
+  /// In en, this message translates to:
+  /// **'Vietnamese'**
+  String get subtitleEncodingVietnamese;
+
+  /// Heading over the subtitle settings that reach subtitles inside a video only when the player next opens: bold, font, text opacity and encoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Next time the player opens'**
+  String get subtitleNextTime;
+
+  /// Note under subtitleNextTime, and above the same four rows in Subtitle Settings. Subtitle files are the ones the app draws itself; subtitles inside the video are drawn by the video engine, which takes these four only when it starts.
+  ///
+  /// In en, this message translates to:
+  /// **'These change subtitle files at once, and subtitles inside the video the next time the player opens.'**
+  String get subtitleNextTimeNote;
+
+  /// Last row of the player's Subtitle style page: puts every subtitle look setting back to what a fresh install uses.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset subtitle style'**
+  String get resetSubtitleStyle;
+
+  /// What a screen reader says for the minus button beside a value stepped with Left/Right in the player's side panel - a subtitle size, a delay, a colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get stepperDecrease;
+
+  /// What a screen reader says for the plus button beside a value stepped with Left/Right in the player's side panel - a subtitle size, a delay, a colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get stepperIncrease;
+
+  /// Marks the source row the player is actually on, in the side panel's Sources tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing'**
+  String get playerNowPlaying;
+
+  /// Shown above the source list when the quality filter matched no source and was dropped.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched your quality preference, so every source is listed.'**
+  String get playerQualityFilterDropped;
+
+  /// Seeder count badge on a torrent source row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 seeder} other{{count} seeders}}'**
+  String playerSeeders(int count);
+
+  /// Side-panel tab listing the video files inside the torrent being played.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get playerFiles;
+
+  /// Compact episode number for a series with seasons.
+  ///
+  /// In en, this message translates to:
+  /// **'S{season} E{episode}'**
+  String playerSeasonEpisode(int season, int episode);
+
+  /// Compact episode number where the series has no seasons.
+  ///
+  /// In en, this message translates to:
+  /// **'E{episode}'**
+  String playerEpisodeNumber(int episode);
+
+  /// Episode runtime, in minutes, on a side-panel episode row.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String playerRuntimeMinutes(int count);
+
+  /// Label for the stepper that shifts the audio track earlier or later against the picture. Sits beside subtitleDelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio delay'**
+  String get audioDelay;
+
+  /// Note above online subtitle results when the ID lookup returned nothing and the search fell back to matching the title text. Must not claim the ID was wrong: some providers answer an empty list when no key is configured.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matched this title\'s ID. Showing title matches instead.'**
+  String get subtitleSearchTitleFallback;
+
+  /// Note above online subtitle results when the episode-scoped search returned nothing and the search widened to the whole season. Distinct from subtitleSearchTitleFallback: it must warn that the list covers other episodes too, because the viewer has to pick their own episode's file by name, and it must not mention an ID (the season pass is reached with no ID in play).
+  ///
+  /// In en, this message translates to:
+  /// **'No subtitles for this episode. These are for the whole season, so check the episode number in the file name.'**
+  String get subtitleSearchSeasonFallback;
+
+  /// Centre of the sources sheet while scrapers are still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching scrapers…'**
+  String get sourcesSearching;
+
+  /// Links were found but the quality/provider/verified filters hide all of them. The user has to relax a filter, not fix anything.
+  ///
+  /// In en, this message translates to:
+  /// **'No links match the current filters.'**
+  String get sourcesEmptyFiltered;
+
+  /// The title carries no TMDB id, so no scraper was ever asked. 'Search manually' is the sheet's own control and stays untranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'No TMDB id for this title. Use \'Search manually\' to enter one.'**
+  String get sourcesEmptyNoTmdbId;
+
+  /// No enabled scraper supports this media type. 'Nuvio Plugins' is the screen title and stays untranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'No scrapers enabled. Add one in \'Nuvio Plugins\'.'**
+  String get sourcesEmptyNoScrapers;
+
+  /// Every scraper threw. Nothing at this layer can tell being offline from the scrapers being broken, so both are named, connection first.
+  ///
+  /// In en, this message translates to:
+  /// **'Every scraper failed. Check your connection or update your scrapers.'**
+  String get sourcesEmptyAllFailed;
+
+  /// Some scrapers threw and the rest found nothing, so the empty list is not a verdict. {failed} is always at least 1 and always less than {total}.
+  ///
+  /// In en, this message translates to:
+  /// **'No links found. {failed} of {total} scrapers failed.'**
+  String sourcesEmptySomeFailed(int failed, int total);
+
+  /// Every scraper answered and none of them has this title. The one case where nothing is broken and there is nothing to fix.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your scrapers have this title.'**
+  String get sourcesEmptyNothingFound;
+
+  /// Player settings row: whether a video starts with a subtitle showing. A default for newly opened media only - it never stops the viewer choosing a track from the player's Subtitles menu. Also the title of the dialog the row opens.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles by default'**
+  String get subtitleDefault;
+
+  /// One of two choices for subtitleDefault, and the shipped default. 'Auto' means the app does not interfere: whatever subtitle the source and the player select is what plays.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get subtitleDefaultAuto;
+
+  /// Explanatory line under the 'Auto' choice in the subtitleDefault dialog. 'Your subtitle language' is the preference set in the player's own subtitle search, not the app language.
+  ///
+  /// In en, this message translates to:
+  /// **'A video starts with the subtitle its source selects, preferring your subtitle language when the source offers it.'**
+  String get subtitleDefaultAutoDetail;
+
+  /// Explanatory line under the 'Off' choice in the subtitleDefault dialog. The second sentence is load-bearing: Off is a default, not a lock, and the row must not read as 'subtitles are disabled'. The choice itself reuses the existing 'off' key.
+  ///
+  /// In en, this message translates to:
+  /// **'A video starts with no subtitle. You can still turn one on from the Subtitles menu in the player.'**
+  String get subtitleDefaultOffDetail;
+
+  /// Player settings row: the language whose audio track a video starts on, when the video has one. A default for newly opened media only - it never stops the viewer choosing a track from the player's Audio menu. Also the title of the dialog the row opens, which lists Auto and then the languages by their English names.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio language'**
+  String get audioLanguage;
+
+  /// Player settings group title: the audio, subtitles and quality group.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio, Subtitles & Quality'**
+  String get audioSubtitlesAndQuality;
+
+  /// The first choice in the audioLanguage dialog, and the shipped default. 'Auto' means the app does not interfere: whatever audio track the source selects is what plays.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get audioLanguageAuto;
+
+  /// Explanatory line under the 'Auto' choice in the audioLanguage dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'A video starts with the audio its source selects.'**
+  String get audioLanguageAutoDetail;
+
+  /// Title of the player setting controlling how much of a network stream is held in memory ahead of and behind playback.
+  ///
+  /// In en, this message translates to:
+  /// **'Network buffer'**
+  String get networkBuffer;
+
+  /// Explains the trade-off of the network buffer setting: smoother seeking and resilience, in exchange for memory.
+  ///
+  /// In en, this message translates to:
+  /// **'How much of a stream to hold in memory. A larger buffer makes seeking smoother and rides out a shaky connection, at the cost of memory.'**
+  String get networkBufferSubtitle;
+
+  /// Title of the dialog for choosing the network buffer size.
+  ///
+  /// In en, this message translates to:
+  /// **'Select network buffer'**
+  String get selectNetworkBuffer;
+
+  /// Startup screen status while the plugin is still being asked for this title's links. {plugin} is the plugin's name, a proper noun.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting links from {plugin}…'**
+  String playerGettingLinks(String plugin);
+
+  /// Status on one row of the source list: its reachability check is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get playerSourceChecking;
+
+  /// Status on the row of the source list the player is opening right now, before its first picture.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening…'**
+  String get playerSourceOpening;
+
+  /// Reachability column of the source list, for a link nobody has checked: the check only looks at the top few links, and cannot look at torrents or local files at all. Deliberately not 'Unknown', which reads as a verdict that something is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get playerSourceNotChecked;
+
+  /// Why one source gave up: it was opened without having been checked, the reachability check then got no answer from it, and the player went back to a source the check had vouched for. Matches the row's "Unknown": no answer is not proof the link is dead. A lowercase fragment, like the other playerReason strings: shown after the source's name.
+  ///
+  /// In en, this message translates to:
+  /// **'no answer from the link'**
+  String get playerReasonNoAnswer;
+
+  /// Status on a row of the source list for a link that was opened and would not play, or stopped playing. It may still be reachable - the reachability column says so separately.
+  ///
+  /// In en, this message translates to:
+  /// **'Unplayable'**
+  String get playerSourceUnplayable;
+
+  /// Reachability column of the source list, beside 'Reachable', for a link whose server answered but ignores byte ranges: it plays, but only from its start, so the viewer cannot jump ahead and a resume starts over. Keep it as short as 'Reachable'.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t seek'**
+  String get playerSourceCannotSeek;
+
+  /// Reachability column of the source list, for a link that answered with a web page - a link generator, a login or a missing-file page - rather than anything that plays. Keep it as short as 'Reachable'.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a video'**
+  String get playerSourceNotVideo;
+
+  /// Title of the Nuvio source card on a TMDB details screen. Sits beside the 'Available sources' card, which is the Fuse plugin system; the two are peers. 'Nuvio' is the name of the third-party scraper project and is never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Nuvio plugins'**
+  String get nuvioPlugins;
+
+  /// Action inside the Nuvio card on a MOVIE, which opens the sources sheet and starts the scrapers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for streams'**
+  String get nuvioSearchForStreams;
+
+  /// Action inside the Nuvio card on a SERIES. A series needs a season and an episode before there is anything to scrape, so this opens the episode picker rather than the sources sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an episode'**
+  String get nuvioChooseEpisode;
+
+  /// Pill in the Nuvio card header saying how many scrapers are switched on and supported on this platform. The card is hidden entirely when the count would be zero, so the zero case never renders.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 scraper} other{{count} scrapers}}'**
+  String nuvioScraperCount(int count);
+
+  /// Title of the Stremio source card on an add-on details screen. Sits in the same place, and is drawn the same way, as the Nuvio card on a TMDB details screen. 'Stremio' is the name of the third-party add-on ecosystem and is never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Stremio add-ons'**
+  String get stremioAddons;
+
+  /// Action inside the Stremio card on a MOVIE, which opens the sources sheet and asks every installed stream add-on.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Stremio add-ons'**
+  String get stremioSearchAddons;
+
+  /// Action inside the Stremio card on a SERIES. The card is a shortcut to one episode - the first of the selected season - and names it, because the episode list further down the page is how any other episode is reached. Replaced 'Play S1 E1', which claimed the tap would start playback when it opens a list of links.
+  ///
+  /// In en, this message translates to:
+  /// **'Search add-ons: S{season} E{episode}'**
+  String stremioSearchAddonsForEpisode(int season, int episode);
+
+  /// Pill in the Stremio card header saying how many installed add-ons can answer a stream request. Catalog-only add-ons are not counted, and the card is hidden entirely when the count would be zero, so the zero case never renders.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 add-on} other{{count} add-ons}}'**
+  String stremioAddonCount(int count);
+
+  /// Stremio sources sheet header: opens the free-text filter over add-on and provider names.
+  ///
+  /// In en, this message translates to:
+  /// **'Search links'**
+  String get addonSourcesSearchTooltip;
+
+  /// Stremio sources sheet header: hides the search field and clears the query.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get addonSourcesCloseSearchTooltip;
+
+  /// Stremio sources sheet search field placeholder. Users type an add-on name (Torrentio), an inner provider (VegaMovies), or a quality token.
+  ///
+  /// In en, this message translates to:
+  /// **'Add-on, provider, quality…'**
+  String get addonSourcesSearchHint;
+
+  /// Stremio sources sheet empty state when HD/kind chips or the text search hide every link.
+  ///
+  /// In en, this message translates to:
+  /// **'No links match. Clear search or try \"All\".'**
+  String get addonSourcesNoMatchFilter;
+
+  /// Installed add-ons list on the Manage tab: placeholder for filtering by name, id, or resource.
+  ///
+  /// In en, this message translates to:
+  /// **'Search installed add-ons…'**
+  String get addonManageSearchHint;
+
+  /// Installed add-ons list empty state when the search box filters everything out.
+  ///
+  /// In en, this message translates to:
+  /// **'No installed add-on matches \"{query}\".'**
+  String addonManageNoMatch(String query);
+
+  /// Name of CloudStream, the app whose extensions Fuse runs; a proper noun, never translated. Shown on the CloudStream screen and on badges marking its providers.
+  ///
+  /// In en, this message translates to:
+  /// **'CloudStream'**
+  String get cloudStream;
+
+  /// Search: tag on a section of Fuse extensions' results; the app's name, never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuse'**
+  String get searchTagSkyStream;
+
+  /// Search: tag on a section of a Stremio add-on's results; a proper noun, never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Stremio'**
+  String get searchTagStremio;
+
+  /// Search: tag on Nuvio's section, whose results open Nuvio's sources; a proper noun, never translated.
+  ///
+  /// In en, this message translates to:
+  /// **'Nuvio'**
+  String get searchTagNuvio;
+
+  /// Search: a Nuvio series result couldn't load its seasons from TMDB, so its episode picker can't open.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this series\' episodes'**
+  String get searchNuvioSeriesFailed;
+
+  /// Title of the screen, and of its Settings tile, for managing CloudStream extensions.
+  ///
+  /// In en, this message translates to:
+  /// **'CloudStream Extensions'**
+  String get cloudStreamExtensions;
+
+  /// Subtitle of the Settings tile that opens the CloudStream screen. ".cs3" is a file extension; keep it.
+  ///
+  /// In en, this message translates to:
+  /// **'Install and manage CloudStream (.cs3) extensions'**
+  String get cloudStreamExtensionsSubtitle;
+
+  /// Explains the CloudStream screen's switch while it is on.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers from installed extensions appear on Home, in search and in the provider list.'**
+  String get cloudStreamOn;
+
+  /// Explains the CloudStream screen's switch while it is off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: no CloudStream extension is loaded, and their providers are hidden everywhere. Nothing is uninstalled.'**
+  String get cloudStreamOff;
+
+  /// Button that checks every CloudStream repository for new extension versions.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Updates'**
+  String get cloudStreamCheckUpdates;
+
+  /// The same button when updates are known; count is how many installed extensions have one.
+  ///
+  /// In en, this message translates to:
+  /// **'Check Updates ({count})'**
+  String cloudStreamCheckUpdatesCount(int count);
+
+  /// The check-updates button while the check runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get cloudStreamChecking;
+
+  /// Title of the dialog that adds a CloudStream repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Add CloudStream Repository'**
+  String get cloudStreamAddRepositoryTitle;
+
+  /// Body of the add-repository dialog. repo.json, plugins.json, cloudstreamrepo:// and megarepo are literal names; keep them.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a repository URL (repo.json), a plugin list URL (plugins.json) or a cloudstreamrepo:// link, or enter a shortcode such as megarepo.'**
+  String get cloudStreamAddRepositoryMessage;
+
+  /// Confirms the add-repository dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get cloudStreamAdd;
+
+  /// Message after a CloudStream repository was added: its name (a proper noun) and how many extensions it offers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Added {name} · 1 extension} other{Added {name} · {count} extensions}}'**
+  String cloudStreamRepositoryAdded(int count, String name);
+
+  /// Adding a CloudStream repository failed; error is the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add repository: {error}'**
+  String cloudStreamCouldNotAdd(String error);
+
+  /// After checking for updates: no installed CloudStream extension has a newer version.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is up to date'**
+  String get cloudStreamUpToDate;
+
+  /// After checking for updates: how many installed CloudStream extensions have a newer version.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 update available} other{{count} updates available}}'**
+  String cloudStreamUpdatesAvailable(int count);
+
+  /// After checking for updates: the repositories that could not be reached, by name (proper nouns), separated by commas.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check {names}'**
+  String cloudStreamCouldNotCheck(String names);
+
+  /// Refreshing one CloudStream repository failed: its name (a proper noun) and the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check {name}: {error}'**
+  String cloudStreamCouldNotCheckRepository(String name, String error);
+
+  /// Confirms removing a CloudStream repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get cloudStreamRemove;
+
+  /// Removing a CloudStream repository failed: its name (a proper noun) and the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove {name}: {error}'**
+  String cloudStreamCouldNotRemove(String name, String error);
+
+  /// The CloudStream screen's repositories tab before any repository was added.
+  ///
+  /// In en, this message translates to:
+  /// **'No repositories yet'**
+  String get cloudStreamNoRepositories;
+
+  /// Under a CloudStream repository's name: how many extensions it offers, and how many of them are installed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 extension} other{{count} extensions}} · {installed} installed'**
+  String cloudStreamRepositorySummary(int count, int installed);
+
+  /// Added to a CloudStream repository's summary when it could not be reached the last time it was checked.
+  ///
+  /// In en, this message translates to:
+  /// **'last check failed'**
+  String get cloudStreamLastCheckFailed;
+
+  /// Tooltip of the button that fetches a CloudStream repository again.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Repository'**
+  String get cloudStreamRefreshRepository;
+
+  /// Under an installed CloudStream extension: the providers (sites) it adds, by name (proper nouns), separated by commas.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers: {names}'**
+  String cloudStreamProviders(String names);
+
+  /// Under an installed CloudStream extension that the engine could not load; error is the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load: {error}'**
+  String cloudStreamCouldNotLoad(String error);
+
+  /// Tooltip of the button that installs a newer version of a CloudStream extension.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get cloudStreamUpdate;
+
+  /// Tooltip of the button that removes an installed CloudStream extension.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall'**
+  String get cloudStreamUninstall;
+
+  /// A CloudStream extension, by name (a proper noun), was installed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed {name}'**
+  String cloudStreamInstalled(String name);
+
+  /// A CloudStream extension, by name (a proper noun), was updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {name}'**
+  String cloudStreamUpdated(String name);
+
+  /// A CloudStream extension, by name (a proper noun), was uninstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {name}'**
+  String cloudStreamUninstalled(String name);
+
+  /// A CloudStream extension downloaded but the engine could not load it: its name (a proper noun) and the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is installed, but it does not load: {error}'**
+  String cloudStreamInstalledNotLoading(String name, String error);
+
+  /// An action on a CloudStream extension failed; error is the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String cloudStreamFailed(String error);
+
+  /// Tag on a CloudStream extension its repository marks as not working.
+  ///
+  /// In en, this message translates to:
+  /// **'down'**
+  String get cloudStreamStatusDown;
+
+  /// Tag on a CloudStream extension its repository marks as slow.
+  ///
+  /// In en, this message translates to:
+  /// **'slow'**
+  String get cloudStreamStatusSlow;
+
+  /// Tag on a CloudStream extension its repository marks as a beta.
+  ///
+  /// In en, this message translates to:
+  /// **'beta'**
+  String get cloudStreamStatusBeta;
+
+  /// No description provided for @clearanceVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get clearanceVerify;
+
+  /// Above search results, while every bot check the search met is still being tried in a hidden page.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Checking 1 site automatically…} other{Checking {count} sites automatically…}}'**
+  String checksCheckingAll(int count);
+
+  /// Part of the summary above search results: sites whose bot check wants a person.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 site needs you} other{{count} sites need you}}'**
+  String checksNeedYou(int count);
+
+  /// Part of the summary above search results: sites whose bot check cleared.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} cleared'**
+  String checksCleared(int count);
+
+  /// Part of the summary above search results: sites still being checked automatically.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} checking'**
+  String checksChecking(int count);
+
+  /// Part of the summary above search results: sites that were unreachable, blocked, or sent the browser elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 couldn\'t be checked} other{{count} couldn\'t be checked}}'**
+  String checksFailed(int count);
+
+  /// Above search results, while Verify gets a site's check.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening {site}\'s check…'**
+  String checksOpening(String site);
+
+  /// Shows each site that needs a person, one after another.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify all'**
+  String get checksVerifyAll;
+
+  /// Tooltip: opens the list of sites being checked.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the sites'**
+  String get checksShow;
+
+  /// Tooltip: closes the list of sites being checked.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the sites'**
+  String get checksHide;
+
+  /// A site's row: an automatic try is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking automatically… {seconds} s'**
+  String checkStateChecking(int seconds);
+
+  /// A site's row: the automatic try wants a person.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a quick check from you'**
+  String get checkStateNeedsYou;
+
+  /// A site's row: Verify is getting its check.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the check… {seconds} s'**
+  String checkStateOpening(int seconds);
+
+  /// A site's row: its check cleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared'**
+  String get checkStateCleared;
+
+  /// A site's row: its check cleared, and its extensions are searching again.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared · searching again…'**
+  String get checkStateSearchingAgain;
+
+  /// A site's row: its page didn't load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the site'**
+  String get checkStateUnreachable;
+
+  /// A site's row: a block page, which no check clears.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by the site; try without a VPN'**
+  String get checkStateBlocked;
+
+  /// A site's row: after its check, the site sent the browser to another site.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends the browser to {host}; the extension may need updating'**
+  String checkStateSentElsewhere(String host);
+
+  /// A site's row: the person pressed Done, but the check is still there.
+  ///
+  /// In en, this message translates to:
+  /// **'Still not cleared'**
+  String get checkStateStillNotCleared;
+
+  /// A site's row: Android System WebView is too old for its check; nothing is tried until it's updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Android System WebView to clear this site\'s check'**
+  String get checkStateOutdated;
+
+  /// A site's row: Android System WebView is too old for its check, and this Android version can't update it.
+  ///
+  /// In en, this message translates to:
+  /// **'This device\'s browser is too old for this site\'s check'**
+  String get checkStateTooOld;
+
+  /// A site's row: its check passed, but the site still refuses requests; Fuse waits before trying again.
+  ///
+  /// In en, this message translates to:
+  /// **'The check passed, but this site still refuses Fuse. Trying again in a few minutes.'**
+  String get checkStateIneffective;
+
+  /// A site's row: its check came back after every clearance, even after a fresh start.
+  ///
+  /// In en, this message translates to:
+  /// **'This site keeps asking. Try later, or without a VPN.'**
+  String get checkStateKeepsAsking;
+
+  /// Button on an outdated-WebView row: opens Android System WebView in the Play Store.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get checkUpdateWebView;
+
+  /// A site's row: undo "Don't open this automatically".
+  ///
+  /// In en, this message translates to:
+  /// **'Ask again'**
+  String get checkAskAgain;
+
+  /// A site's row: its check won't open the sheet by itself, at the person's request.
+  ///
+  /// In en, this message translates to:
+  /// **'Won\'t open by itself'**
+  String get checkQuietNote;
+
+  /// After a site's name: the site it moved from.
+  ///
+  /// In en, this message translates to:
+  /// **'moved from {site}'**
+  String checkMovedFrom(String site);
+
+  /// In a site's row, when the engine couldn't say which CloudStream extension met its check.
+  ///
+  /// In en, this message translates to:
+  /// **'A CloudStream extension'**
+  String get checkCloudStreamExtension;
+
+  /// Under a spinner: the one site the screen waits on is being checked automatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking {site} automatically… {seconds} s'**
+  String checkLineChecking(String site, int seconds);
+
+  /// Home, or under a spinner: the one site the screen waits on needs a person.
+  ///
+  /// In en, this message translates to:
+  /// **'{site} needs a quick check'**
+  String checkLineNeedsYou(String site);
+
+  /// In an extension's settings sheet, in place of a part Fuse can't draw yet (a web page).
+  ///
+  /// In en, this message translates to:
+  /// **'This part can\'t be shown in Fuse yet.'**
+  String get extensionSheetCantShow;
+
+  /// Closes the top window of an extension's settings sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get extensionSheetClose;
+
+  /// In an extension's settings sheet's menu: closes every window, even one the extension won't let close.
+  ///
+  /// In en, this message translates to:
+  /// **'Force close'**
+  String get extensionSheetForceClose;
+
+  /// Tooltip of an extension's settings sheet's menu button.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get extensionSheetMore;
+
+  /// In an extension's settings sheet, when the extension's code failed on the person's action.
+  ///
+  /// In en, this message translates to:
+  /// **'The extension didn\'t take that: {error}'**
+  String extensionSheetError(String error);
+
+  /// A toast titled with an extension's name: the extension put text on the clipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get extensionCopied;
+
+  /// Action of a toast showing a link an extension opened while its screen wasn't open: opens the link in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get extensionOpenLink;
+
+  /// Tooltip of the button that opens an installed CloudStream extension's own settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get cloudStreamSettings;
+
+  /// On an installed CloudStream extension's row while it reloads with its new settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying settings…'**
+  String get cloudStreamSettingsApplying;
+
+  /// Snackbar once an extension reloaded with its new settings.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s settings applied'**
+  String cloudStreamSettingsApplied(String name);
+
+  /// Snackbar when an extension's settings screen didn't open.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open {name}\'s settings: {error}'**
+  String cloudStreamSettingsFailed(String name, String error);
+
+  /// Snackbar when an extension didn't reload after its settings changed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s settings are saved, but it didn\'t reload: {error}'**
+  String cloudStreamSettingsApplyFailed(String name, String error);
+
+  /// Button on an installed extension: opens the messages it showed while the app was busy (support, donate, notices).
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get cloudStreamSupport;
+
+  /// Snackbar when an extension's kept messages didn't open.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open {name}\'s messages: {error}'**
+  String cloudStreamSupportFailed(String name, String error);
+
+  /// Snackbar when an extension's code crashed while its settings screen was open.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s settings stopped: {error}'**
+  String cloudStreamSettingsStopped(String name, String error);
+
+  /// Player toast when a volume swipe that started under 100% stops at 100%: going past it into the boost takes a second swipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe up again to go past 100%'**
+  String get swipeAgainToBoost;
+
+  /// Details page: a show still airing new episodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get showStatusOngoing;
+
+  /// Details page: a show that has finished airing.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get showStatusCompleted;
+
+  /// Details page: shown instead of Play for a title not out yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get comingSoon;
+
+  /// Episode card: an episode not out yet, with its air date.
+  ///
+  /// In en, this message translates to:
+  /// **'Airs {date}'**
+  String episodeAirsOn(String date);
+
+  /// Season chip for a season with its own name.
+  ///
+  /// In en, this message translates to:
+  /// **'Season {number}: {name}'**
+  String seasonNumberAndName(Object number, String name);
+
+  /// Details page: the cast as one line, when there are no photos.
+  ///
+  /// In en, this message translates to:
+  /// **'Cast: {names}'**
+  String castLine(String names);
+
+  /// Cast card: a main character.
+  ///
+  /// In en, this message translates to:
+  /// **'Main'**
+  String get actorRoleMain;
+
+  /// Cast card: a supporting character.
+  ///
+  /// In en, this message translates to:
+  /// **'Supporting'**
+  String get actorRoleSupporting;
+
+  /// Cast card: a background (minor) character.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get actorRoleBackground;
+
+  /// Player side panel: the tab that chooses which of an HLS stream's qualities plays (Auto, or a height such as 1080p).
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get playerQuality;
+
+  /// Player's Quality tab: the row that lets the player choose, following the device and the viewer's quality preference.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get playerQualityAuto;
+
+  /// Player's Quality tab: the Auto row while Auto is on, naming the quality it plays now.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto · {height}'**
+  String playerQualityAutoPlaying(String height);
+
+  /// Player settings, network buffer: the choice that sizes the buffer for each video by itself. It is the default.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (recommended)'**
+  String get networkBufferAuto;
+
+  /// Player settings, network buffer dialog: the line under the Auto choice, saying how Auto sizes the buffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Sized for each video from its bitrate and this device\'s memory.'**
+  String get networkBufferAutoHint;
+
+  /// Developer options: the switch that writes playback-quality (QoE) events to the app log. "QoE" stays as it is.
+  ///
+  /// In en, this message translates to:
+  /// **'QoE log'**
+  String get devQoeLog;
+
+  /// Developer options: the line under the QoE log switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Writes playback timings to the app log'**
+  String get devQoeLogSubtitle;
+
+  /// Player, live stream: the button that jumps back to the live edge.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to live'**
+  String get playerGoLive;
+
+  /// Player, live stream: spoken label for how far behind the live edge playback is, such as "0:42 behind live".
+  ///
+  /// In en, this message translates to:
+  /// **'{time} behind live'**
+  String playerBehindLive(String time);
+
+  /// Button on the Plugins tab's Installed list that updates every installed plugin with a newer version.
+  ///
+  /// In en, this message translates to:
+  /// **'Update all'**
+  String get pluginsUpdateAll;
+
+  /// Toast after pulling the Installed plugins list to refresh, when no installed plugin has a newer version.
+  ///
+  /// In en, this message translates to:
+  /// **'All plugins are up to date'**
+  String get pluginsUpToDate;
+
+  /// Player settings row and dialog title: a quality ceiling used while on cellular data.
+  ///
+  /// In en, this message translates to:
+  /// **'Max quality on mobile data'**
+  String get mobileDataMaxQuality;
+
+  /// Subtitle of the 'Max quality on mobile data' row.
+  ///
+  /// In en, this message translates to:
+  /// **'On cellular, sources up to this come first'**
+  String get mobileDataMaxQualitySubtitle;
+
+  /// Value of 'Max quality on mobile data' when no limit is set.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get mobileDataMaxQualityOff;
+
+  /// Explains the Off option of 'Max quality on mobile data'.
+  ///
+  /// In en, this message translates to:
+  /// **'No limit on mobile data'**
+  String get mobileDataMaxQualityOffHint;
+
+  /// Player settings switch: start the next episode automatically when one ends.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-play next episode'**
+  String get autoPlayNextEpisode;
+
+  /// Subtitle of the 'Auto-play next episode' switch.
+  ///
+  /// In en, this message translates to:
+  /// **'5 second countdown when an episode ends'**
+  String get autoPlayNextEpisodeSubtitle;
+
+  /// Settings row and screen title: choose which plugins and add-ons Search asks.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in plugins'**
+  String get searchInPlugins;
+
+  /// Subtitle of the 'Search in plugins' settings row.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which plugins Search asks'**
+  String get searchInPluginsSubtitle;
+
+  /// Value of the 'Search in plugins' row when every source is switched on.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get searchInPluginsAll;
+
+  /// Explanation at the top of the 'Search in plugins' screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Search asks only the sources switched on here. Fewer sources means faster results.'**
+  String get searchInPluginsHint;
+
+  /// Shown on the 'Search in plugins' screen when nothing that can search is installed.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins or add-ons installed yet.'**
+  String get searchInPluginsEmpty;
+
+  /// Section header on the 'Search in plugins' screen: installed plugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get searchInPluginsPlugins;
+
+  /// Section header on the 'Search in plugins' screen: Stremio add-ons and Nuvio.
+  ///
+  /// In en, this message translates to:
+  /// **'Add-ons'**
+  String get searchInPluginsAddons;
+
+  /// Button on the 'Search in plugins' screen that switches every source back on.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn all on'**
+  String get searchInPluginsEnableAll;
+
+  /// Toast after 'Update all': how many plugins were updated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No plugins updated} =1{1 plugin updated} other{{count} plugins updated}}'**
+  String pluginsUpdatedCount(int count);
+
+  /// Toast after 'Update all' when some updates failed; names is a comma-separated list of plugin names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No plugins updated} =1{1 plugin updated} other{{count} plugins updated}}. Could not update: {names}'**
+  String pluginsUpdateSomeFailed(int count, String names);
+
+  /// Value of the 'Search in plugins' row: how many sources are switched off.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} off'**
+  String searchInPluginsOff(int count);
+
+  /// Player, Video side panel: the section that pauses playback after a chosen time. Also the spoken label of the remaining-time badge in the bottom bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer'**
+  String get playerSleepTimer;
+
+  /// Player sleep timer: the choice that turns the timer off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get playerSleepTimerOff;
+
+  /// Player sleep timer: a timed choice, such as "30 min".
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String playerSleepTimerMinutes(int minutes);
+
+  /// Player sleep timer: the choice that stops playback when the current episode or film ends, without playing the next episode. Also shown in the bottom bar while that choice is armed.
+  ///
+  /// In en, this message translates to:
+  /// **'End of episode'**
+  String get playerSleepTimerEndOfEpisode;
+
+  /// Player sleep timer: the time left before playback pauses, such as "14:05 left".
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String playerSleepTimerRemaining(String time);
+
+  /// Player sleep timer: the status line while the End of episode choice is armed.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops after this episode'**
+  String get playerSleepTimerEndOfEpisodeArmed;
+
+  /// Player: the brief notice shown when the sleep timer pauses playback.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer — paused'**
+  String get playerSleepTimerPaused;
+
+  /// Details page, Episodes header: the button (tooltip and dialog title) that downloads every episode of the selected season.
+  ///
+  /// In en, this message translates to:
+  /// **'Download season'**
+  String get downloadSeason;
+
+  /// Download season dialog: asks before queuing the season's not-yet-downloaded episodes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Download 1 episode?} other{Download {count} episodes?}}'**
+  String downloadSeasonConfirm(int count);
+
+  /// Download season dialog: nothing to do, every episode of the season is on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'All episodes of this season are already downloaded'**
+  String get downloadSeasonAllDownloaded;
+
+  /// Download season dialog: nothing to do, every episode of the season is on the device or already downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'All episodes of this season are already downloaded or in the download queue'**
+  String get downloadSeasonAllQueued;
+
+  /// Details page: progress while a season's episodes are added to the download queue one by one, such as "Queuing 3/12…".
+  ///
+  /// In en, this message translates to:
+  /// **'Queuing {done}/{total}…'**
+  String downloadSeasonQueuing(int done, int total);
+
+  /// Details page: stops adding further episodes of the season to the download queue. Episodes already queued stay.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get downloadSeasonStop;
+
+  /// Notice when Download season is pressed while an earlier season download is still being prepared.
+  ///
+  /// In en, this message translates to:
+  /// **'Another season is still being queued'**
+  String get downloadSeasonBusy;
+
+  /// Download season: title of the list asking which source to download the season's episodes from.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a source for this season'**
+  String get downloadSeasonPickSource;
+
+  /// Download season: the line under the source list's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Used for the remaining episodes too. You are asked only once.'**
+  String get downloadSeasonPickSourceHint;
+
+  /// Download season summary: how many episodes were added to the download queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued {count}'**
+  String downloadSeasonSummaryQueued(int count);
+
+  /// Download season summary: episodes skipped because they are on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} already downloaded'**
+  String downloadSeasonSummaryAlreadyDownloaded(int count);
+
+  /// Download season summary: episodes skipped because they were already downloading.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} already in queue'**
+  String downloadSeasonSummaryAlreadyQueued(int count);
+
+  /// Download season summary: episodes that have no source the app can download.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} no downloadable source'**
+  String downloadSeasonSummaryNoSource(int count);
+
+  /// Download season summary: episodes whose links could not be loaded or that the download manager refused.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} failed'**
+  String downloadSeasonSummaryFailed(int count);
+
+  /// Download season summary: episodes not reached because the viewer pressed Stop.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} not queued (stopped)'**
+  String downloadSeasonSummaryStopped(int count);
+
+  /// Plugins tab, Installed: the button that tests whether each installed plugin still answers.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get pluginCheckButton;
+
+  /// Plugins tab, Installed: the line beside the Check button before any check has run. ".cs3" stays as it is.
+  ///
+  /// In en, this message translates to:
+  /// **'Tests each .cs3 plugin, one at a time'**
+  String get pluginCheckHint;
+
+  /// Plugins tab, Installed: shown beside the Cancel button while the plugin check runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking {current} of {total}…'**
+  String pluginCheckProgress(int current, int total);
+
+  /// Plugins tab, Installed: the plugin check finished less than a minute ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked just now'**
+  String get pluginCheckedJustNow;
+
+  /// Plugins tab, Installed: how long ago the plugin check finished.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, =1{Checked 1 min ago} other{Checked {minutes} min ago}}'**
+  String pluginCheckedMinutesAgo(int minutes);
+
+  /// Plugins tab, Installed: the plugin check was cancelled before every plugin was tested.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped · {done} of {total} checked'**
+  String pluginCheckStopped(int done, int total);
+
+  /// Installed plugin tile: the plugin has not been tested by the plugin check yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get pluginStatusNotChecked;
+
+  /// Installed plugin tile: the plugin check is asking this plugin right now.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get pluginStatusChecking;
+
+  /// Installed plugin tile, check result: the plugin answered in time with items.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get pluginStatusWorking;
+
+  /// Installed plugin tile, check result: the plugin answered with items but took a long time.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get pluginStatusSlow;
+
+  /// Installed plugin tile, check result: the plugin answered but its answer had nothing in it.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered, no items'**
+  String get pluginStatusEmpty;
+
+  /// Installed plugin tile, check result: the plugin failed or did not answer before the time limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Not responding'**
+  String get pluginStatusNotResponding;
+
+  /// Installed plugin tile, check result: the plugin's file could not be loaded, so it was not tested.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load'**
+  String get pluginStatusCouldNotLoad;
+
+  /// Installed plugin tile, check result: the plugin has no source the check can call.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to test'**
+  String get pluginStatusNoSource;
+
+  /// Installed plugin tile, check result with how long the answer took, such as "Working · 2.3 s".
+  ///
+  /// In en, this message translates to:
+  /// **'{status} · {seconds} s'**
+  String pluginStatusSeconds(String status, String seconds);
+
+  /// Installed plugin tile, check result for a plugin with several sources: the worst status, and how many of its sources answered with items.
+  ///
+  /// In en, this message translates to:
+  /// **'{status} · {ok} of {total} sources OK'**
+  String pluginStatusPartial(String status, int ok, int total);
+
+  /// Plugin check details dialog: what one source answered; how is "main page" or "search".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No items} =1{1 item} other{{count} items}} in {seconds} s ({how})'**
+  String pluginCheckDetailAnswered(int count, String seconds, String how);
+
+  /// Plugin check details dialog: the answer came from the source's main page.
+  ///
+  /// In en, this message translates to:
+  /// **'main page'**
+  String get pluginCheckDetailMainPage;
+
+  /// Plugin check details dialog: the answer came from a test search, used when the main page had no items.
+  ///
+  /// In en, this message translates to:
+  /// **'search'**
+  String get pluginCheckDetailViaSearch;
+
+  /// Plugin check details dialog: the source did not answer before the time limit.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer within {seconds} s'**
+  String pluginCheckDetailTimedOut(String seconds);
+
+  /// Plugin check details dialog: explains the "Answered, no items" result.
+  ///
+  /// In en, this message translates to:
+  /// **'It answered, but with nothing in it. A search that fails inside the plugin also looks like this.'**
+  String get pluginCheckDetailEmptyNote;
+
+  /// Plugin check details dialog: explains the "Nothing to test" result.
+  ///
+  /// In en, this message translates to:
+  /// **'This plugin adds no source that can be tested. It may be a helper for other plugins, or its sources are switched off.'**
+  String get pluginCheckDetailNoSource;
+
+  /// Plugin check details dialog: explains the "Could not load" result; error is the reason, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'The plugin\'s file could not be loaded on this device, so it was not called: {error}'**
+  String pluginCheckDetailCouldNotLoad(String error);
+
+  /// Settings, General: the row (and the screen title) for reordering and hiding the rows on Home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home rows'**
+  String get homeRowsTitle;
+
+  /// Settings, General: the line under Home rows.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder or hide rows on Home'**
+  String get homeRowsSubtitle;
+
+  /// Home rows screen: the name of Home's built-in feed, shown when no plugin source is selected.
+  ///
+  /// In en, this message translates to:
+  /// **'Default feed'**
+  String get homeRowsSourceDefaultFeed;
+
+  /// Home rows screen: section header above the list of rows; source is the plugin source's name or "Default feed".
+  ///
+  /// In en, this message translates to:
+  /// **'Rows from {source}'**
+  String homeRowsHeader(String source);
+
+  /// Home rows screen: the explanation under the list.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the handle to reorder. Switch a row off to hide it. The banner at the top of Home always stays first. Saved separately for each source.'**
+  String get homeRowsHint;
+
+  /// Home rows screen: the source's rows are still being fetched.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading this source\'s rows…'**
+  String get homeRowsLoading;
+
+  /// Home rows screen: the source's rows could not be loaded, so only remembered rows are listed.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Home once to load this source\'s rows.'**
+  String get homeRowsOpenHomeFirst;
+
+  /// Home rows screen: under a remembered row that the source did not send this time.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on Home right now'**
+  String get homeRowsNotOnHomeNow;
+
+  /// Home rows screen: section header above the Reset to Default row.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get homeRowsResetHeader;
+
+  /// Home rows screen: the line under Reset to Default.
+  ///
+  /// In en, this message translates to:
+  /// **'The source\'s own order, every row shown'**
+  String get homeRowsResetSubtitle;
+
+  /// Settings, General: the switch that locks the app behind Face ID or the device passcode.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock (Face ID)'**
+  String get appLockTitle;
+
+  /// Settings, General: the line under App lock. "Fuse" is the app's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for Face ID or passcode to open Fuse'**
+  String get appLockSubtitle;
+
+  /// The system Face ID / passcode prompt's reason when switching App lock on.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm it\'s you to turn on App lock'**
+  String get appLockEnableReason;
+
+  /// The system Face ID / passcode prompt's reason when unlocking the app. "Fuse" is the app's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Fuse'**
+  String get appLockUnlockReason;
+
+  /// Shown when App lock cannot be switched on because the device has no biometrics and no passcode.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock stays off: set up Face ID or a passcode on this device first.'**
+  String get appLockUnavailable;
+
+  /// Shown when App lock was not switched on because the authentication failed or was cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock stays off: it could not confirm it\'s you.'**
+  String get appLockNotVerified;
+
+  /// Lock screen: the last unlock attempt failed or was cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Still locked. Tap Unlock to try again.'**
+  String get appLockStillLocked;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) => <String>[
+    'ar',
+    'as',
+    'az',
+    'be',
+    'bg',
+    'bn',
+    'cs',
+    'de',
+    'el',
+    'en',
+    'es',
+    'fr',
+    'gu',
+    'he',
+    'hi',
+    'hr',
+    'hu',
+    'id',
+    'it',
+    'ja',
+    'kn',
+    'ko',
+    'lv',
+    'mk',
+    'ml',
+    'mr',
+    'nl',
+    'pa',
+    'pl',
+    'pt',
+    'ro',
+    'ru',
+    'sv',
+    'ta',
+    'te',
+    'tr',
+    'uk',
+    'ur',
+    'vi',
+    'zh',
+  ].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when language+script codes are specified.
+  switch (locale.languageCode) {
+    case 'zh':
+      {
+        switch (locale.scriptCode) {
+          case 'Hant':
+            return AppLocalizationsZhHant();
+        }
+        break;
+      }
+  }
+
+  // Lookup logic when language+country codes are specified.
+  switch (locale.languageCode) {
+    case 'ar':
+      {
+        switch (locale.countryCode) {
+          case 'apc':
+            return AppLocalizationsArApc();
+        }
+        break;
+      }
+    case 'pt':
+      {
+        switch (locale.countryCode) {
+          case 'BR':
+            return AppLocalizationsPtBr();
+        }
+        break;
+      }
+  }
+
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'ar':
+      return AppLocalizationsAr();
+    case 'as':
+      return AppLocalizationsAs();
+    case 'az':
+      return AppLocalizationsAz();
+    case 'be':
+      return AppLocalizationsBe();
+    case 'bg':
+      return AppLocalizationsBg();
+    case 'bn':
+      return AppLocalizationsBn();
+    case 'cs':
+      return AppLocalizationsCs();
+    case 'de':
+      return AppLocalizationsDe();
+    case 'el':
+      return AppLocalizationsEl();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
+    case 'gu':
+      return AppLocalizationsGu();
+    case 'he':
+      return AppLocalizationsHe();
+    case 'hi':
+      return AppLocalizationsHi();
+    case 'hr':
+      return AppLocalizationsHr();
+    case 'hu':
+      return AppLocalizationsHu();
+    case 'id':
+      return AppLocalizationsId();
+    case 'it':
+      return AppLocalizationsIt();
+    case 'ja':
+      return AppLocalizationsJa();
+    case 'kn':
+      return AppLocalizationsKn();
+    case 'ko':
+      return AppLocalizationsKo();
+    case 'lv':
+      return AppLocalizationsLv();
+    case 'mk':
+      return AppLocalizationsMk();
+    case 'ml':
+      return AppLocalizationsMl();
+    case 'mr':
+      return AppLocalizationsMr();
+    case 'nl':
+      return AppLocalizationsNl();
+    case 'pa':
+      return AppLocalizationsPa();
+    case 'pl':
+      return AppLocalizationsPl();
+    case 'pt':
+      return AppLocalizationsPt();
+    case 'ro':
+      return AppLocalizationsRo();
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'sv':
+      return AppLocalizationsSv();
+    case 'ta':
+      return AppLocalizationsTa();
+    case 'te':
+      return AppLocalizationsTe();
+    case 'tr':
+      return AppLocalizationsTr();
+    case 'uk':
+      return AppLocalizationsUk();
+    case 'ur':
+      return AppLocalizationsUr();
+    case 'vi':
+      return AppLocalizationsVi();
+    case 'zh':
+      return AppLocalizationsZh();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
+}

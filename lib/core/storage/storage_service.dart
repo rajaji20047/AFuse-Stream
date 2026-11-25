@@ -1,0 +1,1427 @@
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:io';
+import '../domain/entity/multimedia_item.dart';
+import 'app_temp_directory.dart';
+
+part 'storage_service.g.dart';
+
+/// Where the OpenSubtitles account password is kept.
+///
+/// The name is unchanged from the Hive key it used to be stored under, and
+/// that is load-bearing: `SecureTokenStorage.read` looks the same key up in
+/// the legacy box on a miss, so an existing user's password moves itself into
+/// the Keychain/Keystore on the first read after upgrading and the plaintext
+/// copy is deleted in the same step.
+///
+/// These are reusable *account passwords*, not revocable tokens. In the Hive
+/// settings box they were inside Android's cloud backup and inside iOS
+/// device-to-device transfer and iTunes/Finder backups, in the clear.
+///
+/// Named here rather than beside the settings that write them because
+/// [StorageService.clearPreferences] has to delete them, and that runs from
+/// the startup error screen, where there is no ProviderScope to reach the
+/// settings notifier through.
+const String kOsPasswordKey = 'player_os_pass';
+
+/// Where the SubDL account password is kept. See [kOsPasswordKey].
+const String kSubDlPasswordKey = 'player_subdl_pass';
+
+/// The secure-store keys a preferences reset owns.
+///
+/// Named individually rather than cleared wholesale: OAuth sessions for Trakt,
+/// Simkl, MAL and AniList live in the same store, and "Reset Data (Keep
+/// Extensions)" keeps those.
+const List<String> kAccountPasswordKeys = <String>[
+  kOsPasswordKey,
+  kSubDlPasswordKey,
+];
+
+@Riverpod(keepAlive: true)
+StorageService storageService(Ref ref) {
+  throw UnimplementedError('StorageService must be initialized');
+}
+
+class StorageService {
+  late Box<dynamic> _libraryBox;
+  late Box<dynamic> _settingsBox;
+  late Box<dynamic> _extensionsBox;
+  late Box<dynamic> _historyBox;
+
+  /// The boxes [init] opened, before any profile was picked: the store
+  /// for logged-out use. `_historyBox` / `_libraryBox` below are the
+  /// ACTIVE pair and are swapped by [setActiveFuseProfile]; these two
+  /// always point at the legacy boxes, so "Reset Data" deletes the right
+  /// files even while a profile is active.
+  Box<dynamic>? _legacyHistoryBox;
+  Box<dynamic>? _legacyLibraryBox;
+
+  /// Per-profile boxes, opened on first use and cached: `history_box_<id>`
+  /// and `library_box_<id>`. The key scheme inside each pair is unchanged
+  /// (URL / md5(URL), `EP_` per-episode entries), so backup round-trips
+  /// work against the active pair without any caller changing.
+  final Map<String, Box<dynamic>> _fuseProfileHistoryBoxes = {};
+  final Map<String, Box<dynamic>> _fuseProfileLibraryBoxes = {};
+
+  /// The profile the active pair belongs to, or null for the legacy
+  /// (logged-out) boxes.
+  String? _activeFuseProfileId;
+
+  /// The profile a history/library box belongs to: `history_box_<id>`,
+  /// `library_box_<id>`.
+  static String fuseProfileHistoryBoxName(String profileId) =>
+      'history_box_$profileId';
+  static String fuseProfileLibraryBoxName(String profileId) =>
+      'library_box_$profileId';
+
+  static const String kLibraryBox = 'library_box';
+  static const String kSettingsBox = 'settings_box';
+  static const String kExtensionsBox = 'extension_data_box';
+  static const String kDownloadMetadataBox = 'download_metadata_box';
+
+  /// Where [Hive.init] was pointed. Kept because `HiveInterface` does not
+  /// expose it and [_quarantineBox] needs the on-disk location.
+  String? _hiveDir;
+
+  Future<void> init() async {
+    final supportDir = await getApplicationSupportDirectory();
+    _hiveDir = supportDir.path;
+    Hive.init(supportDir.path);
+
+    _libraryBox = await _safeOpenBox(kLibraryBox);
+    _settingsBox = await _safeOpenBox(kSettingsBox);
+    _extensionsBox = await _safeOpenBox(kExtensionsBox);
+    await _safeOpenBox(
+      kDownloadMetadataBox,
+    ); // Opened here; later reads go through Hive.box().
+    await initHistory();
+    // The pair init() opened is the legacy (logged-out) pair.
+    _legacyLibraryBox = _libraryBox;
+    _legacyHistoryBox = _historyBox;
+  }
+
+  /// Opens a box, and if it will not open, preserves whatever is on disk
+  /// rather than destroying it.
+  ///
+  /// A failure that is not corruption is rethrown: a full disk, a permission
+  /// error or a second desktop instance holding the lock must not take the
+  /// same path as real corruption and cost the user a library. Genuine
+  /// corruption moves the file aside instead of unlinking it, so the data can
+  /// still be recovered by hand or by a later migration, and a fresh empty box
+  /// is returned so the app still starts.
+  ///
+  /// Exposed so the recovery contract can be tested against the real method.
+  /// [dir] stands in for the directory [init] would have recorded.
+  @visibleForTesting
+  Future<Box<dynamic>> debugSafeOpenBox(String boxName, {required String dir}) {
+    _hiveDir = dir;
+    return _safeOpenBox(boxName);
+  }
+
+  Future<Box<dynamic>> _safeOpenBox(String boxName) async {
+    try {
+      return await Hive.openBox<dynamic>(boxName);
+    } on HiveError catch (error, stackTrace) {
+      // Hive raises HiveError for a corrupt or unreadable box. Anything else
+      // (FileSystemException and friends) is environmental and must not cost
+      // the user their data.
+      debugPrint("Hive box '$boxName' is corrupt: $error");
+      assert(() {
+        debugPrintStack(stackTrace: stackTrace, label: 'corrupt box $boxName');
+        return true;
+      }());
+      await _quarantineBox(boxName);
+      return Hive.openBox<dynamic>(boxName);
+    }
+  }
+
+  /// Renames a corrupt box's files out of the way instead of deleting them.
+  ///
+  /// Hive keeps `<name>.hive` and `<name>.lock` in the init directory. Moving
+  /// them to `<name>.hive.corrupt-<millis>` keeps the bytes on disk: a box that
+  /// merely lost its tail to an unclean shutdown is often largely readable.
+  /// Best effort - if the rename fails the open below fails too and the error
+  /// reaches the caller.
+  Future<void> _quarantineBox(String boxName) async {
+    final dir = _hiveDir;
+    if (dir == null) return;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    for (final suffix in const ['.hive', '.lock']) {
+      final file = File('$dir${Platform.pathSeparator}$boxName$suffix');
+      try {
+        if (file.existsSync()) {
+          await file.rename('${file.path}.corrupt-$stamp');
+        }
+      } catch (error) {
+        debugPrint("Could not quarantine '${file.path}': $error");
+      }
+    }
+  }
+
+  /// Hashes a url that would exceed Hive's 255-character key limit to a
+  /// stable md5.
+  String _getKey(String url) {
+    if (url.length <= 250) return url;
+    return md5.convert(utf8.encode(url)).toString();
+  }
+
+  // --- Library (Favorites) ---
+
+  // Stored as a map, keyed by the url, which is assumed to be unique.
+  Future<void> addToLibrary(MultimediaItem item) async {
+    await _libraryBox.put(_getKey(item.url), {
+      'title': item.title,
+      'url': item.url,
+      'posterUrl': item.posterUrl,
+      'bannerUrl': item.bannerUrl,
+      'description': item.description,
+      'type': item.contentType.name,
+      'provider': item.provider,
+    });
+  }
+
+  Future<void> removeFromLibrary(String url) async {
+    await _libraryBox.delete(_getKey(url));
+  }
+
+  bool isInLibrary(String url) {
+    return _libraryBox.containsKey(_getKey(url));
+  }
+
+  List<MultimediaItem> getLibraryItems() {
+    final items = <MultimediaItem>[];
+    for (var i = 0; i < _libraryBox.length; i++) {
+      final key = _libraryBox.keyAt(i);
+      final map = Map<String, dynamic>.from(_libraryBox.get(key) as Map);
+      items.add(
+        MultimediaItem(
+          title: (map['title'] as String?) ?? '',
+          url: (map['url'] as String?) ?? '',
+          posterUrl: (map['posterUrl'] as String?) ?? '',
+          bannerUrl: map['bannerUrl'] as String?,
+          description: map['description'] as String?,
+          contentType: MultimediaItem.parseContentType(
+            (map['type'] as String?) ?? (map['contentType'] as String?),
+          ),
+          provider: map['provider'] as String?,
+        ),
+      );
+    }
+    return items;
+  }
+
+  // --- Settings ---
+
+  Future<void> saveThemeMode(String mode) async {
+    await _settingsBox.put('theme_mode', mode);
+  }
+
+  String? getThemeMode() {
+    return _settingsBox.get('theme_mode') as String?;
+  }
+
+  /// Accent color (ZoroX v7, 2.9.6): the selected [ZoroxAccent] preset name
+  /// (e.g. 'gold', 'red'). `null` means the user never picked one — Gold.
+  /// Stored by name (not by ARGB value) so a preset's shade can be tuned
+  /// later without orphaning saved choices. Survives app restart; it does
+  /// NOT survive reinstall — app settings are not part of the v1 backup.
+  Future<void> saveAccentColor(String name) async {
+    await _settingsBox.put('accent_color', name);
+  }
+
+  String? getAccentColor() {
+    return _settingsBox.get('accent_color') as String?;
+  }
+
+  /// Named theme variant (Settings → General): the selected variant
+  /// name ('arenaGold', 'midnight', 'frost', 'liquidGlass'). `null` means
+  /// the user never picked one — Arena Gold. Stored by name (not by
+  /// index) so a variant can be reordered later without orphaning saved
+  /// choices. Survives app restart; it does NOT survive reinstall — app
+  /// settings are not part of the v1 backup.
+  Future<void> saveThemeVariant(String name) async {
+    await _settingsBox.put('theme_variant', name);
+  }
+
+  String? getThemeVariant() {
+    return _settingsBox.get('theme_variant') as String?;
+  }
+
+  /// Last dark theme variant (Settings → General, Dark Mode toggle):
+  /// the dark variant in force before the toggle went off, so turning
+  /// it back on returns there instead of always landing on Liquid
+  /// Glass. `null` means no dark variant was ever picked — Liquid
+  /// Glass. Only dark variant names are ever written here.
+  Future<void> saveLastDarkThemeVariant(String name) async {
+    await _settingsBox.put('last_dark_theme_variant', name);
+  }
+
+  String? getLastDarkThemeVariant() {
+    return _settingsBox.get('last_dark_theme_variant') as String?;
+  }
+
+  // --- Sidebar State ---
+  Future<void> setSidebarExpanded(bool expanded) async {
+    await _settingsBox.put('sidebar_expanded', expanded);
+  }
+
+  bool? getSidebarExpanded() {
+    return _settingsBox.get('sidebar_expanded') as bool?;
+  }
+
+  // --- Full screen mode ---
+
+  /// Whether the last session was left in full screen mode.
+  ///
+  /// Null means no session ever chose, which is not the same as `false`: a
+  /// first launch stays windowed either way, but only a recorded `false`
+  /// survives a launch that passed `--full-screen`.
+  Future<void> setFullScreenMode(bool enabled) async {
+    await _settingsBox.put('full_screen_mode', enabled);
+  }
+
+  bool? getFullScreenMode() {
+    return _settingsBox.get('full_screen_mode') as bool?;
+  }
+
+  // --- App update prompt ---
+
+  /// The release tag the user last dismissed the update dialog on. One
+  /// "Later" covers that release; the next one published gets a fresh hearing
+  /// because the tag no longer matches.
+  Future<void> setDeclinedUpdateTag(String tag) async {
+    await _settingsBox.put('declined_update_tag', tag);
+  }
+
+  String? getDeclinedUpdateTag() {
+    return _settingsBox.get('declined_update_tag') as String?;
+  }
+
+  /// Browse's catalogue choice: an add-on's manifest URL, or null for
+  /// "All catalogues". This device only.
+  String? getBrowseCatalogueAddon() =>
+      _settingsBox.get('browse_catalogue_addon') as String?;
+
+  Future<void> setBrowseCatalogueAddon(String? manifestUrl) async {
+    if (manifestUrl == null) {
+      await _settingsBox.delete('browse_catalogue_addon');
+    } else {
+      await _settingsBox.put('browse_catalogue_addon', manifestUrl);
+    }
+  }
+
+  /// The providers pinned in the Select Provider dialog: package names
+  /// in the order they were pinned. This device only.
+  List<String> getPinnedProviders() {
+    final raw = _settingsBox.get('pinned_providers');
+    if (raw is! List) return const <String>[];
+    return raw.whereType<String>().toList(growable: false);
+  }
+
+  Future<void> setPinnedProviders(List<String> packageNames) async {
+    if (packageNames.isEmpty) {
+      await _settingsBox.delete('pinned_providers');
+    } else {
+      await _settingsBox.put('pinned_providers', List<String>.of(packageNames));
+    }
+  }
+
+  Future<void> setDefaultHomeScreen(String path) async {
+    await _settingsBox.put('default_home_screen', path);
+  }
+
+  String getDefaultHomeScreen() {
+    return _settingsBox.get('default_home_screen', defaultValue: '/home')
+        as String;
+  }
+
+  Future<void> setDownloadDirectory(String? path) async {
+    if (path == null || path.trim().isEmpty) {
+      await _settingsBox.delete('download_directory');
+    } else {
+      await _settingsBox.put('download_directory', path);
+    }
+  }
+
+  String? getDownloadDirectory() {
+    return _settingsBox.get('download_directory') as String?;
+  }
+
+  Future<void> setDownloadConcurrency(int value) async {
+    await _settingsBox.put('download_concurrency', value.clamp(1, 10));
+  }
+
+  int getDownloadConcurrency() {
+    return (_settingsBox.get('download_concurrency', defaultValue: 3) as int)
+        .clamp(1, 10);
+  }
+
+  Future<void> setDownloadChunks(int value) async {
+    await _settingsBox.put('download_chunks', value.clamp(1, 16));
+  }
+
+  int getDownloadChunks() {
+    return (_settingsBox.get('download_chunks', defaultValue: 8) as int).clamp(
+      1,
+      16,
+    );
+  }
+
+  Future<void> setTitlePosition(String position) async {
+    await _settingsBox.put('title_position', position);
+  }
+
+  String getTitlePosition() {
+    return (_settingsBox.get('title_position', defaultValue: 'below')
+            as String?) ??
+        'below';
+  }
+
+  Future<void> setDevLoadAssets(bool enabled) async {
+    await _settingsBox.put('dev_load_assets', enabled);
+  }
+
+  bool getDevLoadAssets() {
+    return _settingsBox.get('dev_load_assets', defaultValue: false) as bool;
+  }
+
+  Future<void> setDevQoeLog(bool enabled) async {
+    await _settingsBox.put('dev_qoe_log', enabled);
+  }
+
+  bool getDevQoeLog() {
+    return _settingsBox.get('dev_qoe_log', defaultValue: false) as bool;
+  }
+
+  // --- Active Provider ---
+
+  Future<void> setActiveProviderId(String? id) async {
+    await _settingsBox.put('active_provider_id', id ?? '__NONE__');
+  }
+
+  String? getActiveProviderId() {
+    final id = _settingsBox.get('active_provider_id') as String?;
+    if (id == null || id == '__NONE__') return null;
+    return id;
+  }
+
+  // --- Home Category Persistence ---
+
+  Future<void> setHomeCategory(String? category) async {
+    await _settingsBox.put('home_category_filter', category);
+  }
+
+  String? getHomeCategory() {
+    return _settingsBox.get('home_category_filter') as String?;
+  }
+
+  // --- Extension Persistence ---
+
+  Future<void> setExtensionData(String key, String? value) async {
+    if (value == null) {
+      await _extensionsBox.delete(key);
+    } else {
+      await _extensionsBox.put(key, value);
+    }
+  }
+
+  String? getExtensionData(String key) {
+    return _extensionsBox.get(key) as String?;
+  }
+
+  // --- Custom Plugin Overrides ---
+
+  Future<void> setCustomBaseUrl(String packageName, String? url) async {
+    final key = 'custom_base_url_$packageName';
+    if (url == null) {
+      await _settingsBox.delete(key);
+    } else {
+      await _settingsBox.put(key, url);
+    }
+  }
+
+  String? getCustomBaseUrl(String packageName) {
+    return _settingsBox.get('custom_base_url_$packageName') as String?;
+  }
+
+  // --- Language ---
+  Future<void> setLanguage(String lang) async {
+    await _settingsBox.put('language', lang);
+  }
+
+  /// The UI language tag the user explicitly chose, or `null` when they have
+  /// never chosen one.
+  ///
+  /// `null` means "follow the device locale"; see `LocaleNotifier.build`. A
+  /// default of `'en'` here would collapse "no preference recorded" and "the
+  /// user picked English" into one value.
+  String? getLanguage() {
+    return _settingsBox.get('language') as String?;
+  }
+
+  Future<void> setExploreLanguage(String lang) async {
+    await _settingsBox.put('explore_language', lang);
+  }
+
+  String getExploreLanguage() {
+    return _settingsBox.get('explore_language', defaultValue: 'en-US')
+        as String;
+  }
+
+  // --- Watch History Toggle ---
+  Future<void> setWatchHistoryEnabled(bool enabled) async {
+    await _settingsBox.put('watch_history_enabled', enabled);
+  }
+
+  bool isWatchHistoryEnabled() {
+    return (_settingsBox.get('watch_history_enabled', defaultValue: true)
+            as bool?) ??
+        true;
+  }
+
+  // --- Search History ---
+
+  /// Recent search queries, most-recent-first.
+  ///
+  /// Shared by every search surface (the search tab, the home delegate and
+  /// the explore delegate) so a query typed in one shows up as a recent in
+  /// the others, the way it does across YouTube's surfaces.
+  ///
+  /// Stored in the settings box, so "Reset Data" clears it along with
+  /// everything else there - no separate teardown needed.
+  static const String kSearchHistoryKey = 'search_history';
+
+  Future<void> setSearchHistory(List<String> queries) async {
+    await _settingsBox.put(kSearchHistoryKey, queries);
+  }
+
+  /// Reads the stored queries, tolerating whatever Hive hands back.
+  ///
+  /// Hive returns a `List<dynamic>` for a list written as `List<String>`, so
+  /// the cast has to go element by element; a hard `as List<String>` throws.
+  List<String> getSearchHistory() {
+    final raw = _settingsBox.get(kSearchHistoryKey);
+    if (raw is! List) return const [];
+    return raw.whereType<String>().toList(growable: false);
+  }
+
+  // --- Window Settings ---
+  Future<void> setAlwaysOnTop(bool enabled) async {
+    await _settingsBox.put('always_on_top', enabled);
+  }
+
+  bool isAlwaysOnTop() {
+    return (_settingsBox.get('always_on_top', defaultValue: false) as bool?) ??
+        false;
+  }
+
+  // --- Network Settings ---
+  Future<void> setGithubProxyEnabled(bool enabled) async {
+    await _settingsBox.put('github_proxy_enabled', enabled);
+  }
+
+  bool isGithubProxyEnabled() {
+    return (_settingsBox.get('github_proxy_enabled', defaultValue: false)
+            as bool?) ??
+        false;
+  }
+
+  /// The GitHub proxy choice, by enum name. Null when never chosen: the
+  /// provider then falls back to the legacy [isGithubProxyEnabled] toggle
+  /// (on = jsDelivr, off = none), so an upgrade keeps the behaviour the
+  /// viewer already had.
+  Future<void> setGithubProxyOption(String option) async {
+    await _settingsBox.put('github_proxy_option', option);
+  }
+
+  String? getGithubProxyOption() {
+    return _settingsBox.get('github_proxy_option') as String?;
+  }
+
+  /// The base URL a Custom proxy prefixes GitHub URLs with, e.g.
+  /// `https://gh-proxy.com`. Empty when never set.
+  Future<void> setGithubProxyCustomUrl(String url) async {
+    await _settingsBox.put('github_proxy_custom_url', url);
+  }
+
+  String getGithubProxyCustomUrl() {
+    return (_settingsBox.get('github_proxy_custom_url', defaultValue: '')
+            as String?) ??
+        '';
+  }
+
+  // --- Integrations ---
+  Future<void> setIntroDbIntegrationEnabled(bool enabled) async {
+    await _settingsBox.put('introdb_integration_enabled', enabled);
+  }
+
+  // Skip Intro (v2.9.4): IntroDB is on by default so the Skip Intro button
+  // appears for TV shows without the user having to find the setting.
+  // It is a free, no-key crowdsourced database (TMDB id + season/episode
+  // only); the lookup runs in the background and never blocks playback.
+  bool isIntroDbIntegrationEnabled() {
+    return (_settingsBox.get('introdb_integration_enabled', defaultValue: true)
+            as bool?) ??
+        true;
+  }
+
+  Future<void> setAnimeSkipIntegrationEnabled(bool enabled) async {
+    await _settingsBox.put('animeskip_integration_enabled', enabled);
+  }
+
+  bool isAnimeSkipIntegrationEnabled() {
+    return (_settingsBox.get(
+              'animeskip_integration_enabled',
+              defaultValue: false,
+            )
+            as bool?) ??
+        false;
+  }
+
+  // --- Player Settings ---
+  Future<void> setPlayerSetting(String key, dynamic value) async {
+    // Hive stores null as a present entry; delete so get() returns the
+    // default and preferredPlayer: null means "internal" again.
+    if (value == null) {
+      await _settingsBox.delete(key);
+    } else {
+      await _settingsBox.put(key, value);
+    }
+  }
+
+  T? getPlayerSetting<T>(String key, {T? defaultValue}) {
+    return _settingsBox.get(key, defaultValue: defaultValue) as T?;
+  }
+
+  /// The raw stored value of a settings key, whatever its type (v9: the
+  /// Fuse backup reads its allow-listed settings through this).
+  Object? getRawSetting(String key) => _settingsBox.get(key);
+
+  /// The keys of the settings box as they change (v9: the Fuse account
+  /// re-uploads when a synced setting changes).
+  Stream<String> watchSettingKeys() =>
+      _settingsBox.watch().map((event) => '${event.key}');
+
+  // --- General Key-Value ---
+  Future<void> setString(String key, String? value) async {
+    if (value == null) {
+      await _settingsBox.delete(key);
+    } else {
+      await _settingsBox.put(key, value);
+    }
+  }
+
+  String? getString(String key) {
+    return _settingsBox.get(key) as String?;
+  }
+
+  Future<void> remove(String key) async {
+    await _settingsBox.delete(key);
+  }
+
+  // --- Watch History ---
+
+  static const String kHistoryBox = 'history_box';
+  // Box late initialization is handled in init()
+  List<Map<String, dynamic>>? _cachedHistory;
+  bool _historyCacheDirty = true;
+
+  Future<void> initHistory() async {
+    _historyBox = await _safeOpenBox(kHistoryBox);
+  }
+
+  // --- Fuse profiles (Build 1): per-profile history + library -----------
+
+  /// The profile the history/library pair currently belongs to, or null
+  /// for the legacy (logged-out) boxes.
+  String? get activeFuseProfileId => _activeFuseProfileId;
+
+  Future<Box<dynamic>> _fuseProfileHistoryBox(String profileId) async {
+    var box = _fuseProfileHistoryBoxes[profileId];
+    box ??= await _safeOpenBox(fuseProfileHistoryBoxName(profileId));
+    _fuseProfileHistoryBoxes[profileId] = box;
+    return box;
+  }
+
+  Future<Box<dynamic>> _fuseProfileLibraryBox(String profileId) async {
+    var box = _fuseProfileLibraryBoxes[profileId];
+    box ??= await _safeOpenBox(fuseProfileLibraryBoxName(profileId));
+    _fuseProfileLibraryBoxes[profileId] = box;
+    return box;
+  }
+
+  /// Points the history/library accessors at [profileId]'s boxes
+  /// (opening them on first use), or back at the legacy boxes for null
+  /// (logged out). Every reader is scoped for free: `saveProgress`,
+  /// `getWatchHistory`, `getLibraryItems`, the backup collect/restore and
+  /// the player resume positions all read the active pair.
+  ///
+  /// Switching invalidates the history cache, so the next read is the new
+  /// profile's data, not the old profile's. `clearAllHistory` clears only
+  /// the active profile's box, never all profiles'.
+  Future<void> setActiveFuseProfile(String? profileId) async {
+    _activeFuseProfileId = profileId;
+    if (profileId == null) {
+      final legacyHistory = _legacyHistoryBox;
+      final legacyLibrary = _legacyLibraryBox;
+      if (legacyHistory != null) _historyBox = legacyHistory;
+      if (legacyLibrary != null) _libraryBox = legacyLibrary;
+    } else {
+      _historyBox = await _fuseProfileHistoryBox(profileId);
+      _libraryBox = await _fuseProfileLibraryBox(profileId);
+    }
+    _historyCacheDirty = true;
+  }
+
+  /// Copies every entry from the legacy history/library boxes into
+  /// [profileId]'s boxes (migration, §9 case 2). An API copy, not a file
+  /// rename — the boxes are open and Hive files must not be renamed while
+  /// open. Existing entries in the profile's boxes are left alone when
+  /// the legacy box has nothing newer to say: the copy is keyed, and a
+  /// key already present is overwritten with the legacy entry, which is
+  /// the migration's "current data becomes the first profile" rule.
+  Future<void> copyLegacyHistoryAndLibraryToFuseProfile(
+    String profileId,
+  ) async {
+    final legacyHistory = _legacyHistoryBox;
+    final legacyLibrary = _legacyLibraryBox;
+    if (legacyHistory == null || legacyLibrary == null) return;
+    final historyBox = await _fuseProfileHistoryBox(profileId);
+    final libraryBox = await _fuseProfileLibraryBox(profileId);
+    for (var i = 0; i < legacyHistory.length; i++) {
+      final key = legacyHistory.keyAt(i);
+      await historyBox.put(key, legacyHistory.get(key));
+    }
+    for (var i = 0; i < legacyLibrary.length; i++) {
+      final key = legacyLibrary.keyAt(i);
+      await libraryBox.put(key, legacyLibrary.get(key));
+    }
+    _historyCacheDirty = true;
+  }
+
+  /// Merges the legacy history/library boxes into [profileId]'s boxes
+  /// (migration §9 case 3, Build 2): history is newest-timestamp-wins
+  /// per key, the same rule as a backup restore — a newer entry already
+  /// in the profile is never overwritten by an older legacy one. Library
+  /// entries are added when missing. The legacy boxes are left alone;
+  /// the caller clears them once the merged data is safely backed up.
+  Future<void> mergeLegacyHistoryAndLibraryIntoFuseProfile(
+    String profileId,
+  ) async {
+    final legacyHistory = _legacyHistoryBox;
+    final legacyLibrary = _legacyLibraryBox;
+    if (legacyHistory == null || legacyLibrary == null) return;
+    final historyBox = await _fuseProfileHistoryBox(profileId);
+    final libraryBox = await _fuseProfileLibraryBox(profileId);
+    for (var i = 0; i < legacyHistory.length; i++) {
+      final key = legacyHistory.keyAt(i);
+      final raw = legacyHistory.get(key);
+      if (key is! String || raw is! Map) continue;
+      final legacyTimestamp = (raw['timestamp'] as int?) ?? 0;
+      final existing = historyBox.get(key);
+      final existingTimestamp = existing is Map
+          ? (existing['timestamp'] as int?) ?? 0
+          : 0;
+      if (!historyBox.containsKey(key) ||
+          legacyTimestamp > existingTimestamp) {
+        await historyBox.put(key, Map<String, dynamic>.from(raw));
+      }
+    }
+    for (var i = 0; i < legacyLibrary.length; i++) {
+      final key = legacyLibrary.keyAt(i);
+      if (key is! String) continue;
+      if (!libraryBox.containsKey(key)) {
+        await libraryBox.put(key, legacyLibrary.get(key));
+      }
+    }
+    _historyCacheDirty = true;
+  }
+
+  /// Deletes [profileId]'s history + library boxes from disk (profile
+  /// deletion, Build 2). Mirrors "Reset Data": a cached box is closed
+  /// first, then the files are unlinked by name — a box that never
+  /// opened on this device still has its files deleted.
+  Future<void> deleteFuseProfileBoxes(String profileId) async {
+    final historyBox = _fuseProfileHistoryBoxes.remove(profileId);
+    try {
+      if (historyBox != null && historyBox.isOpen) {
+        await historyBox.close();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("Could not close profile history box '$profileId': $e");
+      }
+    }
+    final libraryBox = _fuseProfileLibraryBoxes.remove(profileId);
+    try {
+      if (libraryBox != null && libraryBox.isOpen) {
+        await libraryBox.close();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint("Could not close profile library box '$profileId': $e");
+      }
+    }
+    // The active pair must never point at a deleted box.
+    if (_activeFuseProfileId == profileId) {
+      _activeFuseProfileId = null;
+      final legacyHistory = _legacyHistoryBox;
+      final legacyLibrary = _legacyLibraryBox;
+      if (legacyHistory != null) _historyBox = legacyHistory;
+      if (legacyLibrary != null) _libraryBox = legacyLibrary;
+      _historyCacheDirty = true;
+    }
+    try {
+      await Hive.deleteBoxFromDisk(fuseProfileHistoryBoxName(profileId));
+    } catch (e) {
+      if (kDebugMode) debugPrint("Error deleting profile box: $e");
+    }
+    try {
+      await Hive.deleteBoxFromDisk(fuseProfileLibraryBoxName(profileId));
+    } catch (e) {
+      if (kDebugMode) debugPrint("Error deleting profile box: $e");
+    }
+  }
+
+  /// Clears the legacy boxes after a successful migration upload, so the
+  /// same data does not live in two places. The server backup is the
+  /// safety net: callers clear only once the profile backup (and the
+  /// legacy alias) are uploaded.
+  Future<void> clearLegacyHistoryAndLibrary() async {
+    await _legacyHistoryBox?.clear();
+    await _legacyLibraryBox?.clear();
+    _historyCacheDirty = true;
+  }
+
+  /// Whether the legacy boxes still hold anything (migration §9 case 3:
+  /// the account already has profiles and this device has data to move).
+  bool get legacyHistoryOrLibraryNonEmpty {
+    final history = _legacyHistoryBox;
+    final library = _legacyLibraryBox;
+    return (history != null && history.isNotEmpty) ||
+        (library != null && library.isNotEmpty);
+  }
+
+  /// The profile ids this device has opened boxes for (the cached pairs).
+  /// "Reset Data" deletes their files too; a profile opened on another
+  /// device and never on this one has no local box to delete.
+  List<String> get _knownFuseProfileIds => <String>{
+    ..._fuseProfileHistoryBoxes.keys,
+    ..._fuseProfileLibraryBoxes.keys,
+  }.toList();
+
+  /// The profile ids in the cached profile list (`profiles_cache_json`,
+  /// owned by the profiles feature — the key is spelled out here rather
+  /// than imported, so core/storage does not depend on a feature). Read
+  /// before the settings box is deleted, so "Reset Data" can delete the
+  /// boxes of profiles whose boxes were never opened this run.
+  List<String> _cachedFuseProfileIds() {
+    try {
+      final raw = _settingsBox.get('profiles_cache_json');
+      if (raw is! String) return const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map || decoded['profiles'] is! List) return const [];
+      return [
+        for (final p in decoded['profiles'] as List)
+          if (p is Map && p['id'] is String) p['id'] as String,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveProgress(
+    MultimediaItem item,
+    int positionMillis,
+    int durationMillis, {
+    String? lastStreamUrl,
+    String? lastEpisodeUrl,
+    int? season,
+    int? episode,
+    String? episodeTitle,
+    String? episodePosterUrl,
+  }) async {
+    final entry = {
+      'title': item.title,
+      'url': item.url,
+      'posterUrl': item.posterUrl,
+      'bannerUrl': item.bannerUrl,
+      'description': item.description,
+      'contentType': item.contentType.name,
+      'provider': item.provider,
+      'tmdbId': item.tmdbId,
+      'imdbId': item.imdbId,
+      // Where a Stremio title came from, so Continue Watching can reopen it
+      // through that add-on: see `MultimediaItem.addonUrl`.
+      'source': item.source,
+      'addonUrl': item.addonUrl,
+      'addonType': item.addonType,
+      'position': positionMillis,
+      'duration': durationMillis,
+      'lastStreamUrl': lastStreamUrl,
+      'lastEpisodeUrl': lastEpisodeUrl,
+      'season': season,
+      'episode': episode,
+      'episodeTitle': episodeTitle,
+      'episodePosterUrl': episodePosterUrl,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    // Save main entry (keyed by series/movie URL)
+    await _historyBox.put(_getKey(item.url), entry);
+
+    // Save episode-specific progress for both series and anime.
+    final isSeries =
+        item.contentType == MultimediaContentType.series ||
+        item.contentType == MultimediaContentType.anime;
+
+    if (isSeries && lastEpisodeUrl != null) {
+      final episodeKey = "EP_${_getKey(lastEpisodeUrl)}";
+      await _historyBox.put(episodeKey, entry);
+    }
+
+    _historyCacheDirty = true;
+  }
+
+  Future<void> removeFromHistory(String url) async {
+    final mainKey = _getKey(url);
+    await _historyBox.delete(mainKey);
+
+    // Cascade delete: find and remove all EP_ entries for this series
+    final keysToDelete = <String>[];
+    for (var i = 0; i < _historyBox.length; i++) {
+      final key = _historyBox.keyAt(i) as String;
+      if (key.startsWith("EP_")) {
+        final entry = _historyBox.get(key);
+        if (entry != null && entry['url'] == url) {
+          keysToDelete.add(key);
+        }
+      }
+    }
+
+    for (final k in keysToDelete) {
+      await _historyBox.delete(k);
+    }
+
+    _historyCacheDirty = true;
+  }
+
+  Future<void> updateHistoryItemTimestampAndPosition(
+    String url,
+    String? lastEpisodeUrl,
+    int timestamp,
+    int position,
+  ) async {
+    final mainKey = _getKey(url);
+    final entry = _historyBox.get(mainKey);
+    if (entry != null) {
+      final updatedEntry = Map<String, dynamic>.from(entry as Map);
+      updatedEntry['timestamp'] = timestamp;
+      updatedEntry['position'] = position;
+      await _historyBox.put(mainKey, updatedEntry);
+
+      if (lastEpisodeUrl != null) {
+        final episodeKey = "EP_${_getKey(lastEpisodeUrl)}";
+        final epEntry = _historyBox.get(episodeKey);
+        if (epEntry != null) {
+          final updatedEpEntry = Map<String, dynamic>.from(epEntry as Map);
+          updatedEpEntry['timestamp'] = timestamp;
+          updatedEpEntry['position'] = position;
+          await _historyBox.put(episodeKey, updatedEpEntry);
+        }
+      }
+      _historyCacheDirty = true;
+    }
+  }
+
+  Future<void> clearAllHistory() async {
+    await _historyBox.clear();
+    _historyCacheDirty = true;
+  }
+
+  List<Map<String, dynamic>> getWatchHistory() {
+    if (!_historyCacheDirty && _cachedHistory != null) {
+      return _cachedHistory!;
+    }
+
+    final items = <Map<String, dynamic>>[];
+    for (var i = 0; i < _historyBox.length; i++) {
+      final key = _historyBox.keyAt(i) as String;
+      // Filter out episode-specific entries from the main history list
+      if (key.startsWith("EP_")) continue;
+
+      final map = Map<String, dynamic>.from(_historyBox.get(key) as Map);
+      items.add(map);
+    }
+    items.sort(
+      (a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int),
+    );
+
+    _cachedHistory = items;
+    _historyCacheDirty = false;
+    return items;
+  }
+
+  /// Every history entry, including the per-episode (`EP_`) entries that
+  /// [getWatchHistory] filters out, each with its box key.
+  ///
+  /// For backups: restoring through [saveProgress] would stamp every entry
+  /// with "now" and lose the order, so a backup carries the raw entries and
+  /// [restoreHistoryEntries] puts them back with their original keys and
+  /// timestamps. Entries are plain maps, so a backup file stays readable.
+  List<Map<String, dynamic>> getAllHistoryEntries() {
+    final entries = <Map<String, dynamic>>[];
+    for (var i = 0; i < _historyBox.length; i++) {
+      final key = _historyBox.keyAt(i) as String;
+      final raw = _historyBox.get(key);
+      if (raw is Map) {
+        entries.add({
+          'key': key,
+          'entry': Map<String, dynamic>.from(raw),
+        });
+      }
+    }
+    return entries;
+  }
+
+  /// Puts raw history entries back under their original keys, as read by
+  /// [getAllHistoryEntries]. The caller decides which entries win (newest
+  /// timestamp); this just writes what it is given and drops the cache.
+  Future<void> restoreHistoryEntries(
+    List<Map<String, dynamic>> entries,
+  ) async {
+    for (final raw in entries) {
+      final key = raw['key'];
+      final entry = raw['entry'];
+      if (key is String && entry is Map) {
+        await _historyBox.put(key, Map<String, dynamic>.from(entry));
+      }
+    }
+    _historyCacheDirty = true;
+  }
+
+  int getPosition(String url) {
+    // Check main entry first (movies use this)
+    final key = _getKey(url);
+    if (_historyBox.containsKey(key)) {
+      final map = _historyBox.get(key) as Map;
+      return (map['position'] as int?) ?? 0;
+    }
+
+    // Fallback to episode if applicable (for legacy or mixed lookups)
+    final epKey = "EP_${_getKey(url)}";
+    if (_historyBox.containsKey(epKey)) {
+      final map = _historyBox.get(epKey) as Map;
+      return (map['position'] as int?) ?? 0;
+    }
+    return 0;
+  }
+
+  int getEpisodePosition(
+    String epUrl, {
+    String? mainUrl,
+    int? season,
+    int? episode,
+  }) {
+    final epKey = "EP_${_getKey(epUrl)}";
+    if (_historyBox.containsKey(epKey)) {
+      final map = _historyBox.get(epKey) as Map;
+      return (map['position'] as int?) ?? 0;
+    }
+
+    // Fallback: If we have season/episode info, look into the main item entry
+    if (mainUrl != null && season != null && episode != null) {
+      final mainKey = _getKey(mainUrl);
+      if (_historyBox.containsKey(mainKey)) {
+        final map = _historyBox.get(mainKey) as Map;
+        if (map['season'] == season && map['episode'] == episode) {
+          return (map['position'] as int?) ?? 0;
+        }
+      }
+    }
+    return 0;
+  }
+
+  int getDuration(String url) {
+    final key = _getKey(url);
+    if (_historyBox.containsKey(key)) {
+      final map = _historyBox.get(key) as Map;
+      return (map['duration'] as int?) ?? 0;
+    }
+
+    final epKey = "EP_${_getKey(url)}";
+    if (_historyBox.containsKey(epKey)) {
+      final map = _historyBox.get(epKey) as Map;
+      return (map['duration'] as int?) ?? 0;
+    }
+    return 0;
+  }
+
+  int getEpisodeDuration(
+    String epUrl, {
+    String? mainUrl,
+    int? season,
+    int? episode,
+  }) {
+    final epKey = "EP_${_getKey(epUrl)}";
+    if (_historyBox.containsKey(epKey)) {
+      final map = _historyBox.get(epKey) as Map;
+      return (map['duration'] as int?) ?? 0;
+    }
+
+    // Fallback: Look into main item entry
+    if (mainUrl != null && season != null && episode != null) {
+      final mainKey = _getKey(mainUrl);
+      if (_historyBox.containsKey(mainKey)) {
+        final map = _historyBox.get(mainKey) as Map;
+        if (map['season'] == season && map['episode'] == episode) {
+          return (map['duration'] as int?) ?? 0;
+        }
+      }
+    }
+    return 0;
+  }
+
+  String? getLastStreamUrl(String url) {
+    final key = _getKey(url);
+    if (_historyBox.containsKey(key)) {
+      final map = _historyBox.get(key) as Map;
+      return map['lastStreamUrl'] as String?;
+    }
+    return null;
+  }
+
+  String? getLastEpisodeUrl(String url) {
+    final key = _getKey(url);
+    if (_historyBox.containsKey(key)) {
+      final map = _historyBox.get(key) as Map;
+      return map['lastEpisodeUrl'] as String?;
+    }
+    return null;
+  }
+
+  static const String _kExtensionRepoUrls = 'extension_repo_urls';
+
+  /// String-valued extension keys a reset that keeps the repositories keeps
+  /// too: the collections the user follows, and what each repository has
+  /// been seen to list. Values are `ExtensionsController`'s own keys; this
+  /// layer does not import a feature.
+  static const List<String> _kExtensionRepoStrings = <String>[
+    'extension_collections',
+    'extension_seen_plugins',
+  ];
+
+  /// The repositories the user removed, so the collections still followed
+  /// after a reset do not bring them back.
+  static const String _kExtensionRemovedRepoUrls =
+      'extension_removed_repo_urls';
+
+  /// Closes a box if we have one and then deletes it from disk. The delete is
+  /// deliberately not conditional on the close succeeding.
+  ///
+  /// [init] assigns the four box fields in sequence, so the field belonging to
+  /// a box that failed to open was never assigned; these are bare `late`
+  /// fields, so merely reading `_libraryBox.isOpen` throws
+  /// `LateInitializationError`. Sharing one `try` between the close and the
+  /// delete let that read skip the delete, which is exactly the box
+  /// [clearPreferences] was called to remove.
+  ///
+  /// The delete does not need the field: an open that failed never registered
+  /// the box with Hive (hive-2.2.3/lib/src/hive_impl.dart:107), so
+  /// [Hive.deleteBoxFromDisk] takes the backend path and unlinks
+  /// `<name>.hive`, `<name>.hivec` and `<name>.lock` by name.
+  Future<void> _closeAndDeleteBox(
+    String name,
+    Box<dynamic> Function() box,
+  ) async {
+    try {
+      final opened = box();
+      if (opened.isOpen) await opened.close();
+    } catch (e) {
+      // An unassigned `late` field, or a box that will not close cleanly.
+      // Either way the delete below is still both possible and wanted.
+      if (kDebugMode) debugPrint("Could not close box '$name': $e");
+    }
+    try {
+      await Hive.deleteBoxFromDisk(name);
+    } catch (e) {
+      if (kDebugMode) debugPrint("Error deleting box '$name': $e");
+    }
+  }
+
+  Future<void> clearPreferences({bool keepRepos = true}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // If keepRepos is true, preserve ZoroX extensions, Nuvio plugins, and Stremio addons
+      List<String>? savedExtensionRepos;
+      List<String>? savedRemovedExtensionRepos;
+      final savedExtensionRepoStrings = <String, String>{};
+      List<String>? savedDisabledExtensions;
+      List<String>? savedPinnedExtensions;
+      List<String>? savedNuvioRepos;
+      bool? savedNuvioEnabled;
+      bool? savedNuvioAutoUpdate;
+      // Nuvio scraper settings, and CloudStream's switch and removed
+      // repositories (its repositories are a file, kept already), by key prefix.
+      final savedByPrefix = <String, Object>{};
+      List<String>? savedStremioAddons;
+
+      if (keepRepos) {
+        savedExtensionRepos = prefs.getStringList(_kExtensionRepoUrls);
+        savedRemovedExtensionRepos = prefs.getStringList(
+          _kExtensionRemovedRepoUrls,
+        );
+        for (final key in _kExtensionRepoStrings) {
+          final value = prefs.getString(key);
+          if (value != null) savedExtensionRepoStrings[key] = value;
+        }
+        savedDisabledExtensions = prefs.getStringList('disabled_extensions');
+        savedPinnedExtensions = prefs.getStringList('pinned_extensions');
+        savedNuvioRepos = prefs.getStringList('nuvio_repos_v1');
+        savedNuvioEnabled = prefs.getBool('nuvio_enabled_v1');
+        savedNuvioAutoUpdate = prefs.getBool('nuvio_auto_update_v1');
+        savedStremioAddons = prefs.getStringList('stremio_addons_v2');
+
+        for (final key in prefs.getKeys()) {
+          if (key.startsWith('nuvio_scraper_settings_') ||
+              key.startsWith('cloudstream_')) {
+            final val = prefs.get(key);
+            if (val != null) savedByPrefix[key] = val;
+          }
+        }
+      }
+
+      await prefs.clear();
+
+      if (keepRepos) {
+        if (savedExtensionRepos != null) {
+          await prefs.setStringList(_kExtensionRepoUrls, savedExtensionRepos);
+        }
+        if (savedRemovedExtensionRepos != null) {
+          await prefs.setStringList(
+            _kExtensionRemovedRepoUrls,
+            savedRemovedExtensionRepos,
+          );
+        }
+        for (final entry in savedExtensionRepoStrings.entries) {
+          await prefs.setString(entry.key, entry.value);
+        }
+        if (savedDisabledExtensions != null) {
+          await prefs.setStringList('disabled_extensions', savedDisabledExtensions);
+        }
+        if (savedPinnedExtensions != null) {
+          await prefs.setStringList('pinned_extensions', savedPinnedExtensions);
+        }
+        if (savedNuvioRepos != null) {
+          await prefs.setStringList('nuvio_repos_v1', savedNuvioRepos);
+        }
+        if (savedNuvioEnabled != null) {
+          await prefs.setBool('nuvio_enabled_v1', savedNuvioEnabled);
+        }
+        if (savedNuvioAutoUpdate != null) {
+          await prefs.setBool('nuvio_auto_update_v1', savedNuvioAutoUpdate);
+        }
+        if (savedStremioAddons != null) {
+          await prefs.setStringList('stremio_addons_v2', savedStremioAddons);
+        }
+        for (final entry in savedByPrefix.entries) {
+          final v = entry.value;
+          if (v is String) {
+            await prefs.setString(entry.key, v);
+          } else if (v is bool) {
+            await prefs.setBool(entry.key, v);
+          } else if (v is int) {
+            await prefs.setInt(entry.key, v);
+          } else if (v is double) {
+            await prefs.setDouble(entry.key, v);
+          } else if (v is List<String>) {
+            await prefs.setStringList(entry.key, v);
+          }
+        }
+      }
+
+      // Delete Hive Boxes (Library, History, Settings). The library and
+      // history fields point at the ACTIVE pair (a profile's boxes while
+      // one is active), so the legacy fields are named here, and every
+      // profile's local boxes go too — a reset must not leave one
+      // profile's Continue Watching behind. Profile ids come from the
+      // cached profile list (read before the settings box is deleted)
+      // and from the boxes opened this run; a profile never opened on
+      // this device has no local box to delete.
+      final fuseProfileIdsToDelete = <String>{
+        ..._knownFuseProfileIds,
+        ..._cachedFuseProfileIds(),
+      };
+      await _closeAndDeleteBox(
+        kLibraryBox,
+        () => _legacyLibraryBox ?? _libraryBox,
+      );
+      await _closeAndDeleteBox(kSettingsBox, () => _settingsBox);
+      await _closeAndDeleteBox(
+        kHistoryBox,
+        () => _legacyHistoryBox ?? _historyBox,
+      );
+      for (final profileId in fuseProfileIdsToDelete) {
+        await _closeAndDeleteBox(
+          fuseProfileHistoryBoxName(profileId),
+          () =>
+              _fuseProfileHistoryBoxes[profileId] ??
+              _fuseProfileLibraryBoxes[profileId] ??
+              _historyBox,
+        );
+        await _closeAndDeleteBox(
+          fuseProfileLibraryBoxName(profileId),
+          () =>
+              _fuseProfileLibraryBoxes[profileId] ??
+              _fuseProfileHistoryBoxes[profileId] ??
+              _libraryBox,
+        );
+      }
+
+      // Only delete extension data box if NOT keeping extensions
+      if (!keepRepos) {
+        await _closeAndDeleteBox(kExtensionsBox, () => _extensionsBox);
+      }
+
+      // The settings box took both subtitle account usernames with it. The
+      // matching passwords are in the platform secure store, so they have to
+      // be named to go with them - otherwise the accounts screen reads "Not
+      // logged in" on the next launch while the passwords are still on the
+      // device.
+      try {
+        const secure = FlutterSecureStorage(aOptions: AndroidOptions());
+        for (final key in kAccountPasswordKeys) {
+          await secure.delete(key: key);
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('Error clearing account passwords: $e');
+      }
+
+      // Clear Cache Manager (Images)
+      try {
+        await CachedNetworkImageProvider.defaultCacheManager.emptyCache();
+      } catch (e) {
+        if (kDebugMode) debugPrint("Error clearing cache manager: $e");
+      }
+
+      // ZoroX's own temporary files (downloaded subtitles and plugins).
+      await _clearAppTemp();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error clearing preferences: $e');
+    }
+  }
+
+  Future<void> saveDownloadMetadata(
+    String taskId,
+    MultimediaItem item, {
+    Episode? episode,
+  }) async {
+    final box = await Hive.openBox<dynamic>(kDownloadMetadataBox);
+    await box.put(taskId, {
+      'item': item.toJson(),
+      'episode': episode?.toJson(),
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  Future<Map<String, dynamic>?> getDownloadMetadata(String taskId) async {
+    final box = await Hive.openBox<dynamic>(kDownloadMetadataBox);
+    final data = box.get(taskId);
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  Future<void> removeDownloadMetadata(String taskId) async {
+    final box = await Hive.openBox<dynamic>(kDownloadMetadataBox);
+    await box.delete(taskId);
+  }
+
+  Future<void> deleteAllData() async {
+    try {
+      final supportDir = await getApplicationSupportDirectory();
+
+      // 1. Delete the extensions folder (ZoroX plugins, CloudStream's
+      //    extensions) and 2. Nuvio's plugins folder. A file still open
+      //    (Windows will not delete one) must not keep the steps below from
+      //    running, so each folder fails on its own.
+      for (final name in const ['extensions', 'nuvio_plugins']) {
+        try {
+          final dir = Directory('${supportDir.path}/$name');
+          if (await dir.exists()) await dir.delete(recursive: true);
+        } catch (e) {
+          if (kDebugMode) debugPrint("Error deleting '$name': $e");
+        }
+      }
+
+      // 3. Clear Preferences & Hive Boxes (including extensions)
+      await clearPreferences(keepRepos: false);
+
+      // 4. Clear Download Metadata
+      try {
+        await Hive.deleteBoxFromDisk(kDownloadMetadataBox);
+      } catch (_) {}
+
+      // 5. Clear Secure Storage (OAuth tokens, Debrid API keys)
+      try {
+        const secure = FlutterSecureStorage(aOptions: AndroidOptions());
+        await secure.deleteAll();
+      } catch (e) {
+        if (kDebugMode) debugPrint('Error deleting secure storage: $e');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error deleting data: $e');
+    }
+  }
+
+  Future<int> computeImageVideoCacheBytes() async {
+    if (kIsWeb) return 0;
+    var total = 0;
+    try {
+      for (final dir in await appCacheDirectories()) {
+        if (!await dir.exists()) continue;
+        await for (final entity in dir.list(
+          recursive: true,
+          followLinks: false,
+        )) {
+          if (entity is File) {
+            try {
+              total += await entity.length();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error computing cache size: $e');
+    }
+    return total;
+  }
+
+  Future<void> clearImageVideoCache() async {
+    if (kIsWeb) return;
+    try {
+      await CachedNetworkImageProvider.defaultCacheManager.emptyCache();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error clearing image cache: $e');
+    }
+    await _clearAppTemp();
+  }
+
+  /// Deletes ZoroX's own temporary files ([appTempDirectory]), and on the
+  /// desktops nothing else in the temporary directory.
+  Future<void> _clearAppTemp() async {
+    try {
+      final dir = await appTempDirectory();
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error clearing temp dir: $e');
+    }
+  }
+}
