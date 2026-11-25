@@ -403,12 +403,16 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
       return;
     }
 
+    // A row picked here plays on its own: the player gets only that link,
+    // so it opens it directly instead of racing the whole list
+    // ("Source 1 of 14"). The attempt list stays for the direct Play
+    // button, which hands the player the whole list with no pick.
     final played = await playAddonLinks(
       context,
       ref,
       item: widget.item,
       request: widget.request,
-      links: _playable,
+      links: [stream],
       selected: stream,
       episode: widget.episode,
       onStatus: (status) {
