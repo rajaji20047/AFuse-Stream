@@ -64,7 +64,9 @@ class LayoutConstants {
   /// What the shell adds to the media padding while the floating nav pill is
   /// on screen. Mirrors `CustomBottomNavBar.contentClearance` (a test keeps
   /// the two equal); kept here so this file stays free of widget imports.
-  static const double navPillClearance = 88;
+  /// 96 since the Zenith-style bar (2026-11-25): 21 (gap) + 63 (pill) +
+  /// 12 (buffer). The old 88 never matched the 95 pt clearance it mirrors.
+  static const double navPillClearance = 96;
 
   /// Extra space under the last row of a screen that has no nav pill over
   /// it, on top of the safe-area inset. Zero since 1.0.1 build 67 (was 16):

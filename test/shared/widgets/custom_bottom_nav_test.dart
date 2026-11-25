@@ -159,12 +159,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     // The package's root Positioned: left/right are the side margins
-    // (insets = 16, build 111) and bottom is the pill's gap from the
+    // (insets = 19, Zenith-style) and bottom is the pill's gap from the
     // screen edge. The neutral rim is a second Positioned with the same
     // margins but a fixed height, so it is filtered out here.
     final positioned = tester
         .widgetList<Positioned>(find.byType(Positioned))
-        .where((p) => p.left == 16.0 && p.right == 16.0 && p.height == null)
+        .where((p) => p.left == 19.0 && p.right == 19.0 && p.height == null)
         .toList();
     expect(positioned, hasLength(1));
     expect(positioned.single.bottom, CustomBottomNavBar.targetBottomGap);
@@ -201,18 +201,18 @@ void main() {
         ),
       ),
     );
-    // Build 109: the padding is exactly gap − insets (4 since build
-    // 111, when insets went 8 → 16) — it lowers the pill on iOS (real
-    // 34) and raises it on Android (real 0), so the pill lands 20 pt
-    // up on both.
-    expect(seen34, 4.0);
-    expect(seen0, 4.0);
+    // Build 109: the padding is exactly gap − insets (2 since the
+    // Zenith-style bar, when gap went 20 → 21 and insets 16 → 19) — it
+    // lowers the pill on iOS (real 34) and raises it on Android (real
+    // 0), so the pill lands 21 pt up on both.
+    expect(seen34, 2.0);
+    expect(seen0, 2.0);
   });
 
   test('content clearance covers the pill top plus buffer', () {
-    expect(CustomBottomNavBar.targetBottomGap, 20.0);
-    // 20 (gap) + 63 (pill) + 12 (buffer).
-    expect(CustomBottomNavBar.contentClearance, 95.0);
+    expect(CustomBottomNavBar.targetBottomGap, 21.0);
+    // 21 (gap) + 63 (pill) + 12 (buffer).
+    expect(CustomBottomNavBar.contentClearance, 96.0);
   });
 
   testWidgets('the pill is 63 pt tall', (tester) async {
@@ -221,20 +221,20 @@ void main() {
     expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 63.0);
   });
 
-  testWidgets('the pill is a 24 pt rounded rectangle, not a stadium', (
+  testWidgets('the pill is a stadium (34 pt radius)', (
     tester,
   ) async {
     await pump(tester, Brightness.dark);
     await tester.pumpAndSettle();
-    // Build 111 (user 2026-11-21 04:03: "thoda round corner pe"):
-    // slightly round, the curve clearly visible at both ends, still
-    // not a stadium. The package paints the selected bubble with this
-    // same radius, so the two stay consistent.
+    // Zenith-style (user 2026-11-25): full stadium, the package
+    // default — build 111's 24 pt rounded rectangle is superseded.
+    // The package paints the selected bubble with this same radius,
+    // so the two stay consistent.
     expect(
       tester
           .widget<LiquidGlassNavBar>(find.byType(LiquidGlassNavBar))
           .borderRadius,
-      24.0,
+      34.0,
     );
   });
 
@@ -318,7 +318,8 @@ void main() {
       final bar = tester.widget<LiquidGlassNavBar>(
         find.byType(LiquidGlassNavBar),
       );
-      expect(bar.inactiveColor, const Color(0xFF9D9A92));
+      // Zenith-style: unselected tabs are the content colour at 65%.
+      expect(bar.inactiveColor, Colors.white.withValues(alpha: 0.65));
       expect(bar.labelStyle?.shadows, isNull);
     });
 

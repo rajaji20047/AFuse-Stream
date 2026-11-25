@@ -25,6 +25,16 @@ import 'package:zorox/l10n/generated/app_localizations.dart';
 /// routes and the liquid-glass material itself are exactly as they
 /// were — the rim is a Positioned sibling around the package bar inside
 /// [_NavPillRim], never inside the package.
+/// Zenith-style bar (user 2026-11-25, from his Zenith recording): the
+/// pill is a full STADIUM (34 pt corners, the package default), the side
+/// gutter is 19 pt and the foot is 21 dp off the edge (Zenith's
+/// sideMargin/bottomLift), and the selected tab wears a primary-tint
+/// indicator (14% accent, not the build-109 dark bubble) that travels
+/// on a ~1/3 s spring with one soft overshoot. Icons 28 dp, labels
+/// 10 sp. What Zenith has that this bar does NOT copy: the mini-player
+/// pill above the bar (Fuse has no audio mini-player) and the
+/// scroll-collapse to a single inline tab (Fuse pages feed no scroll
+/// into the bar) — both would need new wiring, not a restyle.
 /// A Stack is the one wrapper that does not break the +15..+19 rule: the
 /// package's root Positioned needs a Stack ancestor, and this Stack is
 /// one (a Transform/Padding parent would throw "Incorrect use of
@@ -59,33 +69,34 @@ class CustomBottomNavBar extends StatelessWidget {
   });
 
   /// The package insets: the side margin AND the bottom offset the
-  /// package adds under the pill. Build 111 (user 2026-11-21 04:07:
-  /// "corner k side pe screen dikhe"): 16, the package default, so
-  /// the screen shows beside both corners — 8 was nearly
-  /// edge-to-edge. The bottom gap itself still comes from
+  /// package adds under the pill. Zenith-style (user 2026-11-25):
+  /// 19, Zenith's sideMargin (Apple's 19 pt gutter) — build 111's 16
+  /// (user 2026-11-21 04:07: "corner k side pe screen dikhe") is
+  /// superseded. The bottom gap itself still comes from
   /// [targetBottomGap] via [navPaddingBottom], not from this value:
   /// the shell feeds padding.bottom = gap − insets, so the pill
-  /// still lands 20 pt up.
-  static const double _kBottomMargin = 16.0;
+  /// still lands 21 pt up.
+  static const double _kBottomMargin = 19.0;
 
   /// The pill's height (package: fixed 63 since build 109).
   static const double _kPillHeight = 63.0;
 
-  /// The pill's corner radius (build 111, user 2026-11-21 04:03:
-  /// "thoda round corner pe"): 24 pt — slightly round, the curve
-  /// clearly visible at both ends, still a rounded rectangle and
-  /// not a full stadium (31.5). Build 110's 20 pt read too flat on
-  /// the phone. The package paints the selected bubble with this
-  /// same radius, so the bubble follows it — one radius keeps pill
-  /// and bubble consistent.
-  static const double _kPillRadius = 24.0;
+  /// The pill's corner radius. Zenith-style (user 2026-11-25): 34 pt —
+  /// the package default, a full stadium at the 63 pt pill height,
+  /// the shape Zenith's pill has. Build 111's 24 pt (user 2026-11-21
+  /// 04:03: "thoda round corner pe") is superseded. The package paints
+  /// the selected bubble with this same radius, so the bubble follows
+  /// it — one radius keeps pill and bubble consistent.
+  static const double _kPillRadius = 34.0;
 
   /// How far the pill's bottom edge sits above the physical screen bottom
-  /// — the reference app's spot (build 109: 20 pt, was 8). The package
-  /// positions the pill at `MediaQuery.padding.bottom + insets`, so the
-  /// shell feeds it a bottom padding of [targetBottomGap] −
-  /// [_kBottomMargin] (see [navPaddingBottom]).
-  static const double targetBottomGap = 20.0;
+  /// — Zenith's spot (user 2026-11-25): 21 dp, Zenith's foot off the
+  /// edge (bottomLift 6 + the 15 dp gesture inset). Build 109's 20 pt
+  /// is superseded. The package positions the pill at
+  /// `MediaQuery.padding.bottom + insets`, so the shell feeds it a
+  /// bottom padding of [targetBottomGap] − [_kBottomMargin] (see
+  /// [navPaddingBottom]).
+  static const double targetBottomGap = 21.0;
 
   /// Breathing room between the pill top and the last content row.
   static const double _kContentBuffer = 12.0;
@@ -100,9 +111,9 @@ class CustomBottomNavBar extends StatelessWidget {
   /// The `padding.bottom` the package should see so the pill lands at
   /// [targetBottomGap] above the physical screen bottom. The package
   /// positions the pill at `MediaQuery.padding.bottom + insets`, so the
-  /// padding must be [targetBottomGap] − [_kBottomMargin] (4): on iOS
+  /// padding must be [targetBottomGap] − [_kBottomMargin] (2): on iOS
   /// (real safe-area padding ~34) that LOWERS it, on Android (real ~0)
-  /// it RAISES it — either way the pill lands 20 pt up. Build 109
+  /// it RAISES it — either way the pill lands 21 pt up. Build 109
   /// changed this from lower-only (the old 8 pt gap needed 0, which the
   /// real padding already covered on Android).
   ///
@@ -202,25 +213,30 @@ class CustomBottomNavBar extends StatelessWidget {
       selectedIndex: currentIndex,
       onTap: onTap,
       impellerSupported: impellerSupported,
-      // The package insets (build 111: 16 — the side margin, so the
+      // The package insets (Zenith-style: 19 — the side margin, so the
       // screen shows beside the corners).
       insets: _kBottomMargin,
-      // A rounded rectangle at the 63 pt pill (build 111: 24 pt —
-      // slightly round, clearly visible curve, not a stadium).
+      // A full stadium at the 63 pt pill (Zenith-style: 34 pt — the
+      // package default, superseding build 111's 24 pt).
       borderRadius: _kPillRadius,
       // Build 110 (user 2026-11-21 01:44): the selected tab wears the
       // theme ACCENT again — build 104's nav-follows-accent, back on
       // the new nav (green accent → green icon, gold → gold, blue →
-      // blue). The bubble itself stays DARK (the package paints it
-      // behind the icon); only the icon + label take the accent.
+      // blue). Zenith-style (user 2026-11-25): the bubble behind it is
+      // the same accent at 14% now, not the build-109 dark bubble.
       // `colorScheme.primary` IS the user's accent (app_theme.dart).
       activeColor: colorScheme.primary,
+      // Zenith-style (user 2026-11-25): unselected tabs are the content
+      // colour at 65% — white on dark glass, onSurfaceVariant on light.
+      // Build 110's warm grey (0xFF9D9A92) is superseded.
       inactiveColor: theme.brightness == Brightness.dark
-          ? const Color(0xFF9D9A92)
+          ? Colors.white.withValues(alpha: 0.65)
           : colorScheme.onSurfaceVariant,
-      iconSize: 24,
+      // Zenith-style: 28 dp icons, 10 sp labels (Zenith's tabLabelStyle).
+      iconSize: 28,
       labelStyle: TextStyle(
-        fontSize: 9,
+        fontSize: 10,
+        letterSpacing: 0.5,
         fontWeight: FontWeight.w600,
         // Clear glass over a poster: a soft light halo keeps the dark
         // label readable without tinting the pill.

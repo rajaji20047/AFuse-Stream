@@ -3,7 +3,7 @@
 Fork of `liquid_glass_bottom_nav` 0.0.14 (pub.dev), vendored under
 `packages/liquid_glass_bottom_nav` and wired through `dependency_overrides`
 in the app's `pubspec.yaml`. Everything is byte-identical to 0.0.14 except
-the one change below.
+the changes below.
 
 ## The change — guard the OpenGL ES Y-flips for engine >= 3.44
 
@@ -53,6 +53,33 @@ added).
 
 To rebase onto a newer liquid_glass_bottom_nav: copy the new version over
 this directory, re-apply the six guards above (search for
-`IMPELLER_TARGET_OPENGLES` in `lib/src/liquid_glass_renderer/assets/shaders/`),
-and keep this note current. If upstream ever ships the guard itself, this
-fork can be dropped.
+`IMPELLER_TARGET_OPENGLES` in `lib/src/liquid_glass_renderer/assets/shaders/`)
+and the Zenith-style changes in the section below, and keep this note
+current. If upstream ever ships the guard itself, only the Zenith section
+still needs re-applying.
+
+## Zenith-style bar (2026-11-25)
+
+The user asked for the Zenith nav bar (from his Zenith recording) in Fuse.
+Shape and motion, not just colours — in
+`lib/liquid_glass_bottom_nav.dart` and the app's
+`lib/shared/widgets/custom_bottom_nav.dart`:
+
+- Pill: full stadium (`borderRadius` 34, the package default), side gutter
+  19 pt, foot 21 dp off the edge (Zenith's sideMargin / bottomLift).
+- Indicator: the resting bubble is the accent at 14% in both modes (was:
+  black 0.45 in dark, accent 0.15 in light).
+- Travel: ~1/3 s, one soft overshoot (`easeOutBack`) instead of the
+  multi-bounce `elasticOut`; the selected glyph pops to 1.08 on the same
+  spring.
+- Haptics: a selection tick on a tab change by tap or by drag.
+- Icons 28 dp, labels 10 sp / 0.5 tracking; unselected tabs are the
+  content colour at 65% on dark glass.
+
+NOT copied (needs new wiring, not a restyle): Zenith's mini-player pill
+above the bar (Fuse has no audio mini-player) and the scroll-collapse to
+a single inline tab (Fuse pages feed no scroll into the bar). The
+indicator's stretch-while-travelling (scaleX 1 + lag x 0.16) is also
+not in: the package animates the bubble with AnimatedPositioned, and a
+true lag stretch needs a controller-driven position. The drag squash
+(scaleY on drag velocity) already in the package stays.

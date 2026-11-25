@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'src/liquid_glass_renderer/liquid_glass_renderer.dart'
     show LiquidGlass, LiquidGlassSettings, LiquidRoundedSuperellipse,
         GlassGlow, GlassGlowLayer, LiquidGlassLayer;
@@ -180,8 +181,8 @@ class LiquidGlassNavBar extends StatefulWidget {
 
   /// Vertical space the floating nav occupies above the system bottom inset.
   /// Tab screens with scrollable content should add this as bottom padding.
-  /// Composition: pill height 63 + bottom margin 16 + 12px breathing buffer = 91.0.
-  static const double contentBottomInset = 91.0;
+  /// Composition: pill height 63 + bottom margin 19 + 12px breathing buffer = 94.0.
+  static const double contentBottomInset = 94.0;
 
   const LiquidGlassNavBar({
     super.key,
@@ -392,9 +393,16 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                   return GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (details) {
-                      widget.onTap(
-                        _indexFromX(details.localPosition.dx, itemWidth),
+                      final index = _indexFromX(
+                        details.localPosition.dx,
+                        itemWidth,
                       );
+                      // Zenith-style: a tick on a tab change, not on
+                      // re-tapping the tab already selected.
+                      if (index != widget.selectedIndex) {
+                        HapticFeedback.selectionClick();
+                      }
+                      widget.onTap(index);
                     },
                     onHorizontalDragStart: (details) {
                       final x = details.localPosition.dx;
@@ -407,6 +415,11 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                     onHorizontalDragUpdate: (details) {
                       final x = details.localPosition.dx;
                       final index = _indexFromX(x, itemWidth);
+                      // Zenith-style: a tick each time the drag crosses
+                      // onto another tab.
+                      if (index != _dragIndex) {
+                        HapticFeedback.selectionClick();
+                      }
                       setState(() {
                         _dragIndex = index;
                         _dragX = x;
@@ -487,9 +500,13 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                             return AnimatedPositioned(
                               duration: Duration(
                                 // Shorter duration for position changes when dragging so it tightly tracks the finger
-                                milliseconds: isDragging ? 50 : 400,
+                                milliseconds: isDragging ? 50 : 333,
                               ),
-                              curve: isDragging ? Curves.easeOut : Curves.elasticOut,
+                              // Zenith-style: the indicator travels on a
+                              // ~1/3 s spring with one soft overshoot
+                              // (damping 0.72), not the multi-bounce
+                              // elasticOut.
+                              curve: isDragging ? Curves.easeOut : Curves.easeOutBack,
                               left: isDragging ? heldLeft : normalLeft,
                               width: isDragging ? heldWidth : normalWidth,
                               top: isDragging ? heldTop : normalTop,
@@ -531,21 +548,21 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                     else
                                       AnimatedContainer(
                                         duration: Duration(
-                                          milliseconds: isDragging ? 150 : 400,
+                                          milliseconds: isDragging ? 150 : 333,
                                         ),
-                                        curve: isDragging ? Curves.easeOut : Curves.elasticOut,
+                                        curve: isDragging
+                                            ? Curves.easeOut
+                                            : Curves.easeOutBack,
                                         decoration: BoxDecoration(
                                           // No tint while held — the light gray stroke (or the
                                           // rainbow sheen, if opted into) is the only drag-state
                                           // accent.
-                                          // Build 109: the resting bubble is DARK (a black
-                                          // tint, not the old faint white one) — the
-                                          // reference-app look: dark bubble, white icon.
+                                          // Zenith-style (user 2026-11-25): the resting
+                                          // bubble is the accent at 14% in both modes —
+                                          // build 109's dark bubble (black 0.45) is gone.
                                           color: isDragging
                                               ? Colors.transparent
-                                              : (isDark
-                                                  ? Colors.black.withValues(alpha: 0.45)
-                                                  : activeColor.withValues(alpha: 0.15)),
+                                              : activeColor.withValues(alpha: 0.14),
                                           borderRadius: BorderRadius.circular(widget.borderRadius),
                                         ),
                                       ),
@@ -597,17 +614,26 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                   _iconWithBadge(
                                     context,
                                     item,
-                                    IconTheme(
-                                      data: IconThemeData(
-                                        color: color,
-                                        size: widget.iconSize,
+                                    // Zenith-style: the selected glyph pops
+                                    // to 1.08 on the same spring as the
+                                    // indicator. A Transform scale, so the
+                                    // layout (and the badge) never moves.
+                                    AnimatedScale(
+                                      scale: isActive ? 1.08 : 1.0,
+                                      duration: const Duration(milliseconds: 333),
+                                      curve: Curves.easeOutBack,
+                                      child: IconTheme(
+                                        data: IconThemeData(
+                                          color: color,
+                                          size: widget.iconSize,
+                                        ),
+                                        child: item.iconWidget ??
+                                            Icon(
+                                              item.icon,
+                                              size: widget.iconSize,
+                                              color: color,
+                                            ),
                                       ),
-                                      child: item.iconWidget ??
-                                          Icon(
-                                            item.icon,
-                                            size: widget.iconSize,
-                                            color: color,
-                                          ),
                                     ),
                                   ),
                                   const SizedBox(height: 2),
