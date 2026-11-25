@@ -20,6 +20,7 @@ import android.os.PowerManager
 import android.util.Rational
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -310,6 +311,14 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity(), FlutterEngineCon
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         switchLaunchThemeForNormalTheme()
         super.onCreate(savedInstanceState)
+        // Edge-to-edge: the Flutter surface draws behind the status bar,
+        // so the Home hero poster bleeds to the top of the screen instead
+        // of stopping at a black strip. A FlutterFragment host does not
+        // do this on its own the way a FlutterActivity does. The bottom
+        // nav already adds MediaQuery padding.bottom to its foot gap, so
+        // it stays put above the gesture bar.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
         setContentView(FrameLayout(this).apply { id = FRAGMENT_CONTAINER_ID })
         flutterFragment = supportFragmentManager.findFragmentByTag(TAG_FLUTTER_FRAGMENT) as FlutterFragment?
             ?: FlutterFragment.withNewEngine()

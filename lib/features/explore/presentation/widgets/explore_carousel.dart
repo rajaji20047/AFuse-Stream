@@ -1114,11 +1114,12 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
 
   /// Olympus Noir hero (build 102) — the cinematic left-aligned layout
   /// that replaces design A on Home only: gold "NOW FEATURED" label,
-  /// large title, one meta line, real-data badge row, metallic-gold
-  /// "Explore Film" button + bookmark. Every part is the item's own
+  /// large title, one meta line, real-data badge row, white
+  /// "View Details" pill + bookmark. Every part is the item's own
   /// data (plugin + TMDB enrichment, same as design A) — nothing is
   /// hardcoded, so any featured title renders in this language.
   Widget _buildOlympusHeroContent(BuildContext context, MultimediaItem plain) {
+    final l10n = AppLocalizations.of(context)!;
     final found = watchHeroEnrichment(ref, plain);
     final movie = found?.applyTo(plain) ?? plain;
     final logoUrl = movie.logoUrl;
@@ -1269,36 +1270,33 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
         const SizedBox(height: 14),
         Row(
           children: [
-            // Explore Film — metallic gold, same destination as tapping
+            // View Details — the white pill, as in the Stremio section
+            // (Browse's design A hero); same destination as tapping
             // the poster. Flexible with a scale-down label: on a narrow
             // phone the button shrinks instead of overflowing the row.
             Flexible(
-              child: FilledButton.icon(
-                key: const ValueKey('olympus-hero-explore-film'),
+              child: ElevatedButton(
+                key: const ValueKey('olympus-hero-view-details'),
                 onPressed: () => _openMovie(context, plain),
-                icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                label: const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text('EXPLORE FILM', maxLines: 1, softWrap: false),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: kOlympusGold,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   elevation: 0,
-                  minimumSize: const Size(0, 48),
+                  minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
+                    horizontal: 26,
+                    vertical: 10,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: const StadiumBorder(),
                   tapTargetSize: MaterialTapTargetSize.padded,
                   textStyle: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(l10n.viewDetails, maxLines: 1, softWrap: false),
                 ),
               ),
             ),

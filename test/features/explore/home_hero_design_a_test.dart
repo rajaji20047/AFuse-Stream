@@ -1,6 +1,6 @@
 /// Home's hero on a phone, Olympus Noir (build 102): gold "NOW
 /// FEATURED" label, large uppercase title, one small meta line, one
-/// small badge row, a metallic-gold Explore Film button + bookmark,
+/// small badge row, a white View Details pill + bookmark,
 /// gold round dots. Every part shows only when the item carries it;
 /// nothing wraps.
 ///
@@ -17,7 +17,6 @@ import 'package:raja/core/addons/models/addon_meta.dart' show kAddonItemSource;
 import 'package:raja/core/domain/entity/multimedia_item.dart';
 import 'package:raja/core/storage/library_repository.dart';
 import 'package:raja/core/storage/storage_service.dart';
-import 'package:raja/core/theme/olympus.dart';
 import 'package:raja/features/explore/presentation/widgets/explore_carousel.dart';
 import 'package:raja/features/explore/presentation/widgets/home_hero_meta.dart';
 import 'package:raja/l10n/generated/app_localizations.dart';
@@ -253,7 +252,7 @@ void main() {
       addTearDown(() => tester.pumpWidget(const SizedBox()));
     }
 
-    testWidgets('title, meta, badges, one Explore Film; no View Details, '
+    testWidgets('title, meta, badges, one View Details; no Explore Film, '
         'no Play / My List / Info, no cert chip', (tester) async {
       MultimediaItem? opened;
       var played = 0;
@@ -283,16 +282,16 @@ void main() {
       expect(find.text('R | ENDED'), findsNothing);
       expect(find.text('NOW FEATURED'), findsOneWidget);
 
-      expect(find.text('EXPLORE FILM'), findsOneWidget);
+      expect(find.text('View Details'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('olympus-hero-explore-film')),
+        find.byKey(const ValueKey('olympus-hero-view-details')),
         findsOneWidget,
       );
       expect(
         find.byKey(const ValueKey('olympus-hero-bookmark')),
         findsOneWidget,
       );
-      expect(find.text('View Details'), findsNothing);
+      expect(find.text('EXPLORE FILM'), findsNothing);
       expect(find.text('Play'), findsNothing);
       expect(find.text('My List'), findsNothing);
       expect(find.text('Info'), findsNothing);
@@ -305,17 +304,17 @@ void main() {
         expect(rect.left, closeTo(24, 1.0), reason: key);
       }
       final button = tester.getRect(
-        find.byKey(const ValueKey('olympus-hero-explore-film')),
+        find.byKey(const ValueKey('olympus-hero-view-details')),
       );
       expect(button.left, closeTo(24, 1.0));
       final style = tester
-          .widget<FilledButton>(
-            find.byKey(const ValueKey('olympus-hero-explore-film')),
+          .widget<ElevatedButton>(
+            find.byKey(const ValueKey('olympus-hero-view-details')),
           )
           .style!;
-      expect(style.backgroundColor!.resolve({}), kOlympusGold);
+      expect(style.backgroundColor!.resolve({}), Colors.white);
 
-      await tester.tap(find.text('EXPLORE FILM'));
+      await tester.tap(find.text('View Details'));
       await tester.pump();
       expect(opened?.title, 'Godzilla Minus Zero');
       expect(played, 0);
@@ -335,10 +334,10 @@ void main() {
       expect(find.text('TITLE 0'), findsOneWidget);
       expect(find.byKey(const ValueKey('olympus-hero-meta')), findsNothing);
       expect(find.byKey(const ValueKey('olympus-hero-badges')), findsNothing);
-      expect(find.text('EXPLORE FILM'), findsOneWidget);
+      expect(find.text('View Details'), findsOneWidget);
       final title = tester.getRect(find.text('TITLE 0'));
       final button = tester.getRect(
-        find.byKey(const ValueKey('olympus-hero-explore-film')),
+        find.byKey(const ValueKey('olympus-hero-view-details')),
       );
       // No gap left where the two rows would have been.
       expect(button.top - title.bottom, lessThan(24));
@@ -451,7 +450,7 @@ void main() {
       await pump(tester, movies: [_rich(), _bare(1), _bare(2)]);
       final card = tester.getRect(find.byKey(const ValueKey('hero-card')));
       final button = tester.getRect(
-        find.byKey(const ValueKey('olympus-hero-explore-film')),
+        find.byKey(const ValueKey('olympus-hero-view-details')),
       );
       final active = tester.getRect(find.byKey(const ValueKey('hcd_0')));
       final other = tester.getRect(find.byKey(const ValueKey('hcd_1')));

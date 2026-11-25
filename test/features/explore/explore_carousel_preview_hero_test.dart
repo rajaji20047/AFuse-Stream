@@ -160,8 +160,8 @@ void main() {
       expect(decoration.border, isNull);
       expect(decoration.borderRadius, BorderRadius.zero);
       // Title and button never touch the screen edge (Olympus Noir on a
-      // phone: the uppercase title and the Explore Film button).
-      for (final label in ['TITLE 0', 'EXPLORE FILM']) {
+      // phone: the uppercase title and the View Details button).
+      for (final label in ['TITLE 0', 'View Details']) {
         final r = tester.getRect(find.text(label));
         expect(r.left, greaterThanOrEqualTo(24), reason: label);
         expect(r.right, lessThanOrEqualTo(411 - 24), reason: label);
