@@ -105,6 +105,67 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a VOD film that picks a live-shaped source stays on demand: no LIVE '
+    'pill, the clock stays',
+    variant: texturePlatform,
+    (tester) async {
+      final engine = FakeVlcEngine();
+      installEngineMocks(engine: engine);
+      const alpha = 'https://example.com/film.mp4';
+      const beta = 'https://example.com/stream.m3u8';
+      await pumpPlayer(
+        tester,
+        item: MultimediaItem(
+          title: 'Film',
+          url: alpha,
+          posterUrl: '',
+          provider: 'Remote',
+        ),
+        videoUrl: alpha,
+        preloadedStreams: const [
+          StreamResult(url: alpha, source: 'Alpha'),
+          StreamResult(url: beta, source: 'Beta'),
+        ],
+        isTv: false,
+        overrides: [
+          syncManagerProvider.overrideWithValue(
+            SyncManager(const <TrackingService>[]),
+          ),
+        ],
+      );
+      final l10n = await english();
+
+      // The first source plays as on demand, which freezes the session's
+      // liveness at VOD.
+      await sendEvent(tester, snapshot(position: 1999, duration: 5400000));
+      expect(find.text('0:01 / 1:30:00'), findsOneWidget);
+      expect(find.text(l10n.live), findsNothing);
+
+      // Pick the second source, whose URL is shaped like a live feed.
+      await revealPlayerControls(tester);
+      await tester.tap(find.byTooltip(l10n.options));
+      await settle(tester);
+      await tester.tap(find.text(l10n.sources));
+      await settle(tester);
+      await tester.tap(find.widgetWithText(PanelRow, 'Beta'));
+      await settle(tester);
+      expect(
+        (engine.callsTo('setSource').last.arguments as Map)['uri'],
+        beta,
+      );
+
+      // The new source plays: still the same film, still on demand.
+      await sendEvent(tester, snapshot(position: 1999, duration: 5400000));
+      await revealPlayerControls(tester);
+      await tester.pump();
+      expect(find.text(l10n.live), findsNothing);
+      expect(find.text('0:01 / 1:30:00'), findsOneWidget);
+
+      await sendEvent(tester, snapshot(state: 'paused', position: 2500));
+    },
+  );
+
   // Spec section 8: seeking in a live window. The steps are pressed as keys:
   // in a widget test the screen lays out for the host, a desktop, which has
   // no step buttons, and every step - a button, Left and Right, a double tap -

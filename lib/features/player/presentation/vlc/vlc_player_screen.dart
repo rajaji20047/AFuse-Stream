@@ -763,6 +763,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// because it governs buffering and what end-of-media means.
   bool _isLive = false;
 
+  /// The session's liveness, frozen at the first picture. A source picked
+  /// mid-session must not re-decide it from its own URL: a VOD film whose
+  /// next source is an HLS link shaped like a live feed (`stream.m3u8`,
+  /// `/live/`, ...) would otherwise flip the player into the live-TV UI
+  /// (no seek bar, LIVE pill) while the film is still the same film. Until
+  /// the first picture there is nothing to freeze, so a candidate that fails
+  /// before playing never poisons the session.
+  bool? _sessionLive;
+
   /// A livestream has no position worth sampling, so it is written to history
   /// once per session rather than on every tick.
   bool _recordedLivestream = false;
@@ -1861,9 +1870,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // sleeps as a pause does.
     unawaited(autoPlay ? WakelockPlus.enable() : WakelockPlus.disable());
     _checkGeneration += 1;
+    // The session's liveness, frozen at the first picture (see [_sessionLive]):
+    // a hand-picked source re-opens the same film, so it opens under the
+    // liveness the film already has rather than re-deciding it from its own
+    // URL's shape.
+    final live =
+        _sessionLive ?? isLiveSource(widget.item, resolved.streams[index].url);
     _policy.opened(
       source: index,
-      live: isLiveSource(widget.item, resolved.streams[index].url),
+      live: live,
       revertTo: revertTo,
     );
     _armRecoveryTimer();
@@ -2044,7 +2059,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _lastStreamUrl = stream.url;
     // A new media starts un-zoomed (pinch-to-zoom, Raja v3).
     _videoScale.value = 1.0;
-    _isLive = isLiveSource(widget.item, stream.url);
+    _isLive = live;
     final languageOption = _audioLanguageOption();
     // How far ahead this media reads (spec 1.2): from its bitrate, the
     // network, and the memory free now.
@@ -5211,6 +5226,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // the first frame alone would leave the pill up through a recovery.
     if (firstFrame || recovering) _setStatus('');
     if (firstFrame) {
+      // The first picture proves this liveness: freeze it for the session,
+      // so a later source pick cannot flip the player into the live-TV UI.
+      _sessionLive ??= _isLive;
       _qoe.firstFrame(
         surfaceWaitMs: _controller.value.videoSurfaceWait?.inMilliseconds,
       );
