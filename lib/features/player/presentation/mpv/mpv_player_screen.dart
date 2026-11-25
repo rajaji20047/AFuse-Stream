@@ -42,10 +42,11 @@
 ///     and a native plugin taps the rendered frames into a
 ///     sample-buffer PiP window (see `packages/zorox_mpv_pip`). Android
 ///     PiP exists as before: the activity enters it through
-///     [PlayerPlatformService] — a button in the top bar, plus auto-enter
-///     when the viewer leaves the app mid-play — and the chrome unmounts
-///     while the window is open. Audio keeps playing in the background
-///     (the app declares the `audio` background mode).
+///     [PlayerPlatformService] — a button in the top bar only, no
+///     auto-enter when the viewer leaves the app mid-play (user
+///     2026-11-16 rule, applied to Android 2026-11-25) — and the chrome
+///     unmounts while the window is open. Audio keeps playing in the
+///     background (the app declares the `audio` background mode).
 ///   * Cast — no cast button; media_kit has no cast in this app.
 ///   * Subtitle/audio delay — media_kit 1.2.6 exposes no delay API, so
 ///     there is no delay control (the stock panel's steppers were no-ops
@@ -1127,18 +1128,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
             (_pendingSwitchToHardware || _pipRestoring)) {
           unawaited(_onPipEnded(reason: 'inactive'));
         }
-      } else {
-        // Home swipe / app switcher on Android: the moment to enter PiP.
-        // `inactive` is the activity pausing while still visible, so the
-        // enter call is still valid here — and the window opening keeps
-        // the app from ever reaching `paused`, so media_kit's
-        // pauseUponEnteringBackgroundMode never fires and the film keeps
-        // playing under the window. Only while actually playing, and only
-        // where PiP exists; a paused film stays paused.
-        if (!_inPip && _pipAvailable && _playing) {
-          unawaited(_enterPip());
-        }
       }
+      // No Android branch: PiP opens only from the PiP button (user
+      // 2026-11-16 rule, applied to Android 2026-11-25). The auto-enter
+      // lived here and fired for every `inactive` — a transient one
+      // (notification shade, a call) and the replayed one on the way
+      // back IN from PiP itself — so the player kept shrinking on its
+      // own. Home / Recents now just backgrounds the app; media_kit
+      // pauses on `hidden` and the film resumes on return.
     }
     if (state == AppLifecycleState.resumed) {
       // Backstop behind `pipModeChanged`: returning to the foreground is
@@ -1565,10 +1562,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         _pipWatchdog = null;
         if (inPip) _pipWindowOpened = true;
         if (inPip == _inPip) return;
-        // The other way into PiP: the viewer swiped home and the
-        // auto-enter below never ran, or the system's own PiP control
-        // opened it. A locked PiP window has no chip in it, so the lock
-        // clears on the way in.
+        // The other way into PiP: the system's own PiP control opened
+        // it without _enterPip running. A locked PiP window has no chip
+        // in it, so the lock clears on the way in.
         if (inPip) {
           _pipAttemptFromButton = false;
           _locked.value = false;

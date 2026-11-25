@@ -736,11 +736,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// undo a newer one.
   int _pipAttempt = 0;
 
-  /// Whether the PiP attempt in flight came from the PiP button (true) or
-  /// from leaving the app (false). Only a button tap gets a "didn't open"
-  /// message: an auto-start that fails while the app is away is not something
-  /// the viewer is looking at, and a message for it would land on the Home
-  /// screen when they come back.
+  /// Whether a PiP attempt from the button is still pending. True from
+  /// the request until the window opens or the attempt fails. Always a
+  /// button attempt now: PiP opens only from the button (user 2026-11-16
+  /// rule, applied to Android 2026-11-25) — the old "from leaving the
+  /// app" auto-start is gone. Only a button tap gets a "didn't open"
+  /// message.
   bool _pipAttemptFromButton = false;
 
   /// Whether the window actually opened for the attempt in flight. A false
@@ -5531,9 +5532,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // what ending PiP looks like, and the chrome must come back with it
       // whether or not the activity got round to telling us. The native
       // attempt is stopped too, so a window that opened while the app was
-      // away does not keep floating over the film it came from, and an
-      // auto-start that never opened is cancelled rather than left to pop
-      // up after the viewer is back.
+      // away does not keep floating over the film it came from, and a
+      // button attempt that never opened is cancelled rather than left to
+      // pop up after the viewer is back.
       if (_inPip) {
         unawaited(_controller.stopPictureInPicture());
         setState(() => _inPip = false);
@@ -5569,10 +5570,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // only where PiP exists; a paused film stays paused. The hold is
       // released on `resumed` above when no window opened (Control
       // Center), and by the `pictureInPicture` event when one did.
-      // Android keeps its own path: there `inactive` IS the moment to
-      // enter PiP (MainActivity.enterPictureInPictureMode is a
-      // synchronous Activity call, not a slow gate), and the watchdog
-      // test holds it shut.
+      // Android has no path here any more: PiP opens only from the PiP
+      // button (user 2026-11-16 rule, applied to Android 2026-11-25).
+      // The auto-enter lived here and fired for every `inactive` — a
+      // transient one (notification shade, a call) and the replayed one
+      // on the way back IN from PiP itself — so the player kept
+      // shrinking on its own. Home / Recents now just backgrounds the
+      // app; the background pause fires and the film resumes on return.
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         if (!_inPip &&
             !_pipImminent &&
@@ -5581,8 +5585,6 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
           _pipImminent = true;
           _controller.notePictureInPictureImminent();
         }
-      } else if (!_inPip && _pipAvailable && _controller.value.isPlaying) {
-        unawaited(_enterPip());
       }
     }
     if (state == AppLifecycleState.paused ||

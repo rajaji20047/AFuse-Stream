@@ -146,31 +146,36 @@ void main() {
   );
 
   testWidgets(
-    'leaving the app while playing floats the video',
+    'leaving the app while playing does NOT float the video',
     variant: texturePlatform,
     (tester) async {
       await pumpPhonePlaying(tester);
 
+      // Home / app switcher, or any transient inactive: PiP opens only
+      // from the PiP button (user 2026-11-16 rule, applied to Android
+      // 2026-11-25 — the iOS side already worked this way). No request
+      // goes out and the chrome stays up.
       tester.binding.handleAppLifecycleStateChanged(
         AppLifecycleState.inactive,
       );
       await tester.pump();
       expect(
         pipCalls.map((call) => call.method),
-        <String>['enterPip'],
-        reason: 'going Home never asked for PiP',
+        isEmpty,
+        reason: 'leaving the app asked for PiP without a button tap',
       );
       expect(
         find.byType(VlcPlayerControls),
-        findsNothing,
-        reason: 'the chrome stayed up after leaving the app',
+        findsOneWidget,
+        reason: 'the chrome came off without any PiP request',
       );
 
-      // Coming back closes the attempt and brings the chrome with it.
+      // Coming back: still no PiP request, chrome still up.
       tester.binding.handleAppLifecycleStateChanged(
         AppLifecycleState.resumed,
       );
       await tester.pump();
+      expect(pipCalls.map((call) => call.method), isEmpty);
       expect(find.byType(VlcPlayerControls), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
@@ -184,9 +189,10 @@ void main() {
       // iOS before pumping: the screen reads the platform in initState
       // and build (the PiP gate and the texture renderer), so the
       // override has to be in place before the screen is stood up.
-      // Android keeps the `inactive` -> enterPip path (the test above);
-      // iOS must not start PiP for a transient overlay, which re-frames
-      // the video and clears the lock for a window that never opens.
+      // Android lost the `inactive` -> enterPip path too (the test
+      // above); iOS must not start PiP for a transient overlay, which
+      // re-frames the video and clears the lock for a window that never
+      // opens.
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       final engine = FakeVlcEngine();
       installEngineMocks(engine: engine);
