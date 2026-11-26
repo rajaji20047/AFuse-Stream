@@ -16,6 +16,10 @@ class PlayerTopBar extends StatelessWidget {
   final bool isTv;
   final FocusNode? backFocusNode;
 
+  /// An action at the bar's far end, after the title — the engine switch
+  /// on the VLC player. Null: the bar is back + title only, as before.
+  final Widget? trailing;
+
   const PlayerTopBar({
     super.key,
     required this.title,
@@ -23,6 +27,7 @@ class PlayerTopBar extends StatelessWidget {
     this.onBack,
     this.isTv = false,
     this.backFocusNode,
+    this.trailing,
   });
 
   /// The bar's padding inside the top safe area, which is also what places its
@@ -81,6 +86,10 @@ class PlayerTopBar extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing!,
+              ],
             ],
           ),
         ),

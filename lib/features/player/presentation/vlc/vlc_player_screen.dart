@@ -26,6 +26,7 @@ import '../../../../core/network/http_defaults.dart';
 import '../../../../core/network/link_probe_service.dart' show hlsVariantsOf;
 import '../../../../core/providers/device_info_provider.dart';
 import '../../../../core/providers/device_memory.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../settings/presentation/player_settings_provider.dart';
 import '../../../../core/extensions/providers.dart';
 import '../../../../core/models/tmdb_details.dart';
@@ -5628,6 +5629,27 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     );
   }
 
+  /// Moves this video to the other engine (MPV from here): persists the
+  /// choice, so the next play uses it too, and replaces this player route
+  /// with a fresh one, which reads the new setting and builds the other
+  /// engine's screen. The new engine resumes from the recorded progress
+  /// like any fresh open, and the current source list rides along so it
+  /// does not re-resolve. (User 2026-11-26: switch option in the top row.)
+  Future<void> _switchEngine() async {
+    await ref
+        .read(playerSettingsProvider.notifier)
+        .setPlayerEngine(PlayerEngine.mpv);
+    if (!mounted) return;
+    await PlayerRoute(
+      $extra: PlayerRouteExtra(
+        item: widget.item,
+        videoUrl: _videoUrl,
+        episode: _currentEpisode,
+        preloadedStreams: _candidates.isEmpty ? null : _candidates,
+      ),
+    ).pushReplacement<void>(context);
+  }
+
   /// Back, from the remote, the gesture or the on-screen button alike.
   ///
   /// [fromChrome] marks the arrow in the top bar. The viewer can only press it
@@ -6454,6 +6476,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
                   onEnterPip: _pipAvailable
                       ? () => _enterPip(fromButton: true)
                       : null,
+                  // The engine switch in the top row: the other player
+                  // opens this same video, resuming from the recorded
+                  // progress like any fresh open.
+                  onSwitchEngine: _switchEngine,
                   onToggleFullscreen: _fullscreenAvailable
                       ? _toggleFullscreen
                       : null,

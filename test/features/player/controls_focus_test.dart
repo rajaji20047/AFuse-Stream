@@ -200,6 +200,7 @@ Future<VlcPlayerController> _pumpControls(
 
   /// A phone gets these two and a television does not. Null by default.
   VoidCallback? onEnterPip,
+  VoidCallback? onSwitchEngine,
   ValueNotifier<bool>? locked,
   ChromeVisibilityController? chrome,
   FakeVlcEngine? engine,
@@ -245,6 +246,7 @@ Future<VlcPlayerController> _pumpControls(
         onOpenPanel: withoutPanel ? null : onOpenPanel,
         panelTabs: panelTabs,
         onEnterPip: onEnterPip,
+        onSwitchEngine: onSwitchEngine,
         locked: locked,
         onToggleFullscreen: desktop ? () {} : null,
         isLive: isLive,
@@ -1020,6 +1022,26 @@ void main() {
       final trail = await walk(tester, LogicalKeyboardKey.arrowUp);
 
       expect(trail, <String>[l10n.pause, '<player-seek-bar>', back]);
+    });
+
+    testWidgets('the top row offers the engine switch, and it calls back', (
+      tester,
+    ) async {
+      var switched = false;
+      await _pumpControls(tester, onSwitchEngine: () => switched = true);
+
+      final button = find.byTooltip('Switch to MPV');
+      expect(button, findsOneWidget);
+      await tester.tap(button);
+      await tester.pump();
+      expect(switched, isTrue);
+    });
+
+    testWidgets('without the switch the top row has no engine button', (
+      tester,
+    ) async {
+      await _pumpControls(tester);
+      expect(find.byTooltip('Switch to MPV'), findsNothing);
     });
 
     testWidgets('the skip chip joins that column without displacing Back', (

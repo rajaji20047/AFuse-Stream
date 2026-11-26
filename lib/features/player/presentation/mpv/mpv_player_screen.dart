@@ -82,6 +82,7 @@ import '../../../../core/services/stream_cache/stream_cache_proxy.dart';
 import '../../../../core/services/stream_cache/stream_cache_service.dart';
 import '../../../../core/storage/app_temp_directory.dart';
 import '../../../../core/storage/episode_watch_repository.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/storage/history_repository.dart';
 import '../../../../core/storage/settings_repository.dart';
 import '../../../../l10n/generated/app_localizations.dart';
@@ -1596,6 +1597,27 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         if (!handled && !_disposed) unawaited(_player.seek(target));
       }),
     );
+  }
+
+  /// Moves this video to the other engine (libVLC from here): persists the
+  /// choice, so the next play uses it too, and replaces this player route
+  /// with a fresh one, which reads the new setting and builds the other
+  /// engine's screen. The new engine resumes from the recorded progress
+  /// like any fresh open, and the current source list rides along so it
+  /// does not re-resolve. (User 2026-11-26: switch option in the top row.)
+  Future<void> _switchEngine() async {
+    await ref
+        .read(playerSettingsProvider.notifier)
+        .setPlayerEngine(PlayerEngine.vlc);
+    if (!mounted) return;
+    await PlayerRoute(
+      $extra: PlayerRouteExtra(
+        item: widget.item,
+        videoUrl: _currentVideoUrl,
+        episode: _currentEpisode,
+        preloadedStreams: _streams.isEmpty ? null : _streams,
+      ),
+    ).pushReplacement<void>(context);
   }
 
   /// Enters the Android PiP window.
@@ -6377,6 +6399,10 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
                   onEnterPip: _pipAvailable
                       ? () => unawaited(_enterPip(fromButton: true))
                       : null,
+                  // The engine switch in the top row: the other player
+                  // opens this same video, resuming from the recorded
+                  // progress like any fresh open.
+                  onSwitchEngine: _switchEngine,
                   // Video output presets (+57) and PICTURE sliders: iOS
                   // mpv, and since v2 Android mpv (see
                   // [videoPanelSupportedOn]). Null elsewhere, so the panel

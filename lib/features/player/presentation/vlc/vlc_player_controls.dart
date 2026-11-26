@@ -89,6 +89,7 @@ class VlcPlayerControls extends ConsumerStatefulWidget {
     this.hasSubtitles,
     this.sideCars,
     this.onEnterPip,
+    this.onSwitchEngine,
     this.fit = VlcVideoFit.contain,
     this.onFitChanged,
     this.videoScale,
@@ -167,6 +168,11 @@ class VlcPlayerControls extends ConsumerStatefulWidget {
 
   /// Non-null only where picture-in-picture is actually available.
   final VoidCallback? onEnterPip;
+
+  /// Moves this video to the other engine (MPV from here): the screen
+  /// persists the choice and reopens the player on it. Non-null where
+  /// the screen offers the switch; the top-row button is absent otherwise.
+  final VoidCallback? onSwitchEngine;
 
   /// The current video fit. Owned by the screen, not here.
   ///
@@ -2844,6 +2850,18 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
                       subtitle: widget.subtitle,
                       onBack: widget.onBack,
                       isTv: isTv,
+                      // The engine switch, at the bar's far end: only there
+                      // when the screen offers it, so the viewer can move
+                      // this video to the other player without leaving it.
+                      trailing: widget.onSwitchEngine == null
+                          ? null
+                          : PlayerIconButton(
+                              icon: Icons.swap_horiz_rounded,
+                              tooltip: 'Switch to MPV',
+                              onPressed: widget.onSwitchEngine,
+                              isTv: isTv,
+                              iconSize: isTv ? 34 : 30,
+                            ),
                     ),
                   ),
                 ),

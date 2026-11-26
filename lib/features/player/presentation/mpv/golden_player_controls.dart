@@ -183,6 +183,7 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
     this.locked,
     this.lockAvailable = true,
     this.onEnterPip,
+    this.onSwitchEngine,
     this.onVideoPresetChanged,
     this.onPictureChanged,
     this.videoIsHdr,
@@ -279,6 +280,11 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
   /// is on — the same gate as the stock chrome. Null on TV, and on iOS
   /// when the mpv PiP setting is off (see the screen's `_pipAvailable`).
   final VoidCallback? onEnterPip;
+
+  /// Moves this video to the other engine (libVLC from here): the screen
+  /// persists the choice and reopens the player on it. Non-null where
+  /// the screen offers the switch; the top-row button is absent otherwise.
+  final VoidCallback? onSwitchEngine;
 
   /// Applies a Video output preset to the live mpv instance (+57).
   /// Non-null on iOS (the Video panel is iOS mpv only); null on Android,
@@ -1515,6 +1521,10 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
                           onPickSpeed: _pickSpeed,
                           onCycleFit: _cycleFit,
                           onRotate: widget.onRotate,
+                          // The engine switch in the top row: the screen
+                          // persists the choice and reopens the player on
+                          // the other engine.
+                          onSwitchEngine: widget.onSwitchEngine,
                           // Same gate as the stock chrome: the button
                           // renders only when the screen offers PiP and
                           // the `showPip` setting is on.
@@ -1968,6 +1978,7 @@ class _TopBar extends StatelessWidget {
     required this.onCycleFit,
     required this.onRotate,
     required this.onEnterPip,
+    this.onSwitchEngine,
   });
 
   final String title;
@@ -1987,6 +1998,10 @@ class _TopBar extends StatelessWidget {
   /// Non-null when the screen offers PiP and the `showPip`
   /// setting is on; the button is absent otherwise.
   final VoidCallback? onEnterPip;
+
+  /// Moves this video to the other engine (libVLC from here). Non-null
+  /// where the screen offers the switch; the button is absent otherwise.
+  final VoidCallback? onSwitchEngine;
 
   @override
   Widget build(BuildContext context) {
@@ -2041,6 +2056,15 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
+        // The engine switch, right after the title: the viewer can move
+        // this video to the other player without leaving it.
+        if (onSwitchEngine != null)
+          GoldenIconButton(
+            icon: Icons.swap_horiz_rounded,
+            onPressed: onSwitchEngine,
+            tooltip: 'Switch to VLC',
+          ),
+        if (onSwitchEngine != null) const SizedBox(width: 8),
         if (isSeries)
           GoldenIconButton(
             icon: Icons.list_rounded,
