@@ -125,6 +125,10 @@
     "description": "Player settings group title: the playback group (default player, gestures, PiP)."
   },
   "player": "Player",
+  "appearance": "Appearance",
+  "@appearance": {
+    "description": "Settings row and screen title: the app theme, the accent color and Dark Mode."
+  },
   "defaultPlayer": "Default Player",
   "playerEngine": "Player Engine",
   "playerEngineMpv": "libmpv Golden",

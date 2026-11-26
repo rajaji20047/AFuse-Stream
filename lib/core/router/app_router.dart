@@ -25,6 +25,7 @@ import '../../features/nuvio/presentation/nuvio_plugins_screen.dart';
 import '../../features/cloudstream/presentation/cloudstream_screen.dart';
 import '../../features/settings/presentation/player_settings_screen.dart';
 import '../../features/settings/presentation/account_settings_screen.dart';
+import '../../features/settings/presentation/appearance_settings_screen.dart';
 import '../../features/settings/presentation/developer_options_screen.dart';
 import '../../features/details/presentation/details_screen.dart';
 import '../../features/browse/presentation/browse_screen.dart';
@@ -77,6 +78,7 @@ part 'app_router.g.dart';
           routes: [
             TypedGoRoute<PlayerSettingsRoute>(path: 'player'),
             TypedGoRoute<AccountSettingsRoute>(path: 'accounts'),
+            TypedGoRoute<AppearanceSettingsRoute>(path: 'appearance'),
             TypedGoRoute<SettingsExtensionsRoute>(path: 'extensions'),
             TypedGoRoute<NuvioPluginsRoute>(path: 'nuvio'),
             TypedGoRoute<CloudStreamRoute>(path: 'cloudstream'),
@@ -206,6 +208,20 @@ class AccountSettingsRoute extends GoRouteData with $AccountSettingsRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       const AccountSettingsScreen();
+
+  // Same smooth slide + fade as every other pushed page (see
+  // route_transitions.dart).
+  @override
+  Page<void> buildPage(BuildContext context, GoRouterState state) =>
+      smoothPage(key: state.pageKey, child: build(context, state));
+}
+
+class AppearanceSettingsRoute extends GoRouteData
+    with $AppearanceSettingsRoute {
+  const AppearanceSettingsRoute();
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const AppearanceSettingsScreen();
 
   // Same smooth slide + fade as every other pushed page (see
   // route_transitions.dart).

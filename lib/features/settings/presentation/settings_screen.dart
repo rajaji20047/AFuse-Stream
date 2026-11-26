@@ -6,17 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/layout_constants.dart';
-import '../../../core/theme/accent_color.dart';
 import '../../../core/theme/olympus.dart';
-import '../../../core/theme/theme_variant.dart';
-import '../../../core/theme/theme_provider.dart';
 
 import 'widgets/settings_widgets.dart';
 import 'widgets/general_extra_tiles.dart';
 import 'widgets/settings_dialogs.dart';
-import 'widgets/accent_color_picker.dart';
-import 'widgets/olympus_theme_cards.dart';
-import '../../../../shared/widgets/olympus_section_header.dart';
 import 'full_screen_mode_provider.dart';
 import 'general_settings_provider.dart';
 import 'app_version_provider.dart';
@@ -37,11 +31,10 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     final versionAsync = ref.watch(appVersionProvider);
-    final themeVariant = ref.watch(themeVariantProvider);
     final generalSettings = ref.watch(generalSettingsProvider);
 
     // Olympus Noir (build 102): no AppBar — the page carries its own
-    // "Personalize Fuse" header at the top of the list, and the bottom
+    // "Settings" header at the top of the list, and the bottom
     // pill is hidden on this branch, so the header's back button is the
     // way back to Home (the branch has nothing to pop, so it goes to
     // Home explicitly).
@@ -69,34 +62,10 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                 children: [
                   _buildOlympusHeader(context),
-                  // The theme cards and the accent swatches are their own
-                  // Olympus sections now, above the rows — not inside the
-                  // General group any more.
-                  const OlympusSectionHeader(title: 'APP THEME'),
-                  OlympusThemeCards(
-                    current: themeVariant,
-                    // Build 104: a card tap applies the theme AND its
-                    // signature accent together, so the tap visibly
-                    // changes the app (before this the three dark
-                    // variants differed only in surface shades and a
-                    // tap looked like nothing happened). A "More
-                    // themes" chip passes a null accent and leaves
-                    // the accent alone; the accent row below still
-                    // overrides it on its own.
-                    onChanged: (variant, accent) async {
-                      await ref
-                          .read(themeVariantProvider.notifier)
-                          .setVariant(variant);
-                      if (accent != null) {
-                        await ref
-                            .read(accentColorProvider.notifier)
-                            .setAccent(accent);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: LayoutConstants.spacingLg),
-                  const AccentColorPicker(),
-                  const SizedBox(height: LayoutConstants.spacingLg),
+                  // The look of the app lives on its own screen now:
+                  // the theme cards, the accent swatches and Dark Mode
+                  // moved to Appearance (user 2026-11-26), reached
+                  // from the Appearance row in the group below.
                   _buildGeneralSettingsGroup(
                     context,
                     ref,
@@ -142,8 +111,9 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  /// The Olympus Noir page header: back to Home, "Personalize Fuse"
-  /// with its "Your cinema, your rules" line, and a gold bolt.
+  /// The Olympus Noir page header: back to Home, "Settings", and a
+  /// gold bolt. Simple (user 2026-11-26): the old "Personalize Fuse"
+  /// title and its "Your cinema, your rules" line are gone.
   Widget _buildOlympusHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
@@ -156,33 +126,15 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Personalize Fuse',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Your cinema, your rules',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface
-                        .withValues(alpha: 0.65),
-                  ),
-                ),
-              ],
+            child: Text(
+              'Settings',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -261,31 +213,19 @@ class SettingsScreen extends ConsumerWidget {
     GeneralSettings generalSettings,
   ) {
     final fullScreenModeEnabled = ref.watch(fullScreenModeProvider);
-    // Olympus Noir (build 102): no "General" header — the theme cards
-    // and accent swatches above this group carry their own headings.
-    // The variant picker and the accent picker moved out of the group
-    // (they are standalone sections now); the rows stay exactly as
-    // they were.
+    // Olympus Noir (build 102): no "General" header. The theme cards,
+    // the accent swatches and Dark Mode used to sit above this group;
+    // they live on the Appearance screen now (user 2026-11-26), reached
+    // from the Appearance row first in the group.
     return SettingsGroup(
       children: [
-        // Dark Mode: the on/off switch. On Liquid Glass it only changes
-        // the mode (the theme has a dark and a light look). Arena Gold /
-        // Midnight / Obsidian are dark only and Frost is light only, so
-        // there the switch moves to Frost or back to the last dark
-        // variant (see ThemeVariant).
+        // Appearance: the app theme, the accent color and Dark Mode,
+        // on their own screen.
         SettingsTile(
-          reicon: Reicon.moon,
-          title: 'Dark Mode',
-          subtitle: 'Dark backgrounds, light text',
-          trailing: Switch(
-            value: ref.watch(appThemeModeProvider) == ThemeMode.dark,
-            onChanged: (val) =>
-                ref.read(themeVariantProvider.notifier).setDarkMode(val),
-          ),
-          onTap: () async {
-            final isDark = ref.read(appThemeModeProvider) == ThemeMode.dark;
-            await ref.read(themeVariantProvider.notifier).setDarkMode(!isDark);
-          },
+          reicon: Reicon.palette,
+          title: l10n.appearance,
+          subtitle: 'Theme, accent color & Dark Mode',
+          onTap: () => const AppearanceSettingsRoute().go(context),
         ),
         SettingsTile(
           reicon: Reicon.globe,
