@@ -136,28 +136,6 @@ class AddonStreamRequest {
     }
     return ids;
   }
-
-  AddonStreamRequest copyWith({
-    String? type,
-    String? contentId,
-    String? videoId,
-    int? season,
-    int? episode,
-    String? imdbId,
-    int? tmdbId,
-    String? title,
-    int? year,
-  }) => AddonStreamRequest(
-    type: type ?? this.type,
-    contentId: contentId ?? this.contentId,
-    videoId: videoId ?? this.videoId,
-    season: season ?? this.season,
-    episode: episode ?? this.episode,
-    imdbId: imdbId ?? this.imdbId,
-    tmdbId: tmdbId ?? this.tmdbId,
-    title: title ?? this.title,
-    year: year ?? this.year,
-  );
 }
 
 enum AddonQueryOutcome { pending, links, empty, failed }
