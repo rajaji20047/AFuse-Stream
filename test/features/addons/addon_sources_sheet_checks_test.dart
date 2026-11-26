@@ -125,6 +125,56 @@ class _OneStream extends _Service {
   }
 }
 
+/// Two streams from two providers: Bridge names its inner provider
+/// MovieBox, Bridge2 names VegaMovies.
+class _TwoProviders implements AddonStreamService {
+  @override
+  Stream<AddonStreamProgress> resolve({
+    required List<dynamic> addons,
+    required AddonStreamRequest request,
+    bool forceRefresh = false,
+    dynamic cancelToken,
+    bool personWaiting = false,
+    Set<String>? only,
+  }) async* {
+    yield const AddonStreamProgress(
+      streams: [
+        AddonStreamSource(
+          addonId: 'bridge.one',
+          addonName: 'Bridge',
+          name: 'MovieBox 1080p',
+          title: 'A',
+          url: 'https://cdn.test/a.mkv',
+        ),
+        AddonStreamSource(
+          addonId: 'bridge.two',
+          addonName: 'Bridge2',
+          name: 'VegaMovies 720p',
+          title: 'B',
+          url: 'https://cdn.test/b.mkv',
+        ),
+      ],
+      statuses: [
+        AddonQueryStatus(
+          addonName: 'Bridge',
+          outcome: AddonQueryOutcome.links,
+          linkCount: 1,
+        ),
+        AddonQueryStatus(
+          addonName: 'Bridge2',
+          outcome: AddonQueryOutcome.links,
+          linkCount: 1,
+        ),
+      ],
+      completedCount: 2,
+      totalCount: 2,
+    );
+  }
+
+  @override
+  noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 /// A solver that notes Verify instead of opening a page.
 class _Solver extends ClearanceSolver {
   _Solver({required super.store, required super.siteKeys, super.checks});
@@ -387,4 +437,54 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('provider chips above the quality chips filter by provider', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          addonStreamServiceProvider.overrideWithValue(_TwoProviders()),
+          addonRepositoryProvider.overrideWith(_Repo.new),
+          linkProbeServiceProvider.overrideWithValue(_Probe()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(brightness: Brightness.dark),
+          home: AddonSourcesSheet(
+            item: MultimediaItem(title: 'T', url: '', posterUrl: ''),
+            request: const AddonStreamRequest(
+              type: 'movie',
+              contentId: 'tt1',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Provider row: All + one chip per provider; both rows list.
+    expect(find.text('MovieBox'), findsOneWidget);
+    expect(find.text('VegaMovies'), findsOneWidget);
+    expect(find.text('Bridge · MovieBox'), findsOneWidget);
+    expect(find.text('Bridge2 · VegaMovies'), findsOneWidget);
+
+    await tester.tap(find.text('MovieBox'));
+    await tester.pump();
+    expect(find.text('Bridge · MovieBox'), findsOneWidget);
+    expect(find.text('Bridge2 · VegaMovies'), findsNothing);
+
+    // Tapping the selected provider again clears back to All.
+    await tester.tap(find.text('MovieBox'));
+    await tester.pump();
+    expect(find.text('Bridge · MovieBox'), findsOneWidget);
+    expect(find.text('Bridge2 · VegaMovies'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+  });
 }

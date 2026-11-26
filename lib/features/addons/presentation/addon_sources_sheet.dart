@@ -114,6 +114,8 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
   bool _showDetails = false;
   SourceQualityFilter _quality = SourceQualityFilter.all;
   _KindFilter _kind = _KindFilter.all;
+  // Provider filter (user 2026-11-26): null shows every provider.
+  String? _provider;
   String? _debridStatus;
 
   final TextEditingController _searchController = TextEditingController();
@@ -386,6 +388,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
         // counts the same listed links, so it still matches the rows.
         if (s.isExternal) return false;
         if (!_quality.matchesScore(s.qualityScore)) return false;
+        if (_provider != null && _providerOf(s) != _provider) return false;
         if (_downloadMode && (!s.isDirect || s.url == null)) {
           return false;
         }
@@ -723,6 +726,13 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     final listedStreams =
         _result.streams.where((s) => !s.isExternal).toList(growable: false);
     final listedCount = listedStreams.length;
+    // Providers with at least one listed link, alphabetical — the
+    // provider row above the quality chips (user 2026-11-26).
+    final providers = {
+      for (final s in listedStreams)
+        if (_providerOf(s).isNotEmpty) _providerOf(s),
+    }.toList()
+      ..sort();
     final subtitleText = episode != null
         ? 'S${episode.season} · E${episode.episode} ${episode.name}'
         : (_result.isLoading
@@ -890,6 +900,49 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                   ),
 
                 if (_showDetails) _details(theme, cs),
+
+                // Provider chips (user 2026-11-26): one row above the
+                // quality chips, same behaviour — a chip per provider with
+                // at least one listed link, All first; tapping the selected
+                // provider again clears it back to All. Only when more
+                // than one provider has links; it filters the same list
+                // as the quality chips, and the two combine.
+                if (providers.length > 1) ...[
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: kSourceSheetGutter,
+                      ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: SourceFilterChip(
+                            text: 'All',
+                            selected: _provider == null,
+                            outline: glass.tint(0.15),
+                            onSelected: (_) =>
+                                setState(() => _provider = null),
+                          ),
+                        ),
+                        for (final provider in providers)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: SourceFilterChip(
+                              text: provider,
+                              selected: _provider == provider,
+                              outline: glass.tint(0.15),
+                              onSelected: (selected) => setState(
+                                () => _provider = selected ? provider : null,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 // Filter Chips Rail (user 2026-11-26): the quality
                 // Quality chips, in enum order: All, 360p … 4K, then the
@@ -1448,6 +1501,15 @@ class _SourceRowState extends State<_SourceRow> {
       },
     );
   }
+}
+
+/// The provider a stream belongs to, for the provider chips: the inner
+/// provider the stream names (MovieBox, VegaMovies…) when it has one,
+/// else the add-on itself. The same name the row's headline shows.
+String _providerOf(AddonStreamSource s) {
+  final inner = s.providerName?.trim();
+  if (inner != null && inner.isNotEmpty) return inner;
+  return s.addonName.trim();
 }
 
 /// Source kinds a user can filter by.
