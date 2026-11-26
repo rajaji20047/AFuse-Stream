@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/matte_glass_pill.dart';
 import '../../account/data/raja_account_notifier.dart';
 import '../data/fuse_profile.dart';
@@ -14,18 +16,19 @@ import 'fuse_profile_avatar.dart';
 
 /// Opens the profile switcher as a SMALL Liquid Glass dropdown
 /// anchored top-right just below the Home header avatar (build 117,
-/// shrunk further in build 118): the same 3 rows the user approved —
-/// profile rows, Add account, Manage accounts — in a compact card,
-/// no title, with the blurred Home showing through the glass.
+/// shrunk further in build 118): the same rows the user approved —
+/// profile rows, Add account, Manage accounts, Settings — in a compact
+/// card, no title, with the blurred Home showing through the glass.
 /// This replaces the build-116 centered dialog (whose 0.78-alpha card
 /// was a solid dark slab, not glass, and whose text/icons were too
 /// big). Build 118 shrinks the card to ~175pt wide (the build-117
 /// card was ~300pt — the user: "aur chota karo") and uses white
 /// foreground text/icons, because the card is a dark glass: the
 /// theme's dark onSurface text on light themes washed out on it.
-/// Build 122 removed the Settings row (user: "profile click se setting
-/// hatao") — Settings moved back to the gear beside the search icon
-/// in the Home header (HomeHeaderActions).
+/// Build 122 took the Settings row out (user: "profile click se setting
+/// hatao") and put a gear beside the search icon; the user reversed
+/// that 2026-11-26 (reference sheet: Settings inside the profile menu),
+/// so the row is back here and the header gear is gone.
 ///
 /// Used by the Home avatar tile and the Settings → Accounts "Switch
 /// profile" row. The barrier is transparent, so the Home stays sharp
@@ -139,6 +142,20 @@ class _FuseProfileSwitchDialogState
     if (mounted) setState(() {});
   }
 
+  /// "Settings": the dialog closes, then the Settings screen opens — the
+  /// same navigation the header gear used to do (its build-122 gear is
+  /// gone; Settings lives in the profile again, user 2026-11-26). The
+  /// router is captured while this dialog's context is still mounted:
+  /// the pop below unmounts it, and the navigation has to run after the
+  /// pop or the dropdown would stay on top of Settings.
+  void _openSettings() {
+    final goRouter = GoRouter.of(context);
+    _close();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => goRouter.go(const SettingsRoute().location),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -225,6 +242,16 @@ class _FuseProfileSwitchDialogState
                       icon: Icons.close_rounded,
                       label: 'Manage accounts',
                       onTap: () => unawaited(_openManage()),
+                    ),
+                    const Divider(
+                      height: 1,
+                      color: _kGlassDivider,
+                    ),
+                    _ActionRow(
+                      key: const ValueKey('profile-switch-settings'),
+                      icon: Icons.settings_outlined,
+                      label: 'Settings',
+                      onTap: _openSettings,
                     ),
                   ],
                 ),

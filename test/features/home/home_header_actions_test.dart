@@ -1,9 +1,8 @@
-// Build 122: the Home header has three actions, left to right —
-// search, a settings gear, the profile avatar. The gear moved back
-// here from the profile dropdown (user 2026-11-22: "profile click se
-// setting hatao aur search k bagal pr settings icon dalo"): it is the
-// search button's twin (same glass circle, same 36pt size) and opens
-// the same Settings screen the dropdown row used to open.
+// The Home header has two actions, left to right — search, the
+// profile avatar. The settings gear lived here from build 122
+// (user 2026-11-22: "profile click se setting hatao aur search k
+// bagal pr settings icon dalo"); the user reversed that 2026-11-26,
+// so Settings is back inside the profile dropdown and the gear is gone.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,11 +55,6 @@ void main() {
             ),
           ),
         ),
-        GoRoute(
-          path: '/settings',
-          builder: (_, _) =>
-              const Scaffold(body: Center(child: Text('Settings page'))),
-        ),
       ],
     );
   });
@@ -92,46 +86,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('settings gear sits right beside search, same size', (
-    tester,
-  ) async {
+  testWidgets('no settings gear: search and avatar only', (tester) async {
     await pumpHeader(tester);
 
     expect(find.byIcon(Icons.search), findsOneWidget);
-    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+    // The gear is gone (user 2026-11-26): Settings lives in the
+    // profile dropdown now.
+    expect(find.byIcon(Icons.settings_outlined), findsNothing);
+    expect(
+      find.byKey(const ValueKey('home-header-settings')),
+      findsNothing,
+    );
 
     final searchRect = tester.getRect(
       find.byKey(const ValueKey('home-header-search')),
-    );
-    final settingsRect = tester.getRect(
-      find.byKey(const ValueKey('home-header-settings')),
     );
     final avatarRect = tester.getRect(
       find.byKey(const ValueKey('home-header-avatar')),
     );
 
-    // Same row, same size: the gear is the search button's twin.
-    expect(settingsRect.width, searchRect.width);
-    expect(settingsRect.height, searchRect.height);
-    expect(settingsRect.center.dy, closeTo(searchRect.center.dy, 2));
-
-    // Order left to right: search, settings, avatar.
-    expect(settingsRect.center.dx, greaterThan(searchRect.center.dx));
-    expect(avatarRect.center.dx, greaterThan(settingsRect.center.dx));
-    // The gear hugs the search button (one small gap, not a wide one).
-    expect(
-      settingsRect.left - searchRect.right,
-      lessThanOrEqualTo(16),
-    );
-  });
-
-  testWidgets('tapping the settings gear opens Settings', (tester) async {
-    await pumpHeader(tester);
-
-    await tester.tap(find.byIcon(Icons.settings_outlined));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Settings page'), findsOneWidget);
-    expect(router.routerDelegate.currentConfiguration.uri.toString(), '/settings');
+    // Same row, same size; order left to right: search, avatar.
+    expect(avatarRect.width, searchRect.width);
+    expect(avatarRect.height, searchRect.height);
+    expect(avatarRect.center.dy, closeTo(searchRect.center.dy, 2));
+    expect(avatarRect.center.dx, greaterThan(searchRect.center.dx));
   });
 }

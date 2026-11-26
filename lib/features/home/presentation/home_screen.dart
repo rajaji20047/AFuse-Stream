@@ -277,8 +277,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ],
         ),
         actions: [
-          // Search + settings gear + profile avatar (build 122:
-          // the gear moved back here from the profile dropdown).
+          // Search + profile avatar — the settings gear is gone
+          // (user 2026-11-26): Settings lives in the profile dropdown.
           HomeHeaderActions(searchFocusNode: _firstActionFocusNode),
         ],
       ),
