@@ -1018,6 +1018,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// and [dispose] would otherwise ask again.
   bool _handedBack = false;
 
+  /// Set when initState pinned landscape at entry (see there): the release
+  /// in [_handBack] needs to know the pin was this screen's own, not the
+  /// video's shape.
+  bool _pinnedLandscapeOnEntry = false;
+
   /// Intro/outro bands for the current episode. Usually empty: both sources
   /// are opt-in and off by default.
   List<SkipSegment> _skipSegments = const <SkipSegment>[];
@@ -1226,6 +1231,28 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // a screen that sleeps through it never gets to the video.
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Landscape from entry (user 2026-11-26: "Play ke baad ek hi ui
+    // landscape vali rkho portrait nhi"): the source list shown before the
+    // video starts used to stay portrait, and the device only turned once
+    // the video's shape settled. Now the whole player — source list
+    // included — is landscape after Play. Raw SystemChrome, not the
+    // platform service's pin: the shape settle still runs after it and
+    // still pins (a portrait clip still turns portrait, the rotate button
+    // still flips), so the orientation tests keep seeing the settle's own
+    // pin. Read off the implicit view, not a MediaQuery: an inherited
+    // widget may not be depended on in initState (see [_panelHeightPx]).
+    // [_handBack] releases this pin when no shape ever pinned.
+    final viewSize =
+        WidgetsBinding.instance.platformDispatcher.implicitView?.physicalSize;
+    if (viewSize != null && viewSize.width < viewSize.height) {
+      _pinnedLandscapeOnEntry = true;
+      unawaited(
+        SystemChrome.setPreferredOrientations(const [
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]),
+      );
+    }
 
     // Subtitles are drawn by the engine, so the user's appearance settings have
     // to be supplied at construction. Without them VLC uses its own default
@@ -6251,9 +6278,23 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // toggles we issued, and is wrong whenever the OS window control was used
     // instead - which is exactly when this matters.
     unawaited(_platform.exitFullscreen());
+    // Whether the video's shape pinned anything, read before the release
+    // below clears it: the entry pin's release depends on it.
+    final shapePinned = _platform.hasOrientationPin;
     // Hands orientation back to the system: outside the player the app
     // follows the device, the user's rotation lock included.
     _platform.restoreOrientation();
+    // Release the landscape pin taken at entry (see initState), but only when
+    // the video's shape pinned nothing: restoreOrientation already released
+    // the entry pin along with a shape pin (its release is the same empty
+    // list), so a second one would turn the handset twice on the way out
+    // (see leaving_the_player_test: handed back once). Without this, a
+    // session that ended before any shape settled — backed out of the source
+    // list — would keep the landscape pin on a tablet or an iPhone, where no
+    // portrait pin below stands after it.
+    if (_pinnedLandscapeOnEntry && !shapePinned) {
+      unawaited(SystemChrome.setPreferredOrientations(const []));
+    }
     // An Android phone is turned upright on the way out, whatever the
     // sensor or auto-rotate say (user 2026-11-19: "kuch vi ho back anepe
     // portrait hojaye"), as the mpv player does. Sent after the release

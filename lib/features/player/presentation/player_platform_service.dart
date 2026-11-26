@@ -197,6 +197,11 @@ class PlayerPlatformService {
   /// Whether a rotate press is holding the device against the video's shape.
   bool get viewerChoseOrientation => _chosenByViewer != null;
 
+  /// Whether the video's shape (or the viewer's rotate press) currently holds
+  /// a pin: what [restoreOrientation] would release. The player screen reads
+  /// it on the way out to tell its own entry pin apart from the video's.
+  bool get hasOrientationPin => _pinnedOrientation != null;
+
   /// Returns whether the window actually shrank. False covers pre-Oreo, a
   /// device that refuses, and a user who has turned PiP off for this app,
   /// which Android reports as a plain `false`.

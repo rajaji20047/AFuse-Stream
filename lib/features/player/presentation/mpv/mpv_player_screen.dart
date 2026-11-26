@@ -1010,9 +1010,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (defaultTargetPlatform == TargetPlatform.android) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
-    // No landscape here: the source list shown before play stays portrait,
-    // and landscape is forced only when the video itself first starts
-    // playing (see the playing listener).
+    // Landscape from entry (user 2026-11-26: "Play ke baad ek hi ui
+    // landscape vali rkho portrait nhi"): the source list shown before play
+    // used to stay portrait, and landscape was forced only when the video
+    // itself first started playing. Now the whole player — source list
+    // included — is landscape after Play. The first-frame call stays as a
+    // safety net. Post-frame: MediaQuery is not dependable in initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_disposed) _forceLandscapeIfPortrait();
+    });
     _chrome = ChromeVisibilityController(
       isPlaying: () => _adapter.value.isPlaying,
     );
