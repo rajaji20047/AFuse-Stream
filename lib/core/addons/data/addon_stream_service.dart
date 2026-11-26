@@ -50,6 +50,30 @@ class AddonStreamRequest {
     this.year,
   });
 
+  AddonStreamRequest copyWith({
+    String? type,
+    String? contentId,
+    String? videoId,
+    int? season,
+    int? episode,
+    String? imdbId,
+    int? tmdbId,
+    String? title,
+    int? year,
+  }) {
+    return AddonStreamRequest(
+      type: type ?? this.type,
+      contentId: contentId ?? this.contentId,
+      videoId: videoId ?? this.videoId,
+      season: season ?? this.season,
+      episode: episode ?? this.episode,
+      imdbId: imdbId ?? this.imdbId,
+      tmdbId: tmdbId ?? this.tmdbId,
+      title: title ?? this.title,
+      year: year ?? this.year,
+    );
+  }
+
   bool get isEpisode => season != null && episode != null;
 
   /// True when [contentId] is not a universal id (IMDb / TMDB / kitsu…) that

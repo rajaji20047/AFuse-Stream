@@ -970,16 +970,43 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     });
   }
 
+  /// The TMDB id the sources request needs: the add-on's own moviedbId
+  /// when it has one, else the title+year resolution the Cast / More Like
+  /// This rows already use — TMDB search with the user's key. The layouts
+  /// watch the same provider, so by Play time its future is usually
+  /// already resolved and this returns at once. Null when TMDB has no
+  /// match (or no key, or the search fails): the request then goes out
+  /// exactly as before, never a fake id and never a failed Play.
+  Future<int?> _resolvedTmdbId(AddonMeta meta) async {
+    if (meta.moviedbId != null) return meta.moviedbId;
+    try {
+      return await ref.read(
+        addonTmdbIdProvider(
+          AddonTmdbIdParams(
+            moviedbId: meta.moviedbId,
+            title: meta.name,
+            year: meta.year,
+            isShow: meta.isShow,
+          ),
+        ).future,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Opens the sources list for the film, or for [video] of a show.
   Future<void> _openSources(
     AddonMeta meta,
     AddonVideo? video, {
     bool resume = false,
     bool forceMerged = false,
-  }) {
+  }) async {
+    final tmdbId = await _resolvedTmdbId(meta);
+    if (!mounted) return;
     return AddonSourcesSheet.open(
       context,
-      item: _itemOf(meta),
+      item: _itemOf(meta).copyWith(tmdbId: tmdbId),
       request: AddonStreamRequest(
         type: meta.streamRequestType,
         contentId: meta.id,
@@ -987,7 +1014,7 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
         season: video?.season,
         episode: video?.episode,
         imdbId: meta.imdbId,
-        tmdbId: meta.moviedbId,
+        tmdbId: tmdbId,
         title: meta.name,
         year: meta.year,
       ),
@@ -1102,27 +1129,31 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     // source") — the remembered source is still first, marked "Last
     // used", and whichever is picked starts at the saved position and
     // is the one remembered from then on.
-    void open({required bool resume}) => AddonSourcesSheet.open(
-      context,
-      item: item,
-      request: AddonStreamRequest(
-        // Preserve the meta's own type (other/tv/…) so bridges like
-        // CNCVerse answer /stream on the type they published.
-        type: meta.streamRequestType,
-        contentId: meta.id,
-        videoId: firstVideo?.id,
-        season: firstVideo?.season,
-        episode: firstVideo?.episode,
-        imdbId: meta.imdbId,
-        tmdbId: meta.moviedbId,
-        title: meta.name,
-        year: meta.year,
-      ),
+    Future<void> open({required bool resume}) async {
+      final tmdbId = await _resolvedTmdbId(meta);
+      if (!mounted) return;
+      return AddonSourcesSheet.open(
+        context,
+        item: item.copyWith(tmdbId: tmdbId),
+        request: AddonStreamRequest(
+          // Preserve the meta's own type (other/tv/…) so bridges like
+          // CNCVerse answer /stream on the type they published.
+          type: meta.streamRequestType,
+          contentId: meta.id,
+          videoId: firstVideo?.id,
+          season: firstVideo?.season,
+          episode: firstVideo?.episode,
+          imdbId: meta.imdbId,
+          tmdbId: tmdbId,
+          title: meta.name,
+          year: meta.year,
+        ),
       episode: firstVideo?.toEpisode(),
       playlist: meta.videos,
       merged: _mergedSources,
       resume: resume,
-    );
+      );
+    }
 
     return StremioSourcesCard(
       compact: compact,
@@ -1723,15 +1754,19 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     // Build 75: an episode with a saved position continues on the
     // source the show last played on, as the page's own buttons do.
     final resume = _hasResume(meta, video);
-    void search() => AddonSourcesSheet.open(
-      context,
-      item: item,
-      request: request,
-      episode: video.toEpisode(),
-      playlist: meta.videos,
-      merged: _mergedSources,
-      resume: resume,
-    );
+    Future<void> search() async {
+      final tmdbId = await _resolvedTmdbId(meta);
+      if (!mounted) return;
+      return AddonSourcesSheet.open(
+        context,
+        item: item.copyWith(tmdbId: tmdbId),
+        request: request.copyWith(tmdbId: tmdbId),
+        episode: video.toEpisode(),
+        playlist: meta.videos,
+        merged: _mergedSources,
+        resume: resume,
+      );
+    }
     return AddonEpisodeCard(
       key: ValueKey(video.id),
       video: video,
@@ -1768,10 +1803,14 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     if (!mounted) return;
     setState(() => _askingFor = null);
     if (links.isEmpty) {
+      final tmdbId = await _resolvedTmdbId(meta);
+      if (!mounted) return;
       await AddonSourcesSheet.open(
         context,
-        item: meta.toMultimediaItem(addonUrl: own.manifestUrl),
-        request: request,
+        item: meta
+            .toMultimediaItem(addonUrl: own.manifestUrl)
+            .copyWith(tmdbId: tmdbId),
+        request: request.copyWith(tmdbId: tmdbId),
         episode: video.toEpisode(),
         playlist: meta.videos,
         merged: _mergedSources,
