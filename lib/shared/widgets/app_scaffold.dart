@@ -454,7 +454,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         final pillIndex = currentIndex < 5 ? currentIndex : _lastTabIndex;
         // Nuvio's nav-bar settings for this frame.
         final navStyle = navSettings.navBarStyle;
-        final navClassic = navStyle == NavBarStyle.classic;
         // Content must clear the pill top (see
         // [CustomBottomNavBar.contentClearance]); the real safe-area
         // padding is already in mq.padding.bottom, so only the remainder
@@ -464,10 +463,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         final navBarTotalHeight = onSettings
             ? 0.0
             : math.max(
-                CustomBottomNavBar.contentClearanceFor(
-                      classic: navClassic,
-                    ) -
-                    mq.padding.bottom,
+                CustomBottomNavBar.contentClearance - mq.padding.bottom,
                 0.0,
               );
 
@@ -579,15 +575,12 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                   builder: (context, scrollTarget, _) {
                     // The target fraction for the style: ADAPTIVE follows
                     // the scroll state, EXPANDED pins the labels on,
-                    // COMPACT pins them off. CLASSIC has no labels, so
-                    // the fraction is irrelevant there.
+                    // COMPACT pins them off.
                     final targetFraction = navStyle == NavBarStyle.expanded
                         ? 1.0
                         : navStyle == NavBarStyle.compact
                             ? 0.0
-                            : navStyle == NavBarStyle.classic
-                                ? 1.0
-                                : scrollTarget;
+                            : scrollTarget;
                     return TweenAnimationBuilder<double>(
                       tween: Tween<double>(end: targetFraction),
                       duration: MediaQuery.disableAnimationsOf(context)
@@ -625,7 +618,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                             labelFraction: labelFraction,
                             glowEnabled: navSettings.navBarGlowEnabled,
                             glassEnabled: navSettings.navBarGlassEnabled,
-                            classic: navClassic,
                             compactSize:
                                 navStyle == NavBarStyle.compact,
                             inactiveColorOverride:

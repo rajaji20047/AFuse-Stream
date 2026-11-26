@@ -30,13 +30,11 @@ enum GithubProxyOption {
 
 /// Nuvio's nav-bar style (Settings → Navigation bar). ADAPTIVE is the
 /// default: labels hide on scroll down and return on scroll up. EXPANDED
-/// keeps the labels always, COMPACT is icons only, CLASSIC is the flat
-/// docked bar (icons only, top divider) instead of the floating pill.
+/// keeps the labels always, COMPACT is icons only.
 enum NavBarStyle {
   adaptive,
   expanded,
   compact,
-  classic,
 }
 
 class GeneralSettings {

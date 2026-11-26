@@ -238,12 +238,6 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// saturation are already tuned and have no sliders here.
   final bool glassEnabled;
 
-  /// Flat docked bar instead of the floating pill: full-width, surface
-  /// colour, top divider, icons only, active tab marked by an accent
-  /// underline. Nuvio's CLASSIC style. No pill, no labels, no glass,
-  /// no scroll behaviour.
-  final bool classic;
-
   /// Nuvio's compactSize: the COMPACT style renders smaller — 24 pt
   /// icons (vs 28) and 4 pt item vertical padding (vs 6) — so the pill
   /// is 8 shorter at every fraction (55 expanded, 39 collapsed).
@@ -267,7 +261,6 @@ class LiquidGlassNavBar extends StatefulWidget {
     this.labelFraction = 1.0,
     this.glowEnabled = true,
     this.glassEnabled = true,
-    this.classic = false,
     this.compactSize = false,
   });
 
@@ -377,21 +370,6 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
 
   @override
   Widget build(BuildContext context) {
-    // Nuvio CLASSIC: a flat docked bar, no pill and no glass, so it
-    // renders on any device — before the Impeller check. Fixed 60 pt
-    // tall (see [_ClassicNavBar]): the shell's park math sinks it
-    // exactly below the screen (see [_kNavPaddingShown]).
-    if (widget.classic) {
-      return _ClassicNavBar(
-        items: widget.items,
-        selectedIndex: widget.selectedIndex,
-        onTap: widget.onTap,
-        activeColor: widget.activeColor,
-        inactiveColor: widget.inactiveColor,
-        iconSize: widget.iconSize,
-      );
-    }
-
     if (!widget.impellerSupported) {
       return _LegacyNavBar(
         items: widget.items,
@@ -810,107 +788,6 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Nuvio CLASSIC — flat docked bar (icons only, top divider).
-// ---------------------------------------------------------------------------
-
-/// The padding the shell feeds the bar when it is shown (gap − insets =
-/// 21 − 19 = 2). The shell tweens it to −contentClearance (−96) to park
-/// the bar off-screen on Settings, so (padding − 2) is 0 when shown and
-/// −98 when parked. The bar is exactly 60 pt tall, so at the park its top
-/// edge sits 98 − 60 = 38 pt below the screen bottom on Android, and
-/// 34 − 98 + 60 = 4 pt below on an iPhone (34 pt home indicator) —
-/// fully off-screen either way.
-const double _kNavPaddingShown = 2.0;
-
-/// Fixed height of the classic bar: icon 28 + 6 gap + 3 underline = 37,
-/// centred in 60.
-const double _kClassicBarHeight = 60.0;
-
-class _ClassicNavBar extends StatelessWidget {
-  final List<LiquidGlassNavItem> items;
-  final int selectedIndex;
-  final ValueChanged<int> onTap;
-  final Color? activeColor;
-  final Color? inactiveColor;
-  final double iconSize;
-
-  const _ClassicNavBar({
-    required this.items,
-    required this.selectedIndex,
-    required this.onTap,
-    this.activeColor,
-    this.inactiveColor,
-    required this.iconSize,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final active = activeColor ?? Theme.of(context).colorScheme.primary;
-    final inactive =
-        inactiveColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
-    // Docked at the real safe-area edge (viewPadding, which the shell
-    // never overrides), sinking below it by the park tween (padding).
-    final offset =
-        mediaQuery.viewPadding.bottom +
-        (mediaQuery.padding.bottom - _kNavPaddingShown);
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: offset,
-      child: Container(
-        height: _kClassicBarHeight,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          border: Border(
-            top: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-        ),
-        child: Row(
-          children: List.generate(items.length, (index) {
-            final item = items[index];
-            final bool isActive = index == selectedIndex;
-            final color = isActive ? active : inactive;
-            return Expanded(
-              child: InkWell(
-                onTap: () => onTap(index),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _iconWithBadge(
-                      context,
-                      item,
-                      IconTheme(
-                        data: IconThemeData(color: color, size: iconSize),
-                        child:
-                            item.iconWidget ??
-                            Icon(item.icon, size: iconSize, color: color),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      height: 3,
-                      width: isActive ? 28.0 : 0.0,
-                      decoration: BoxDecoration(
-                        color: isActive ? active : Colors.transparent,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
         ),
       ),
     );

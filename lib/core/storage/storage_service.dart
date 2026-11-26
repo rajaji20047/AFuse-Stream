@@ -386,9 +386,9 @@ class StorageService {
 
   /// Nav bar style (Settings → Navigation bar): 'adaptive' (default —
   /// labels hide on scroll down, return on scroll up), 'expanded'
-  /// (labels always), 'compact' (icons only) or 'classic' (flat docked
-  /// bar, icons only). Nuvio's NavBarStyle. An unrecognised name reads
-  /// as Adaptive, the safe side.
+  /// (labels always) or 'compact' (icons only). Nuvio's NavBarStyle.
+  /// An unrecognised name reads as Adaptive, the safe side — so a
+  /// stored 'classic' from before its removal falls back here too.
   Future<void> setNavBarStyle(String style) async {
     await _settingsBox.put('nav_bar_style', style);
   }

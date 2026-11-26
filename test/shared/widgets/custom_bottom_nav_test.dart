@@ -21,7 +21,6 @@ void main() {
     double labelFraction = 1.0,
     bool glowEnabled = true,
     bool glassEnabled = true,
-    bool classic = false,
     bool compactSize = false,
   }) => tester.pumpWidget(
     MaterialApp(
@@ -38,7 +37,6 @@ void main() {
               labelFraction: labelFraction,
               glowEnabled: glowEnabled,
               glassEnabled: glassEnabled,
-              classic: classic,
               compactSize: compactSize,
             ),
           ],
@@ -284,29 +282,6 @@ void main() {
     final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
     expect(opacities, hasLength(5));
     expect(opacities.map((o) => o.opacity), everyElement(1.0));
-  });
-
-  // Nuvio CLASSIC: a flat docked bar, icons only, 60 pt tall.
-  testWidgets('classic renders a flat bar with icons only', (tester) async {
-    var tapped = -1;
-    await pump(
-      tester,
-      Brightness.dark,
-      classic: true,
-      onTap: (i) => tapped = i,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Home'), findsNothing);
-    expect(find.text('Search'), findsNothing);
-    expect(find.text('Plugins'), findsNothing);
-    expect(find.text('Library'), findsNothing);
-    expect(find.text('Browse'), findsNothing);
-    expect(find.byIcon(ReiconFilledIcons.home), findsOneWidget);
-    expect(find.byIcon(ReiconIcons.search), findsOneWidget);
-    expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 60.0);
-    await tester.tap(find.byIcon(ReiconFilledIcons.library));
-    await tester.pumpAndSettle();
-    expect(tapped, 3);
   });
 
   // Nuvio's nav-bar glow: the resting selection bubble wears a soft

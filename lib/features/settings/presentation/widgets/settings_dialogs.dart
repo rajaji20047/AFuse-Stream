@@ -231,8 +231,6 @@ String getNavBarStyleLabel(NavBarStyle style) {
       return 'Expanded';
     case NavBarStyle.compact:
       return 'Compact';
-    case NavBarStyle.classic:
-      return 'Classic';
   }
 }
 
@@ -245,8 +243,6 @@ String getNavBarStyleHint(NavBarStyle style) {
       return 'Labels always shown';
     case NavBarStyle.compact:
       return 'Icons only';
-    case NavBarStyle.classic:
-      return 'Flat bar, icons only';
   }
 }
 

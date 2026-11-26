@@ -16,8 +16,8 @@ void main() {
 
   test('copyWith keeps the other nav settings', () {
     const settings = GeneralSettings();
-    final changed = settings.copyWith(navBarStyle: NavBarStyle.classic);
-    expect(changed.navBarStyle, NavBarStyle.classic);
+    final changed = settings.copyWith(navBarStyle: NavBarStyle.compact);
+    expect(changed.navBarStyle, NavBarStyle.compact);
     expect(changed.navBarGlowEnabled, isTrue);
     expect(changed.navBarGlassEnabled, isTrue);
     expect(changed.navBarIconColorArgb, isNull);
@@ -39,7 +39,6 @@ void main() {
     expect(getNavBarStyleLabel(NavBarStyle.adaptive), 'Adaptive');
     expect(getNavBarStyleLabel(NavBarStyle.expanded), 'Expanded');
     expect(getNavBarStyleLabel(NavBarStyle.compact), 'Compact');
-    expect(getNavBarStyleLabel(NavBarStyle.classic), 'Classic');
   });
 
   test('style hints say what each style does', () {
@@ -49,6 +48,5 @@ void main() {
     );
     expect(getNavBarStyleHint(NavBarStyle.expanded), contains('always'));
     expect(getNavBarStyleHint(NavBarStyle.compact), 'Icons only');
-    expect(getNavBarStyleHint(NavBarStyle.classic), contains('Flat bar'));
   });
 }

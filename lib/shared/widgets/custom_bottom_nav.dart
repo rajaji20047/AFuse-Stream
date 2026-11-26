@@ -43,8 +43,7 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 /// labels hide on scroll down, return on scroll up; EXPANDED pins the
 /// labels on, COMPACT pins them off), the selection bubble can wear
 /// Nuvio's accent glow, the glass can be switched off for a plain
-/// surface, and CLASSIC is the flat docked bar (icons only, top
-/// divider) instead of the pill. The style/glow/glass/colour settings
+/// surface. The style/glow/glass/colour settings
 /// live in [GeneralSettings] (Settings → Navigation bar) and the shell
 /// passes them in here; the defaults keep the Zenith-style look exactly.
 /// A Stack is the one wrapper that does not break the +15..+19 rule: the
@@ -82,15 +81,6 @@ class CustomBottomNavBar extends StatelessWidget {
   /// (Nuvio's non-glass fallback).
   final bool glassEnabled;
 
-  /// Flat docked bar instead of the floating pill (Nuvio CLASSIC).
-  final bool classic;
-
-  /// Nuvio's compactSize (COMPACT style): 24 pt icons and a pill 8
-  /// shorter at every fraction (55 expanded, 39 collapsed). The shell
-  /// passes this from the nav-bar style; the pill's labels are already
-  /// pinned off by [labelFraction] 0 for this style.
-  final bool compactSize;
-
   /// Unselected-icon colour override (null = default: white 65% on dark
   /// glass, onSurfaceVariant on light). Nuvio's navBarDefaultIconColor.
   final Color? inactiveColorOverride;
@@ -103,7 +93,6 @@ class CustomBottomNavBar extends StatelessWidget {
     this.labelFraction = 1.0,
     this.glowEnabled = true,
     this.glassEnabled = true,
-    this.classic = false,
     this.compactSize = false,
     this.inactiveColorOverride,
   });
@@ -150,14 +139,6 @@ class CustomBottomNavBar extends StatelessWidget {
   /// the content's MediaQuery) so the last row clears the pill.
   static const double contentClearance =
       targetBottomGap + _kPillHeight + _kContentBuffer;
-
-  /// The clearance the shell reserves for the bar, as a bottom padding:
-  /// the floating pill always reserves [contentClearance] — the Classic
-  /// bar is a 60 pt docked bar, but the screens'
-  /// `shellBottomContentPadding` floors at 100 anyway, so a smaller
-  /// number would change nothing on screen.
-  static double contentClearanceFor({required bool classic}) =>
-      contentClearance;
 
   /// The `padding.bottom` the package should see so the pill lands at
   /// [targetBottomGap] above the physical screen bottom. The package
@@ -270,7 +251,6 @@ class CustomBottomNavBar extends StatelessWidget {
       labelFraction: fraction,
       glowEnabled: glowEnabled,
       glassEnabled: glassEnabled,
-      classic: classic,
       compactSize: compactSize,
       // The package insets (Zenith-style: 19 — the side margin, so the
       // screen shows beside the corners).
@@ -323,15 +303,13 @@ class CustomBottomNavBar extends StatelessWidget {
   /// The thin neutral rim around the floating pill (build 109): the
   /// reference app has no gold rim and no gold glow, so the old
   /// accent-coloured rim + glow are gone. The legacy (non-Impeller) bar
-  /// is not a floating pill, so it keeps its plain return path. Classic
-  /// has no pill at all (its own top divider), so it keeps its plain
-  /// return path too.
+  /// is not a floating pill, so it keeps its plain return path.
   Widget _rimTreatment(
     Widget bar,
     double labelFraction,
     bool compactSize,
   ) {
-    if (!impellerSupported || classic) return bar;
+    if (!impellerSupported) return bar;
     return _NavPillRim(
       bar: bar,
       labelFraction: labelFraction,

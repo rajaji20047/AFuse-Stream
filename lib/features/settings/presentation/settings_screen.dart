@@ -333,8 +333,8 @@ class SettingsScreen extends ConsumerWidget {
             generalSettings.titlePosition,
           ),
         ),
-        // Nuvio's nav-bar settings: style (Adaptive/Expanded/Compact/
-        // Classic), glow, glass and the icon colour override — one
+        // Nuvio's nav-bar settings: style (Adaptive/Expanded/Compact),
+        // glow, glass and the icon colour override — one
         // dialog, Nuvio's NavigationBarSettingsSheet.
         SettingsTile(
           reicon: Reicon.layout,
