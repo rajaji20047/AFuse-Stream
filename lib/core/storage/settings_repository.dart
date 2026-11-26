@@ -124,6 +124,48 @@ class SettingsRepository {
     return _storageService.getTitlePosition();
   }
 
+  /// Nuvio's nav-bar settings (Settings → Navigation bar). Plain
+  /// pass-throughs to [StorageService].
+  Future<void> setNavBarStyle(String style) async {
+    await _storageService.setNavBarStyle(style);
+  }
+
+  String getNavBarStyle() {
+    return _storageService.getNavBarStyle();
+  }
+
+  Future<void> setNavBarPosition(String position) async {
+    await _storageService.setNavBarPosition(position);
+  }
+
+  String getNavBarPosition() {
+    return _storageService.getNavBarPosition();
+  }
+
+  Future<void> setNavBarGlow(bool enabled) async {
+    await _storageService.setNavBarGlow(enabled);
+  }
+
+  bool getNavBarGlow() {
+    return _storageService.getNavBarGlow();
+  }
+
+  Future<void> setNavBarGlass(bool enabled) async {
+    await _storageService.setNavBarGlass(enabled);
+  }
+
+  bool getNavBarGlass() {
+    return _storageService.getNavBarGlass();
+  }
+
+  Future<void> setNavBarIconColor(int? argb) async {
+    await _storageService.setNavBarIconColor(argb);
+  }
+
+  int? getNavBarIconColor() {
+    return _storageService.getNavBarIconColor();
+  }
+
   Future<void> setDevLoadAssets(bool enabled) async {
     await _storageService.setDevLoadAssets(enabled);
   }

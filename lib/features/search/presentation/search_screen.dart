@@ -26,6 +26,7 @@ import 'widgets/bouncy_entry_animation.dart';
 import 'widgets/check_section.dart';
 import '../../../shared/widgets/cards_wrapper.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../../shared/widgets/nav_bar_retap_provider.dart';
 import '../../../shared/focus/text_field_keys.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -305,8 +306,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _focusNode.requestFocus();
   }
 
+  /// Nuvio: re-tapping the Search tab focuses the search field and
+  /// scrolls the results to the top.
+  void _scrollToTopAndFocus() {
+    _focusNode.requestFocus();
+    if (_resultsScrollController.hasClients) {
+      _resultsScrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Nuvio: re-tapping the Search tab focuses the search field and
+    // scrolls the results to the top.
+    ref.listen<int>(
+      navBarRetapProvider.select((requests) => requests[1] ?? 0),
+      (_, _) => _scrollToTopAndFocus(),
+    );
     // Size question, asked of the size: a 960 dp television clears the
     // tablet breakpoint like any other big window.
     final isWidescreen = context.isTabletOrLarger;

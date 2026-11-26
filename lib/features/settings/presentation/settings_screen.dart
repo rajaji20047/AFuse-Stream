@@ -333,6 +333,16 @@ class SettingsScreen extends ConsumerWidget {
             generalSettings.titlePosition,
           ),
         ),
+        // Nuvio's nav-bar settings: style (Adaptive/Expanded/Compact/
+        // Classic), position (Bottom/Top), glow, glass and the icon
+        // colour override — one dialog, Nuvio's NavigationBarSettingsSheet.
+        SettingsTile(
+          reicon: Reicon.menu,
+          title: 'Navigation bar',
+          subtitle: 'Style, position, glow & glass',
+          value: getNavBarStyleLabel(generalSettings.navBarStyle),
+          onTap: () => showNavBarSettingsDialog(context, ref),
+        ),
         // Only shown where it means something. A phone, a tablet and a
         // television are already the size they are going to be; only a
         // desktop has a window that can change.

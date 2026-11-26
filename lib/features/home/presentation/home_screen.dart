@@ -27,6 +27,7 @@ import '../../explore/presentation/widgets/media_horizontal_list.dart';
 import '../../explore/presentation/view_all_screen.dart';
 import '../../../shared/widgets/desktop_scroll_wrapper.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../../shared/widgets/nav_bar_retap_provider.dart';
 import '../../../shared/widgets/no_scrollbar_behavior.dart';
 import '../../extensions/providers/extensions_controller.dart';
 import '../../../core/extensions/models/extension_plugin.dart';
@@ -107,6 +108,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _syncAppBarOpacity();
   }
 
+  /// Nuvio: re-tapping the Home tab scrolls the list to the top.
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   /// The header's fill follows the scroll offset. Also run after every
   /// build: when the list is replaced (provider switched, refresh) the
   /// new one starts at the top without a scroll event, and the header
@@ -136,6 +147,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    // Nuvio: re-tapping the Home tab scrolls the list to the top. The
+    // programmatic scroll fires scroll notifications of its own, so the
+    // ADAPTIVE bar's labels expand again on the way up.
+    ref.listen<int>(
+      navBarRetapProvider.select((requests) => requests[0] ?? 0),
+      (_, _) => _scrollToTop(),
+    );
     final homeDataAsync = ref.watch(homeDataProvider);
     final history = ref.watch(watchHistoryProvider);
     final syncedProgressAsync = ref.watch(syncedProgressProvider);

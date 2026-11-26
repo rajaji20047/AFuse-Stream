@@ -35,6 +35,19 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 /// pill above the bar (Fuse has no audio mini-player) and the
 /// scroll-collapse to a single inline tab (Fuse pages feed no scroll
 /// into the bar) — both would need new wiring, not a restyle.
+///
+/// Nuvio's nav bar (user 2026-11-26, "Sirf itna implement kro" — the
+/// functionality from the Nuvio description): the scroll-collapse IS
+/// now wired — the shell feeds the active tab's vertical scroll into
+/// [NavBarScrollState] and this bar's [labelFraction] (ADAPTIVE style:
+/// labels hide on scroll down, return on scroll up; EXPANDED pins the
+/// labels on, COMPACT pins them off), the pill can sit at the TOP under
+/// the status bar, the selection bubble can wear Nuvio's accent glow,
+/// the glass can be switched off for a plain surface, and CLASSIC is
+/// the flat docked bar (icons only, top divider) instead of the pill.
+/// The style/position/glow/glass/colour settings live in
+/// [GeneralSettings] (Settings → Navigation bar) and the shell passes
+/// them in here; the defaults keep the Zenith-style look exactly.
 /// A Stack is the one wrapper that does not break the +15..+19 rule: the
 /// package's root Positioned needs a Stack ancestor, and this Stack is
 /// one (a Transform/Padding parent would throw "Incorrect use of
@@ -50,10 +63,6 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 /// The widget is a [Positioned] overlay: the shell must place it as a
 /// direct child of a [Stack] (see [AppScaffold]), not as a Scaffold
 /// bottomNavigationBar.
-///
-/// The package always shows icon + label — it has no scroll-driven label
-/// collapse, so the Nuvio label-collapse behaviour is not available with
-/// it.
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final void Function(int) onTap;
@@ -61,11 +70,41 @@ class CustomBottomNavBar extends StatelessWidget {
   /// Forces the package's legacy Material fallback when false.
   final bool impellerSupported;
 
+  /// Label visibility, 1 = labels fully shown, 0 = icons only. The
+  /// shell animates this (ADAPTIVE: the scroll state; EXPANDED: 1;
+  /// COMPACT: 0) so the rim below stays in sync with the pill.
+  final double labelFraction;
+
+  /// Where the pill sits: floating above the bottom edge (default) or
+  /// under the status bar at the top. Nuvio's NavBarPosition.
+  final LiquidGlassNavBarPosition position;
+
+  /// Accent glow under the selection bubble (Nuvio's nav-bar glow, on
+  /// by default there).
+  final bool glowEnabled;
+
+  /// The pill's liquid-glass layer. Off is a plain translucent surface
+  /// (Nuvio's non-glass fallback).
+  final bool glassEnabled;
+
+  /// Flat docked bar instead of the floating pill (Nuvio CLASSIC).
+  final bool classic;
+
+  /// Unselected-icon colour override (null = default: white 65% on dark
+  /// glass, onSurfaceVariant on light). Nuvio's navBarDefaultIconColor.
+  final Color? inactiveColorOverride;
+
   const CustomBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     this.impellerSupported = true,
+    this.labelFraction = 1.0,
+    this.position = LiquidGlassNavBarPosition.bottom,
+    this.glowEnabled = true,
+    this.glassEnabled = true,
+    this.classic = false,
+    this.inactiveColorOverride,
   });
 
   /// The package insets: the side margin AND the bottom offset the
@@ -108,6 +147,18 @@ class CustomBottomNavBar extends StatelessWidget {
   static const double contentClearance =
       targetBottomGap + _kPillHeight + _kContentBuffer;
 
+  /// The clearance the shell reserves for a given bar, as a bottom
+  /// padding: the floating pill always reserves [contentClearance] — the
+  /// Classic bar is a 60 pt docked bar, but the screens'
+  /// `shellBottomContentPadding` floors at 100 anyway, so a smaller
+  /// number would change nothing on screen. The Top position floats
+  /// over the content like Nuvio's (its bottom overlay is 0 there), so
+  /// the bottom clearance is 0.
+  static double contentClearanceFor({
+    required bool classic,
+    required bool top,
+  }) => top ? 0.0 : contentClearance;
+
   /// The `padding.bottom` the package should see so the pill lands at
   /// [targetBottomGap] above the physical screen bottom. The package
   /// positions the pill at `MediaQuery.padding.bottom + insets`, so the
@@ -127,6 +178,16 @@ class CustomBottomNavBar extends StatelessWidget {
     const needed = targetBottomGap - _kBottomMargin;
     return math.max(0.0, needed);
   }
+
+  /// The `padding.top` the shell feeds the package on the Top position,
+  /// so the pill lands the same 21 pt under the status bar that it lands
+  /// above the bottom edge. Same value as [navPaddingBottom] (gap −
+  /// insets); the package reads `MediaQuery.padding.top` for the top
+  /// anchor, and the shell's park tween drives that edge to
+  /// [hiddenNavPaddingBottom] on Settings so the pill glides up out of
+  /// view instead of down.
+  static double navPaddingTop(BuildContext context) =>
+      navPaddingBottom(context);
 
   /// The `padding.bottom` the shell feeds the package on the Settings
   /// branch so the pill parks entirely below the screen bottom (build
@@ -174,6 +235,7 @@ class CustomBottomNavBar extends StatelessWidget {
     // is not a layout widget: the bar's Positioned still talks to the
     // Stack directly.
     final clearGlass = clearNavGlassFor(theme);
+    final fraction = labelFraction.clamp(0.0, 1.0);
     final bar = LiquidGlassNavBar(
       items: [
         LiquidGlassNavItem(
@@ -213,6 +275,13 @@ class CustomBottomNavBar extends StatelessWidget {
       selectedIndex: currentIndex,
       onTap: onTap,
       impellerSupported: impellerSupported,
+      // Nuvio's nav-bar settings, from the shell (Settings →
+      // Navigation bar). The defaults are the Zenith-style look.
+      labelFraction: fraction,
+      position: position,
+      glowEnabled: glowEnabled,
+      glassEnabled: glassEnabled,
+      classic: classic,
       // The package insets (Zenith-style: 19 — the side margin, so the
       // screen shows beside the corners).
       insets: _kBottomMargin,
@@ -228,10 +297,13 @@ class CustomBottomNavBar extends StatelessWidget {
       activeColor: colorScheme.primary,
       // Zenith-style (user 2026-11-25): unselected tabs are the content
       // colour at 65% — white on dark glass, onSurfaceVariant on light.
-      // Build 110's warm grey (0xFF9D9A92) is superseded.
-      inactiveColor: theme.brightness == Brightness.dark
-          ? Colors.white.withValues(alpha: 0.65)
-          : colorScheme.onSurfaceVariant,
+      // Build 110's warm grey (0xFF9D9A92) is superseded. The icon
+      // colour override (Settings → Navigation bar) replaces this.
+      inactiveColor:
+          inactiveColorOverride ??
+          (theme.brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.65)
+              : colorScheme.onSurfaceVariant),
       // Zenith-style: 28 dp icons, 10 sp labels (Zenith's tabLabelStyle).
       iconSize: 28,
       labelStyle: TextStyle(
@@ -246,23 +318,30 @@ class CustomBottomNavBar extends StatelessWidget {
       ),
     );
     if (!clearGlass) {
-      return _rimTreatment(bar);
+      return _rimTreatment(bar, fraction);
     }
     return _rimTreatment(
       Theme(
         data: theme.copyWith(brightness: Brightness.dark),
         child: bar,
       ),
+      fraction,
     );
   }
 
   /// The thin neutral rim around the floating pill (build 109): the
   /// reference app has no gold rim and no gold glow, so the old
   /// accent-coloured rim + glow are gone. The legacy (non-Impeller) bar
-  /// is not a floating pill, so it keeps its plain return path.
-  Widget _rimTreatment(Widget bar) {
-    if (!impellerSupported) return bar;
-    return _NavPillRim(bar: bar);
+  /// is not a floating pill, so it keeps its plain return path. Classic
+  /// has no pill at all (its own top divider), so it keeps its plain
+  /// return path too.
+  Widget _rimTreatment(Widget bar, double labelFraction) {
+    if (!impellerSupported || classic) return bar;
+    return _NavPillRim(
+      bar: bar,
+      position: position,
+      labelFraction: labelFraction,
+    );
   }
 }
 
@@ -284,18 +363,39 @@ class CustomBottomNavBar extends StatelessWidget {
 /// the icons or labels inside). IgnorePointer, so taps still land on
 /// the bar.
 class _NavPillRim extends StatelessWidget {
-  const _NavPillRim({required this.bar});
+  const _NavPillRim({
+    required this.bar,
+    required this.position,
+    required this.labelFraction,
+  });
 
   final Widget bar;
+
+  /// Where the pill sits — the rim tracks the same edge (top or bottom).
+  final LiquidGlassNavBarPosition position;
+
+  /// The label fraction the pill is drawn at — the rim narrows with the
+  /// pill as the labels collapse (same +30 pt as the package).
+  final double labelFraction;
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final paddingBottom = MediaQuery.paddingOf(context).bottom;
-    // The package's side margin: insets, or half that under 360 px.
-    final horizontalMargin = screenWidth < 360
-        ? CustomBottomNavBar._kBottomMargin / 2
-        : CustomBottomNavBar._kBottomMargin;
+    // The package's side margin: insets, or half that under 360 px —
+    // plus the collapse narrowing, so the rim stays on the pill's edge
+    // while it shrinks.
+    final horizontalMargin =
+        (screenWidth < 360
+            ? CustomBottomNavBar._kBottomMargin / 2
+            : CustomBottomNavBar._kBottomMargin) +
+        30.0 * (1.0 - labelFraction.clamp(0.0, 1.0));
+    // The shell's park tween drives this edge (padding.bottom for the
+    // bottom pill, padding.top for the top pill), so the rim sinks with
+    // the pill instead of lingering where it was.
+    final isTop = position == LiquidGlassNavBarPosition.top;
+    final edgePadding = isTop
+        ? MediaQuery.paddingOf(context).top
+        : MediaQuery.paddingOf(context).bottom;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -310,7 +410,8 @@ class _NavPillRim extends StatelessWidget {
           Positioned(
             left: horizontalMargin,
             right: horizontalMargin,
-            bottom: paddingBottom + CustomBottomNavBar._kBottomMargin,
+            bottom: isTop ? null : edgePadding + CustomBottomNavBar._kBottomMargin,
+            top: isTop ? edgePadding + CustomBottomNavBar._kBottomMargin : null,
             height: CustomBottomNavBar._kPillHeight,
             child: IgnorePointer(
               child: Container(

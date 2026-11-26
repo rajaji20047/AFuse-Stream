@@ -18,6 +18,11 @@ void main() {
     Brightness brightness, {
     int currentIndex = 0,
     void Function(int)? onTap,
+    double labelFraction = 1.0,
+    LiquidGlassNavBarPosition position = LiquidGlassNavBarPosition.bottom,
+    bool glowEnabled = true,
+    bool glassEnabled = true,
+    bool classic = false,
   }) => tester.pumpWidget(
     MaterialApp(
       theme: ThemeData(brightness: brightness),
@@ -30,6 +35,11 @@ void main() {
             CustomBottomNavBar(
               currentIndex: currentIndex,
               onTap: onTap ?? (_) {},
+              labelFraction: labelFraction,
+              position: position,
+              glowEnabled: glowEnabled,
+              glassEnabled: glassEnabled,
+              classic: classic,
             ),
           ],
         ),
@@ -219,6 +229,181 @@ void main() {
     await pump(tester, Brightness.dark);
     await tester.pumpAndSettle();
     expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 63.0);
+  });
+
+  // Nuvio ADAPTIVE/COMPACT: at labelFraction 0 the labels are gone
+  // (Opacity 0, zero height — still in the tree, so the icons stay put)
+  // and the pill narrows by Nuvio's 30 pt (19 → 49 gutters).
+  testWidgets('collapsed labels hide and the pill narrows', (tester) async {
+    await pump(tester, Brightness.dark, labelFraction: 0.0);
+    await tester.pumpAndSettle();
+    final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
+    expect(opacities, hasLength(5));
+    expect(opacities.map((o) => o.opacity), everyElement(0.0));
+    final positioned = tester
+        .widgetList<Positioned>(find.byType(Positioned))
+        .where((p) => p.left == 49.0 && p.right == 49.0 && p.height == null)
+        .toList();
+    expect(positioned, hasLength(1));
+    expect(positioned.single.bottom, CustomBottomNavBar.targetBottomGap);
+  });
+
+  testWidgets('expanded labels are fully shown', (tester) async {
+    await pump(tester, Brightness.dark, labelFraction: 1.0);
+    await tester.pumpAndSettle();
+    final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
+    expect(opacities, hasLength(5));
+    expect(opacities.map((o) => o.opacity), everyElement(1.0));
+  });
+
+  // Nuvio CLASSIC: a flat docked bar, icons only, 60 pt tall.
+  testWidgets('classic renders a flat bar with icons only', (tester) async {
+    var tapped = -1;
+    await pump(
+      tester,
+      Brightness.dark,
+      classic: true,
+      onTap: (i) => tapped = i,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsNothing);
+    expect(find.text('Search'), findsNothing);
+    expect(find.text('Plugins'), findsNothing);
+    expect(find.text('Library'), findsNothing);
+    expect(find.text('Browse'), findsNothing);
+    expect(find.byIcon(ReiconFilledIcons.home), findsOneWidget);
+    expect(find.byIcon(ReiconIcons.search), findsOneWidget);
+    expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 60.0);
+    await tester.tap(find.byIcon(ReiconFilledIcons.library));
+    await tester.pumpAndSettle();
+    expect(tapped, 3);
+  });
+
+  // Nuvio's NavBarPosition.TOP: the pill anchors under the status bar
+  // at the same 21 pt gap it keeps above the bottom edge.
+  testWidgets('top position anchors the pill under the status bar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            padding: EdgeInsets.only(top: 44),
+          ),
+          child: Scaffold(
+            body: Stack(
+              children: [
+                const SizedBox.expand(),
+                Builder(
+                  builder: (context) {
+                    final mq = MediaQuery.of(context);
+                    return MediaQuery(
+                      data: mq.copyWith(
+                        padding: mq.padding.copyWith(
+                          top: CustomBottomNavBar.navPaddingTop(context),
+                        ),
+                      ),
+                      child: CustomBottomNavBar(
+                        currentIndex: 0,
+                        onTap: (_) {},
+                        position: LiquidGlassNavBarPosition.top,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // The neutral rim is a second Positioned with the same margins but
+    // a fixed height, so it is filtered out here.
+    final positioned = tester
+        .widgetList<Positioned>(find.byType(Positioned))
+        .where((p) => p.left == 19.0 && p.right == 19.0 && p.height == null)
+        .toList();
+    expect(positioned, hasLength(1));
+    expect(positioned.single.top, CustomBottomNavBar.targetBottomGap);
+  });
+
+  // Nuvio's nav-bar glow: the resting selection bubble wears a soft
+  // accent halo; switching the glow off leaves the plain tinted bubble.
+  // The bubble is the only AnimatedContainer in the resting Impeller
+  // bar, so it is found by its 14% accent fill.
+  testWidgets('the selection bubble glows by default', (tester) async {
+    await pump(tester, Brightness.dark);
+    await tester.pumpAndSettle();
+    final accent = Theme.of(
+      tester.element(find.byType(CustomBottomNavBar)),
+    ).colorScheme.primary;
+    final bubbles = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+        .where((w) {
+          final d = w.decoration;
+          return d is BoxDecoration &&
+              d.color == accent.withValues(alpha: 0.14);
+        })
+        .toList();
+    expect(bubbles, hasLength(1));
+    final shadow = (bubbles.single.decoration as BoxDecoration).boxShadow;
+    expect(shadow, isNotNull);
+    expect(shadow, hasLength(1));
+    expect(
+      shadow!.single.color,
+      accent.withValues(alpha: 0.35),
+    );
+  });
+
+  testWidgets('glow off leaves the plain tinted bubble', (tester) async {
+    await pump(tester, Brightness.dark, glowEnabled: false);
+    await tester.pumpAndSettle();
+    final accent = Theme.of(
+      tester.element(find.byType(CustomBottomNavBar)),
+    ).colorScheme.primary;
+    final bubbles = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+        .where((w) {
+          final d = w.decoration;
+          return d is BoxDecoration &&
+              d.color == accent.withValues(alpha: 0.14);
+        })
+        .toList();
+    expect(bubbles, hasLength(1));
+    expect(
+      (bubbles.single.decoration as BoxDecoration).boxShadow,
+      isNull,
+    );
+  });
+
+  // Nuvio's nav-bar glass setting: with glass off the pill is a plain
+  // translucent surface (dark #1C1C1E at 82%) instead of frosted glass.
+  testWidgets('glass off renders a solid pill', (tester) async {
+    const solid = Color(0xFF1C1C1E);
+    await pump(tester, Brightness.dark, glassEnabled: false);
+    await tester.pumpAndSettle();
+    final solids = tester
+        .widgetList<Container>(find.byType(Container))
+        .where((c) => c.color == solid.withValues(alpha: 0.82))
+        .toList();
+    expect(solids, hasLength(1));
+    expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('glass on has no solid pill surface', (tester) async {
+    const solid = Color(0xFF1C1C1E);
+    await pump(tester, Brightness.dark, glassEnabled: true);
+    await tester.pumpAndSettle();
+    final solids = tester
+        .widgetList<Container>(find.byType(Container))
+        .where((c) => c.color == solid.withValues(alpha: 0.82))
+        .toList();
+    expect(solids, isEmpty);
   });
 
   testWidgets('the pill is a stadium (34 pt radius)', (

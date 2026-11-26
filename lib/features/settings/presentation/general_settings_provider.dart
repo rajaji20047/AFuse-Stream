@@ -28,9 +28,46 @@ enum GithubProxyOption {
   custom,
 }
 
+/// Nuvio's nav-bar style (Settings → Navigation bar). ADAPTIVE is the
+/// default: labels hide on scroll down and return on scroll up. EXPANDED
+/// keeps the labels always, COMPACT is icons only, CLASSIC is the flat
+/// docked bar (icons only, top divider) instead of the floating pill.
+enum NavBarStyle {
+  adaptive,
+  expanded,
+  compact,
+  classic,
+}
+
+/// Nuvio's nav-bar position: the floating pill above the bottom edge
+/// (default) or under the status bar at the top. CLASSIC ignores it in
+/// Nuvio; here Classic honours it too (docked at the top edge).
+enum NavBarPosition {
+  bottom,
+  top,
+}
+
 class GeneralSettings {
   final bool watchHistoryEnabled;
   final String defaultHomeScreen;
+
+  /// The nav-bar style (Nuvio parity — see [NavBarStyle]).
+  final NavBarStyle navBarStyle;
+
+  /// The nav-bar position (Nuvio parity — see [NavBarPosition]).
+  final NavBarPosition navBarPosition;
+
+  /// The accent halo under the selection bubble. On by default
+  /// (Nuvio's default).
+  final bool navBarGlowEnabled;
+
+  /// The pill's liquid-glass layer. On by default; off is a plain
+  /// translucent surface (Nuvio's non-glass fallback).
+  final bool navBarGlassEnabled;
+
+  /// The unselected icons' colour override (ARGB). Null = default
+  /// (white 65% on dark glass, onSurfaceVariant on light).
+  final int? navBarIconColorArgb;
 
   /// The GitHub proxy choice. Replaces the old on/off toggle: a stored
   /// choice of [GithubProxyOption.none] is off, anything else is on.
@@ -65,6 +102,11 @@ class GeneralSettings {
     this.downloadConcurrency = 3,
     this.downloadChunks = 8,
     this.tmdbApiKey = '',
+    this.navBarStyle = NavBarStyle.adaptive,
+    this.navBarPosition = NavBarPosition.bottom,
+    this.navBarGlowEnabled = true,
+    this.navBarGlassEnabled = true,
+    this.navBarIconColorArgb,
   });
 
   GeneralSettings copyWith({
@@ -79,6 +121,12 @@ class GeneralSettings {
     int? downloadConcurrency,
     int? downloadChunks,
     String? tmdbApiKey,
+    NavBarStyle? navBarStyle,
+    NavBarPosition? navBarPosition,
+    bool? navBarGlowEnabled,
+    bool? navBarGlassEnabled,
+    int? navBarIconColorArgb,
+    bool clearNavBarIconColor = false,
   }) {
     return GeneralSettings(
       watchHistoryEnabled: watchHistoryEnabled ?? this.watchHistoryEnabled,
@@ -98,6 +146,15 @@ class GeneralSettings {
       downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
       downloadChunks: downloadChunks ?? this.downloadChunks,
       tmdbApiKey: tmdbApiKey ?? this.tmdbApiKey,
+      navBarStyle: navBarStyle ?? this.navBarStyle,
+      navBarPosition: navBarPosition ?? this.navBarPosition,
+      navBarGlowEnabled: navBarGlowEnabled ?? this.navBarGlowEnabled,
+      navBarGlassEnabled: navBarGlassEnabled ?? this.navBarGlassEnabled,
+      // Same "null means keep" shape as the download directory: clearing
+      // the icon-colour override back to Default needs its own flag.
+      navBarIconColorArgb: clearNavBarIconColor
+          ? null
+          : (navBarIconColorArgb ?? this.navBarIconColorArgb),
     );
   }
 }
@@ -131,6 +188,20 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       downloadConcurrency: repository.getDownloadConcurrency(),
       downloadChunks: repository.getDownloadChunks(),
       tmdbApiKey: repository.getTmdbApiKey(),
+      // An unrecognised stored name — written by a newer build, or a
+      // corrupted box — reads as the default, the safe side (same shape
+      // as the GitHub proxy choice above).
+      navBarStyle: NavBarStyle.values.firstWhere(
+        (e) => e.name == repository.getNavBarStyle(),
+        orElse: () => NavBarStyle.adaptive,
+      ),
+      navBarPosition: NavBarPosition.values.firstWhere(
+        (e) => e.name == repository.getNavBarPosition(),
+        orElse: () => NavBarPosition.bottom,
+      ),
+      navBarGlowEnabled: repository.getNavBarGlow(),
+      navBarGlassEnabled: repository.getNavBarGlass(),
+      navBarIconColorArgb: repository.getNavBarIconColor(),
     );
   }
 
@@ -182,6 +253,43 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
     final repository = ref.read(settingsRepositoryProvider);
     await repository.setTitlePosition(position);
     state = state.copyWith(titlePosition: position);
+  }
+
+  /// Nuvio's nav-bar settings (Settings → Navigation bar). Each writes
+  /// through to storage and updates the state, so the shell's bar
+  /// restyles without an app restart.
+  Future<void> setNavBarStyle(NavBarStyle style) async {
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setNavBarStyle(style.name);
+    state = state.copyWith(navBarStyle: style);
+  }
+
+  Future<void> setNavBarPosition(NavBarPosition position) async {
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setNavBarPosition(position.name);
+    state = state.copyWith(navBarPosition: position);
+  }
+
+  Future<void> setNavBarGlowEnabled(bool enabled) async {
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setNavBarGlow(enabled);
+    state = state.copyWith(navBarGlowEnabled: enabled);
+  }
+
+  Future<void> setNavBarGlassEnabled(bool enabled) async {
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setNavBarGlass(enabled);
+    state = state.copyWith(navBarGlassEnabled: enabled);
+  }
+
+  /// Pass null to clear the override back to the default icon colour.
+  Future<void> setNavBarIconColor(int? argb) async {
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setNavBarIconColor(argb);
+    state = state.copyWith(
+      navBarIconColorArgb: argb,
+      clearNavBarIconColor: argb == null,
+    );
   }
 
   Future<void> setDownloadDirectory(String? path) async {

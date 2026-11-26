@@ -384,6 +384,70 @@ class StorageService {
         'below';
   }
 
+  /// Nav bar style (Settings → Navigation bar): 'adaptive' (default —
+  /// labels hide on scroll down, return on scroll up), 'expanded'
+  /// (labels always), 'compact' (icons only) or 'classic' (flat docked
+  /// bar, icons only). Nuvio's NavBarStyle. An unrecognised name reads
+  /// as Adaptive, the safe side.
+  Future<void> setNavBarStyle(String style) async {
+    await _settingsBox.put('nav_bar_style', style);
+  }
+
+  String getNavBarStyle() {
+    return (_settingsBox.get('nav_bar_style', defaultValue: 'adaptive')
+            as String?) ??
+        'adaptive';
+  }
+
+  /// Nav bar position: 'bottom' (default — the pill floats above the
+  /// bottom edge) or 'top' (the pill sits under the status bar).
+  /// Nuvio's NavBarPosition. CLASSIC ignores it in Nuvio; here Classic
+  /// honours it too (docked at the top edge).
+  Future<void> setNavBarPosition(String position) async {
+    await _settingsBox.put('nav_bar_position', position);
+  }
+
+  String getNavBarPosition() {
+    return (_settingsBox.get('nav_bar_position', defaultValue: 'bottom')
+            as String?) ??
+        'bottom';
+  }
+
+  /// Nav bar glow: the accent halo under the selection bubble. On by
+  /// default (Nuvio's default).
+  Future<void> setNavBarGlow(bool enabled) async {
+    await _settingsBox.put('nav_bar_glow', enabled);
+  }
+
+  bool getNavBarGlow() {
+    return _settingsBox.get('nav_bar_glow', defaultValue: true) as bool;
+  }
+
+  /// Nav bar glass: the pill's liquid-glass layer. On by default; off
+  /// is a plain translucent surface (Nuvio's non-glass fallback).
+  Future<void> setNavBarGlass(bool enabled) async {
+    await _settingsBox.put('nav_bar_glass', enabled);
+  }
+
+  bool getNavBarGlass() {
+    return _settingsBox.get('nav_bar_glass', defaultValue: true) as bool;
+  }
+
+  /// Nav bar icon colour override (ARGB int): the unselected icons'
+  /// colour. Absent = default (white 65% on dark glass,
+  /// onSurfaceVariant on light). Nuvio's navBarDefaultIconColor.
+  Future<void> setNavBarIconColor(int? argb) async {
+    if (argb == null) {
+      await _settingsBox.delete('nav_bar_icon_color');
+    } else {
+      await _settingsBox.put('nav_bar_icon_color', argb);
+    }
+  }
+
+  int? getNavBarIconColor() {
+    return _settingsBox.get('nav_bar_icon_color') as int?;
+  }
+
   Future<void> setDevLoadAssets(bool enabled) async {
     await _settingsBox.put('dev_load_assets', enabled);
   }

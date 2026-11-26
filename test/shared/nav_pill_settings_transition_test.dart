@@ -49,7 +49,7 @@ import 'package:raja/shared/widgets/app_scaffold.dart';
 import 'package:raja/shared/widgets/custom_bottom_nav.dart';
 
 void main() {
-  Future<GoRouter> pumpShell(WidgetTester tester) async {
+  Future<GoRouter> pumpShell(WidgetTester tester, {Widget? homePage}) async {
     tester.view.physicalSize = const Size(720, 1568);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
@@ -68,8 +68,15 @@ void main() {
           navigatorContainerBuilder:
               AppShellRouteData.$navigatorContainerBuilder,
           branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/home',
+                  builder: (_, _) => homePage ?? page('home', Colors.red),
+                ),
+              ],
+            ),
             for (final (path, label, color) in const [
-              ('/home', 'home', Colors.red),
               ('/search', 'search', Colors.green),
               ('/extensions', 'extensions', Colors.blue),
               ('/library', 'library', Colors.orange),
@@ -232,6 +239,60 @@ void main() {
       greaterThan(0),
       reason: 'pill fully on screen on Home',
     );
+  });
+
+  // Nuvio ADAPTIVE: scrolling the page down hides the pill's labels and
+  // narrows the pill (Nuvio's 28 → 58 dp); scrolling up restores both.
+  // The labels are found through their own Opacity ancestor, so any
+  // unrelated Opacity in the shell tree cannot skew the assertion.
+  testWidgets('ADAPTIVE: scrolling down collapses the labels, up restores them',
+      (tester) async {
+    await pumpShell(
+      tester,
+      homePage: ListView.builder(
+        itemCount: 30,
+        itemBuilder: (_, i) => SizedBox(height: 80, child: Text('item $i')),
+      ),
+    );
+
+    double labelOpacity(String label) {
+      final opacities = tester.widgetList<Opacity>(
+        find.ancestor(of: find.text(label), matching: find.byType(Opacity)),
+      );
+      expect(opacities, hasLength(1));
+      return opacities.single.opacity;
+    }
+
+    double pillMargin() {
+      final positioned = tester
+          .widgetList<Positioned>(find.byType(Positioned))
+          .where(
+            (p) =>
+                p.left != null &&
+                p.left! > 0 &&
+                p.right != null &&
+                p.height == null,
+          )
+          .toList();
+      // The pill itself (left/right 19 or 49) — the rim has a fixed
+      // height and the treatment's Positioned.fill has 0 margins.
+      expect(positioned, hasLength(1));
+      return positioned.single.left!;
+    }
+
+    expect(labelOpacity('Home'), 1.0, reason: 'labels shown at rest');
+    expect(pillMargin(), 19.0, reason: 'full-width pill at rest');
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(labelOpacity('Home'), 0.0, reason: 'labels hidden after scroll down');
+    expect(labelOpacity('Browse'), 0.0);
+    expect(pillMargin(), 49.0, reason: 'pill narrowed by 30 pt');
+
+    await tester.drag(find.byType(ListView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(labelOpacity('Home'), 1.0, reason: 'labels back after scroll up');
+    expect(pillMargin(), 19.0, reason: 'pill back to full width');
   });
 
   testWidgets('pill keeps the last tab highlighted on Settings', (

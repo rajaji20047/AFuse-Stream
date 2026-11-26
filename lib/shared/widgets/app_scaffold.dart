@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_bottom_nav/liquid_glass_bottom_nav.dart';
 import 'package:raja/core/providers/device_info_provider.dart';
 import 'package:raja/core/utils/boot_trace.dart';
 import 'package:raja/core/utils/layout_constants.dart';
@@ -12,6 +13,8 @@ import 'package:raja/core/utils/motion.dart';
 import 'package:raja/core/utils/responsive_breakpoints.dart';
 import 'package:raja/shared/widgets/custom_bottom_nav.dart';
 import 'package:raja/shared/widgets/app_sidebar.dart';
+import 'package:raja/shared/widgets/nav_bar_retap_provider.dart';
+import 'package:raja/shared/widgets/nav_bar_scroll_state.dart';
 
 import 'package:raja/l10n/generated/app_localizations.dart';
 
@@ -78,6 +81,12 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
   /// ever true while [_cursorAutoHide] is true.
   bool _cursorHidden = false;
 
+  /// Nuvio's ADAPTIVE nav-bar scroll state: the active tab's vertical
+  /// scroll collapses the bar's labels (see [_onScrollNotification]).
+  /// One state for the whole tab host, like Nuvio's — switching tabs does
+  /// not reset it.
+  final NavBarScrollState _navBarScrollState = NavBarScrollState();
+
   /// Whether the cursor clock may run at all this frame. Written by [build],
   /// read by the pointer handlers and by the timer, so a stand-down also stops
   /// a clock that is already ticking. See [_setCursorAutoHide].
@@ -95,6 +104,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
   @override
   void dispose() {
     _cursorIdleTimer?.cancel();
+    _navBarScrollState.dispose();
     for (final n in _sidebarNodes) {
       n.dispose();
     }
@@ -177,10 +187,32 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
   }
 
   void _onItemTapped(int index, BuildContext context) {
+    final isRetap = index == widget.navigationShell.currentIndex;
+    if (isRetap) {
+      // Re-tapping the tab already on: Nuvio scrolls that tab to the top
+      // (Search also focuses its field). The tab screens listen for their
+      // own index on [navBarRetapProvider]; Library and Plugins have no
+      // scroll controller of their own, so their re-tap is a no-op (like
+      // Nuvio's Downloads tab).
+      ref.read(navBarRetapProvider.notifier).request(index);
+    }
     widget.navigationShell.goBranch(
       index,
-      initialLocation: index == widget.navigationShell.currentIndex,
+      initialLocation: isRetap,
     );
+  }
+
+  /// Nuvio's ADAPTIVE scroll feed: the page's own vertical scroll drives
+  /// the bar's labels. Only the outermost vertical scrollable counts
+  /// (depth 0) — the horizontal carousels and nested lists must not
+  /// collapse the bar — and only while the style is ADAPTIVE.
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.axis == Axis.vertical &&
+        notification.depth == 0) {
+      _navBarScrollState.onScrollDelta(notification.scrollDelta ?? 0.0);
+    }
+    return false; // let the notification keep bubbling.
   }
 
   int _getRouteIndex(String route) {
@@ -275,6 +307,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
     final defaultHome = ref.watch(
       generalSettingsProvider.select((s) => s.defaultHomeScreen),
     );
+    // Nuvio's nav-bar settings (Settings → Navigation bar): style,
+    // position, glow, glass and the icon-colour override. Watched whole
+    // — a style change restyles the bar without an app restart.
+    final navSettings = ref.watch(generalSettingsProvider);
     final defaultIndex = _getRouteIndex(defaultHome);
     final isAtDefaultHome = widget.navigationShell.currentIndex == defaultIndex;
 
@@ -417,16 +453,27 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         final onSettings = currentIndex == 5;
         if (currentIndex < 5) _lastTabIndex = currentIndex;
         final pillIndex = currentIndex < 5 ? currentIndex : _lastTabIndex;
+        // Nuvio's nav-bar settings for this frame.
+        final navStyle = navSettings.navBarStyle;
+        final navOnTop =
+            navSettings.navBarPosition == NavBarPosition.top;
+        final navClassic = navStyle == NavBarStyle.classic;
         // Content must clear the pill top (see
         // [CustomBottomNavBar.contentClearance]); the real safe-area
         // padding is already in mq.padding.bottom, so only the remainder
         // is added. On Settings the pill is parked off-screen, so the
         // content keeps just the real safe area (pre-87 behaviour) and
-        // the Settings screens take their small-value path.
+        // the Settings screens take their small-value path. The Top
+        // position floats over the content (Nuvio's bottom overlay is 0
+        // there), so nothing is reserved at the bottom for it.
         final navBarTotalHeight = onSettings
             ? 0.0
             : math.max(
-                CustomBottomNavBar.contentClearance - mq.padding.bottom,
+                CustomBottomNavBar.contentClearanceFor(
+                      classic: navClassic,
+                      top: navOnTop,
+                    ) -
+                    mq.padding.bottom,
                 0.0,
               );
 
@@ -459,7 +506,20 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                       bottom: mq.viewPadding.bottom + navBarTotalHeight,
                     ),
                   ),
-                  child: _branchTransition(),
+                  // Nuvio ADAPTIVE: the page's vertical scroll feeds the
+                  // bar's label state (see [_onScrollNotification]).
+                  // A NotificationListener, not a controller per screen:
+                  // the scroll notifications bubble up from whatever tab
+                  // is on screen, so no tab screen changes for this.
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (navStyle == NavBarStyle.adaptive) {
+                        return _onScrollNotification(notification);
+                      }
+                      return false;
+                    },
+                    child: _branchTransition(),
+                  ),
                 ),
                 // v20+21: the package positions the pill at
                 // MediaQuery.padding.bottom + insets, so on iOS the real
@@ -514,26 +574,81 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                 // The bar itself is passed as `child`, so it is not
                 // rebuilt on every animation frame — only the padding
                 // value changes.
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(
-                    end: onSettings
-                        ? CustomBottomNavBar.hiddenNavPaddingBottom(context)
-                        : CustomBottomNavBar.navPaddingBottom(context),
-                  ),
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : kMotionPage,
-                  curve: kMotionPageCurve,
-                  builder: (context, navPadding, child) => MediaQuery(
-                    data: mq.copyWith(
-                      padding: mq.padding.copyWith(bottom: navPadding),
-                    ),
-                    child: child!,
-                  ),
-                  child: CustomBottomNavBar(
-                    currentIndex: pillIndex,
-                    onTap: (index) => _onItemTapped(index, context),
-                  ),
+                // Nuvio's label animation: the scroll state only holds
+                // the 0/1 target; this tween glides the fraction over
+                // 250 ms so the labels fade and the pill narrows in one
+                // motion. A ValueListenableBuilder (not a render object),
+                // so the package's root Positioned still talks directly
+                // to this Stack (the +15..+19 freeze rule).
+                ValueListenableBuilder<double>(
+                  valueListenable: _navBarScrollState.targetFraction,
+                  builder: (context, scrollTarget, _) {
+                    // The target fraction for the style: ADAPTIVE follows
+                    // the scroll state, EXPANDED pins the labels on,
+                    // COMPACT pins them off. CLASSIC has no labels, so
+                    // the fraction is irrelevant there.
+                    final targetFraction = navStyle == NavBarStyle.expanded
+                        ? 1.0
+                        : navStyle == NavBarStyle.compact
+                            ? 0.0
+                            : navStyle == NavBarStyle.classic
+                                ? 1.0
+                                : scrollTarget;
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween<double>(end: targetFraction),
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                      builder: (context, labelFraction, _) {
+                        return TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            end: onSettings
+                                ? CustomBottomNavBar.hiddenNavPaddingBottom(
+                                    context,
+                                  )
+                                : navOnTop
+                                    ? CustomBottomNavBar.navPaddingTop(context)
+                                    : CustomBottomNavBar.navPaddingBottom(
+                                        context,
+                                      ),
+                          ),
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : kMotionPage,
+                          curve: kMotionPageCurve,
+                          // The Top position parks by driving the TOP
+                          // edge (the pill glides up out of view); the
+                          // bottom position drives the bottom edge as
+                          // before. The package reads the driven edge
+                          // for its anchor.
+                          builder: (context, navPadding, child) => MediaQuery(
+                            data: mq.copyWith(
+                              padding: navOnTop
+                                  ? mq.padding.copyWith(top: navPadding)
+                                  : mq.padding.copyWith(bottom: navPadding),
+                            ),
+                            child: child!,
+                          ),
+                          child: CustomBottomNavBar(
+                            currentIndex: pillIndex,
+                            onTap: (index) => _onItemTapped(index, context),
+                            labelFraction: labelFraction,
+                            position: navOnTop
+                                ? LiquidGlassNavBarPosition.top
+                                : LiquidGlassNavBarPosition.bottom,
+                            glowEnabled: navSettings.navBarGlowEnabled,
+                            glassEnabled: navSettings.navBarGlassEnabled,
+                            classic: navClassic,
+                            inactiveColorOverride:
+                                navSettings.navBarIconColorArgb == null
+                                ? null
+                                : Color(navSettings.navBarIconColorArgb!),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ],
             ),

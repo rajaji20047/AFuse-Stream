@@ -11,6 +11,13 @@ import 'src/liquid_glass_renderer/src/liquid_glass_render_scope.dart'
 export 'src/liquid_glass_renderer/liquid_glass_renderer.dart'
     show LiquidGlassLayer, LiquidGlassSettings;
 
+/// Where the floating pill sits. Nuvio's NavBarPosition: the pill floats
+/// at the bottom by default, or under the status bar at the top.
+enum LiquidGlassNavBarPosition {
+  bottom,
+  top,
+}
+
 class LiquidGlassNavItem {
   final String id;
   final String label;
@@ -184,6 +191,36 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// Composition: pill height 63 + bottom margin 19 + 12px breathing buffer = 94.0.
   static const double contentBottomInset = 94.0;
 
+  /// Label visibility, 1 = labels fully shown, 0 = icons only. Nuvio's
+  /// ADAPTIVE style: scrolling down collapses the labels (the pill narrows
+  /// as they hide) and scrolling up brings them back; EXPANDED pins this
+  /// at 1, COMPACT pins it at 0. Rendered directly — the shell animates
+  /// the value (so the rim in `CustomBottomNavBar` stays in sync with the
+  /// pill), this widget only draws the fraction it is given.
+  final double labelFraction;
+
+  /// Where the pill sits: floating above the bottom edge (default) or
+  /// under the status bar at the top. Nuvio's NavBarPosition.
+  final LiquidGlassNavBarPosition position;
+
+  /// Accent glow under the resting selection bubble. Nuvio's nav-bar
+  /// glow, on by default there; switch it off in Settings to go back to
+  /// the plain tinted bubble.
+  final bool glowEnabled;
+
+  /// Whether the pill renders its liquid-glass layer. When false the pill
+  /// is a plain translucent surface (Nuvio's non-glass fallback: dark
+  /// #1C1C1E at 82%) instead of frosted glass. Nuvio's nav-bar glass
+  /// setting, in its minimal form — the renderer's thickness/blur/
+  /// saturation are already tuned and have no sliders here.
+  final bool glassEnabled;
+
+  /// Flat docked bar instead of the floating pill: full-width, surface
+  /// colour, top divider, icons only, active tab marked by an accent
+  /// underline. Nuvio's CLASSIC style. No pill, no labels, no glass,
+  /// no scroll behaviour.
+  final bool classic;
+
   const LiquidGlassNavBar({
     super.key,
     required this.items,
@@ -198,6 +235,11 @@ class LiquidGlassNavBar extends StatefulWidget {
     this.borderRadius = 34.0,
     this.dragRainbowBorder = false,
     this.liquidActiveBubble = true,
+    this.labelFraction = 1.0,
+    this.position = LiquidGlassNavBarPosition.bottom,
+    this.glowEnabled = true,
+    this.glassEnabled = true,
+    this.classic = false,
   });
 
   @override
@@ -306,6 +348,22 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
 
   @override
   Widget build(BuildContext context) {
+    // Nuvio CLASSIC: a flat docked bar, no pill and no glass, so it
+    // renders on any device — before the Impeller check. Fixed 60 pt
+    // tall (see [_ClassicNavBar]): the shell's park math sinks it
+    // exactly below the screen (see [_kNavPaddingShown]).
+    if (widget.classic) {
+      return _ClassicNavBar(
+        items: widget.items,
+        selectedIndex: widget.selectedIndex,
+        onTap: widget.onTap,
+        activeColor: widget.activeColor,
+        inactiveColor: widget.inactiveColor,
+        iconSize: widget.iconSize,
+        position: widget.position,
+      );
+    }
+
     if (!widget.impellerSupported) {
       return _LegacyNavBar(
         items: widget.items,
@@ -319,17 +377,28 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
       );
     }
 
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final horizontalMargin = screenWidth < 360 ? widget.insets / 2 : widget.insets;
+    final mediaQuery = MediaQuery.of(context);
+    final bottomPadding = mediaQuery.padding.bottom;
+    final topPadding = mediaQuery.padding.top;
+    final screenWidth = mediaQuery.size.width;
+    // Clamped once here: the label heights and opacity below take it raw.
+    final labelFraction = widget.labelFraction.clamp(0.0, 1.0);
+    // Nuvio ADAPTIVE: as the labels collapse the pill narrows — its
+    // side margins grow by the same 30 pt Nuvio's pill gains (28 → 58).
+    // At labelFraction 1 this is exactly the old margin, so the default
+    // geometry (19 pt gutters, 21 pt gap) does not move.
+    final baseMargin = screenWidth < 360 ? widget.insets / 2 : widget.insets;
+    final horizontalMargin = baseMargin + 30.0 * (1.0 - labelFraction);
     final activeColor = widget.activeColor ?? Theme.of(context).colorScheme.primary;
     final inactiveColor = widget.inactiveColor ?? Theme.of(context).colorScheme.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isTop = widget.position == LiquidGlassNavBarPosition.top;
 
     return Positioned(
       left: horizontalMargin,
       right: horizontalMargin,
-      bottom: bottomPadding + widget.insets,
+      bottom: isTop ? null : bottomPadding + widget.insets,
+      top: isTop ? topPadding + widget.insets : null,
       child: Container(
         decoration: ShapeDecoration(
           shape: LiquidRoundedSuperellipse(borderRadius: widget.borderRadius),
@@ -364,22 +433,35 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                     ),
                   ),
                 ),
-                child: LiquidGlass.withOwnLayer(
-                  shape: LiquidRoundedSuperellipse(borderRadius: widget.borderRadius),
-                  settings: LiquidGlassSettings(
-                    // Light mode: high white tint for vibrancy, blur kept at 1
-                    // so the capsule reads as clean white without any fogging.
-                    glassColor: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.white.withValues(alpha: 0.76),
-                    thickness: 32,
-                    blur: 1,
-                    saturation: 1.8,
-                    lightIntensity: isDark ? 0.15 : 1.0,
-                    ambientStrength: 0.2,
-                  ),
-                  child: const SizedBox.expand(),
-                ),
+                // Nuvio's nav-bar glass setting: with glass off the pill
+                // is a plain translucent surface instead of frosted
+                // glass — Nuvio's non-glass fallback, dark #1C1C1E at
+                // 82%, in both modes (the pill is dark glass in both
+                // modes already, see CustomBottomNavBar).
+                child: widget.glassEnabled
+                    ? LiquidGlass.withOwnLayer(
+                        shape: LiquidRoundedSuperellipse(
+                          borderRadius: widget.borderRadius,
+                        ),
+                        settings: LiquidGlassSettings(
+                          // Light mode: high white tint for vibrancy, blur kept at 1
+                          // so the capsule reads as clean white without any fogging.
+                          glassColor: isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.white.withValues(alpha: 0.76),
+                          thickness: 32,
+                          blur: 1,
+                          saturation: 1.8,
+                          lightIntensity: isDark ? 0.15 : 1.0,
+                          ambientStrength: 0.2,
+                        ),
+                        child: const SizedBox.expand(),
+                      )
+                    : Container(
+                        color: const Color(
+                          0xFF1C1C1E,
+                        ).withValues(alpha: 0.82),
+                      ),
               ),
             ),
             SizedBox(
@@ -564,6 +646,23 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                               ? Colors.transparent
                                               : activeColor.withValues(alpha: 0.14),
                                           borderRadius: BorderRadius.circular(widget.borderRadius),
+                                          // Nuvio's nav-bar glow: a soft
+                                          // accent halo under the resting
+                                          // selection bubble. Off while
+                                          // held (the drag stroke is the
+                                          // accent there) and off entirely
+                                          // when the glow setting is off.
+                                          boxShadow:
+                                              widget.glowEnabled && !isDragging
+                                              ? [
+                                                  BoxShadow(
+                                                    color: activeColor
+                                                        .withValues(alpha: 0.35),
+                                                    blurRadius: 18,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                              : null,
                                         ),
                                       ),
                                     // Stroke overlay lives outside the bubble-content branch
@@ -636,16 +735,31 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item.label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.merge(widget.labelStyle)
-                                        .copyWith(color: color, fontWeight: widget.labelStyle?.fontWeight ?? FontWeight.w500),
+                                  // Nuvio ADAPTIVE: the label box shrinks
+                                  // to nothing and fades as labelFraction
+                                  // goes 1 → 0, so the icon recentres in
+                                  // the 63 pt pill (the Column is centred)
+                                  // and the pill narrows via the growing
+                                  // side margins. At fraction 1 this is
+                                  // the old layout (2 + 14).
+                                  SizedBox(height: 2 * labelFraction),
+                                  ClipRect(
+                                    child: SizedBox(
+                                      height: 14 * labelFraction,
+                                      child: Opacity(
+                                        opacity: labelFraction,
+                                        child: Text(
+                                          item.label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.merge(widget.labelStyle)
+                                              .copyWith(color: color, fontWeight: widget.labelStyle?.fontWeight ?? FontWeight.w500),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -659,6 +773,117 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nuvio CLASSIC — flat docked bar (icons only, top divider).
+// ---------------------------------------------------------------------------
+
+/// The padding the shell feeds the bar when it is shown (gap − insets =
+/// 21 − 19 = 2). The shell tweens it to −contentClearance (−96) to park
+/// the bar off-screen on Settings, so (padding − 2) is 0 when shown and
+/// −98 when parked. The bar is exactly 60 pt tall, so at the park its top
+/// edge sits 98 − 60 = 38 pt below the screen bottom on Android, and
+/// 34 − 98 + 60 = 4 pt below on an iPhone (34 pt home indicator) —
+/// fully off-screen either way.
+const double _kNavPaddingShown = 2.0;
+
+/// Fixed height of the classic bar: icon 28 + 6 gap + 3 underline = 37,
+/// centred in 60.
+const double _kClassicBarHeight = 60.0;
+
+class _ClassicNavBar extends StatelessWidget {
+  final List<LiquidGlassNavItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final Color? activeColor;
+  final Color? inactiveColor;
+  final double iconSize;
+  final LiquidGlassNavBarPosition position;
+
+  const _ClassicNavBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onTap,
+    this.activeColor,
+    this.inactiveColor,
+    required this.iconSize,
+    required this.position,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final active = activeColor ?? Theme.of(context).colorScheme.primary;
+    final inactive =
+        inactiveColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    // Docked at the real safe-area edge (viewPadding, which the shell
+    // never overrides), sinking below it by the park tween (padding).
+    final double offset;
+    if (position == LiquidGlassNavBarPosition.top) {
+      offset =
+          mediaQuery.viewPadding.top +
+          (mediaQuery.padding.top - _kNavPaddingShown);
+    } else {
+      offset =
+          mediaQuery.viewPadding.bottom +
+          (mediaQuery.padding.bottom - _kNavPaddingShown);
+    }
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: position == LiquidGlassNavBarPosition.bottom ? offset : null,
+      top: position == LiquidGlassNavBarPosition.top ? offset : null,
+      child: Container(
+        height: _kClassicBarHeight,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+        ),
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final item = items[index];
+            final bool isActive = index == selectedIndex;
+            final color = isActive ? active : inactive;
+            return Expanded(
+              child: InkWell(
+                onTap: () => onTap(index),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _iconWithBadge(
+                      context,
+                      item,
+                      IconTheme(
+                        data: IconThemeData(color: color, size: iconSize),
+                        child:
+                            item.iconWidget ??
+                            Icon(item.icon, size: iconSize, color: color),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 3,
+                      width: isActive ? 28.0 : 0.0,
+                      decoration: BoxDecoration(
+                        color: isActive ? active : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );

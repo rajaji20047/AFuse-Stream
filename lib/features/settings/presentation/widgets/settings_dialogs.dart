@@ -26,6 +26,7 @@ import '../../../../core/utils/stream_quality_sorter.dart';
 import '../general_settings_provider.dart';
 import '../../../../core/providers/device_info_provider.dart';
 import '../../../../core/providers/locale_provider.dart';
+import '../../../../core/theme/accent_color.dart';
 import '../../../player/presentation/player_platform_service.dart';
 
 import 'package:raja/l10n/generated/app_localizations.dart';
@@ -218,6 +219,217 @@ void showTitlePositionDialog(
       ),
     ),
   );
+}
+
+/// Labels for the nav-bar style/position pickers. Plain English, no l10n
+/// key — the Plugins/Browse tab names do the same (no l10n key for them).
+String getNavBarStyleLabel(NavBarStyle style) {
+  switch (style) {
+    case NavBarStyle.adaptive:
+      return 'Adaptive';
+    case NavBarStyle.expanded:
+      return 'Expanded';
+    case NavBarStyle.compact:
+      return 'Compact';
+    case NavBarStyle.classic:
+      return 'Classic';
+  }
+}
+
+/// One-line hint for a nav-bar style, shown under its radio row.
+String getNavBarStyleHint(NavBarStyle style) {
+  switch (style) {
+    case NavBarStyle.adaptive:
+      return 'Labels hide on scroll down, return on scroll up';
+    case NavBarStyle.expanded:
+      return 'Labels always shown';
+    case NavBarStyle.compact:
+      return 'Icons only';
+    case NavBarStyle.classic:
+      return 'Flat bar, icons only';
+  }
+}
+
+String getNavBarPositionLabel(NavBarPosition position) {
+  switch (position) {
+    case NavBarPosition.bottom:
+      return 'Bottom';
+    case NavBarPosition.top:
+      return 'Top';
+  }
+}
+
+/// The nav-bar settings dialog (Settings → Navigation bar): Nuvio's
+/// NavigationBarSettingsSheet as one dialog — style, position, glow,
+/// glass and the icon-colour override. Unlike the other pickers here it
+/// does NOT pop on a radio change: the user may want to change the style
+/// AND the glow in one visit, so it stays open until Done. The content
+/// is a [Consumer], so the switches and swatches update live as the
+/// settings are written.
+void showNavBarSettingsDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      surfaceTintColor: Colors.transparent,
+      title: const Text('Navigation bar'),
+      content: Consumer(
+        builder: (context, ref, _) {
+          final settings = ref.watch(generalSettingsProvider);
+          final notifier = ref.read(generalSettingsProvider.notifier);
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Style',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                RadioGroup<NavBarStyle>(
+                  groupValue: settings.navBarStyle,
+                  onChanged: (val) {
+                    if (val == null) return;
+                    notifier.setNavBarStyle(val);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final style in NavBarStyle.values)
+                        RadioListTile<NavBarStyle>(
+                          value: style,
+                          title: Text(getNavBarStyleLabel(style)),
+                          subtitle: Text(getNavBarStyleHint(style)),
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  'Position',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                RadioGroup<NavBarPosition>(
+                  groupValue: settings.navBarPosition,
+                  onChanged: (val) {
+                    if (val == null) return;
+                    notifier.setNavBarPosition(val);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final position in NavBarPosition.values)
+                        RadioListTile<NavBarPosition>(
+                          value: position,
+                          title: Text(getNavBarPositionLabel(position)),
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                        ),
+                    ],
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Glow'),
+                  subtitle: const Text(
+                    'Accent halo under the selected tab',
+                  ),
+                  value: settings.navBarGlowEnabled,
+                  onChanged: notifier.setNavBarGlowEnabled,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: const Text('Glass'),
+                  subtitle: const Text(
+                    'Liquid-glass pill — off is a plain surface',
+                  ),
+                  value: settings.navBarGlassEnabled,
+                  onChanged: notifier.setNavBarGlassEnabled,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                Text(
+                  'Icon colour',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Default'),
+                      selected: settings.navBarIconColorArgb == null,
+                      onSelected: (_) => notifier.setNavBarIconColor(null),
+                    ),
+                    for (final accent in RajaAccent.values)
+                      _NavIconColorSwatch(
+                        color: accent.color,
+                        selected:
+                            settings.navBarIconColorArgb ==
+                            accent.color.toARGB32(),
+                        onTap: () => notifier.setNavBarIconColor(
+                          accent.color.toARGB32(),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop<void>(context),
+          child: const Text('Done'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One preset swatch in the nav-bar icon-colour row: a 32 px circle with
+/// a check when it is the override. Same shape as the accent picker's
+/// swatches, smaller — the dialog is not the place for the 38 px row.
+class _NavIconColorSwatch extends StatelessWidget {
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavIconColorSwatch({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final checkColor = color.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : color.withValues(alpha: 0.4),
+            width: selected ? 2.5 : 1.5,
+          ),
+        ),
+        child: selected
+            ? Icon(Icons.check_rounded, color: checkColor, size: 18)
+            : null,
+      ),
+    );
+  }
 }
 
 Future<void> showDownloadSettingsDialog(

@@ -9,6 +9,7 @@ import '../../../../core/addons/data/addon_repository.dart';
 import '../../../../core/router/over_shell_routes.dart';
 import '../../../../core/utils/layout_constants.dart';
 import '../../../../shared/widgets/cards_wrapper.dart';
+import '../../../../shared/widgets/nav_bar_retap_provider.dart';
 import '../../addons/presentation/addon_providers.dart';
 import '../../addons/presentation/addons_screen.dart';
 import '../../explore/presentation/delegates/explore_search_delegate.dart';
@@ -50,6 +51,16 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     if (!_scrollController.hasClients) return;
     final opacity = (_scrollController.offset * 0.8 / 300).clamp(0.0, 1.0);
     if (opacity != _barOpacity.value) _barOpacity.value = opacity;
+  }
+
+  /// Nuvio: re-tapping the Browse tab scrolls the list to the top.
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -97,6 +108,11 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     ref.listen<String>(browseSelectionProvider, (_, _) {
       _barOpacity.value = 0;
     });
+    // Nuvio: re-tapping the Browse tab scrolls the list to the top.
+    ref.listen<int>(
+      navBarRetapProvider.select((requests) => requests[4] ?? 0),
+      (_, _) => _scrollToTop(),
+    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
