@@ -274,8 +274,9 @@ class PlayerSettings {
   final String subtitleEncoding;
 
   /// Whether a newly opened video starts with a subtitle showing.
-  /// [SubtitleDefault.auto] is what every install did before this setting
-  /// existed, so an upgrade changes nothing.
+  /// [SubtitleDefault.off] is the default (user 2026-11-26); an upgrade
+  /// from before this setting keeps the stored value, and a fresh install
+  /// starts with no subtitle showing.
   final SubtitleDefault subtitleDefault;
 
   /// Empty means leave the source's audio choice unchanged. A recognized
@@ -431,7 +432,11 @@ class PlayerSettings {
     this.subtitleFont = SubtitleFont.standard,
     this.subtitleTextOpacity = 1.0,
     this.subtitleEncoding = '',
-    this.subtitleDefault = SubtitleDefault.auto,
+    // Subtitles are off by default (user 2026-11-26): a video starts with
+    // no subtitle selected, and the viewer turns one on from the Subtitles
+    // menu when they want it. A stored choice is never overwritten — this
+    // only changes what happens when nothing was chosen.
+    this.subtitleDefault = SubtitleDefault.off,
     this.preferredAudioLanguage = '',
     this.hardwareDecoding = true,
     this.preferredPlayer,
@@ -751,11 +756,11 @@ class PlayerSettingsNotifier extends _$PlayerSettingsNotifier {
     );
     // Absent (a fresh install, or an upgrade from before this setting) and
     // unrecognised (a value written by a newer build, or a corrupted box) both
-    // land on Auto, which is the behaviour every install already had.
+    // land on Off — subtitles are off by default (user 2026-11-26).
     final subtitleDefault = SubtitleDefault.values.firstWhere(
       (e) =>
           e.name == storage.getPlayerSetting<String>('player_subtitle_default'),
-      orElse: () => SubtitleDefault.auto,
+      orElse: () => SubtitleDefault.off,
     );
     final savedAudioLanguage = storage.getPlayerSetting<String>(
       'player_audio_language',

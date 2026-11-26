@@ -5088,6 +5088,19 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _subtitleAppliedFor = _streamIndex;
       return;
     }
+    // Subtitles off by default (user 2026-11-26): with the default on Off,
+    // no subtitle is picked for new media — mpv would otherwise play its
+    // own pick (the default-flagged track). The viewer turns one on from
+    // the Subtitles menu when they want it; that pick is remembered above
+    // and still wins, and it is re-applied on every source change.
+    if (ref.read(playerSettingsProvider).asData?.value.subtitleDefault ==
+        SubtitleDefault.off) {
+      if (_player.state.track.subtitle.id != 'no') {
+        unawaited(_player.setSubtitleTrack(SubtitleTrack.no()));
+      }
+      _subtitleAppliedFor = _streamIndex;
+      return;
+    }
     final stream = _selected;
     if (stream == null) return;
     final embedded = _player.state.tracks.subtitle;

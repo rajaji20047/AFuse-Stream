@@ -1803,7 +1803,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         SubtitleDefault.off;
     _subtitleDefaultForAttempt =
         _read(playerSettingsProvider).asData?.value.subtitleDefault ??
-        SubtitleDefault.auto;
+        SubtitleDefault.off;
     _subtitleOffAsked = null;
     // Auto picks only for media with nothing to put back: a track inside the
     // video that was on before this reopen is [_restoreTracks]' to restore,

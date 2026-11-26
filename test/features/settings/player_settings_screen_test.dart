@@ -215,7 +215,7 @@ void main() {
     expect(audioLanguageRow(tester), 'Kannada');
   });
 
-  testWidgets('the subtitle default row reads Auto on a fresh install', (
+  testWidgets('the subtitle default row reads Off on a fresh install', (
     WidgetTester tester,
   ) async {
     await pumpPlayerSettings(
@@ -224,7 +224,7 @@ void main() {
       profile: const DeviceProfile(),
     );
 
-    expect(subtitleDefaultRow(tester), l10n.subtitleDefaultAuto);
+    expect(subtitleDefaultRow(tester), l10n.off);
   });
 
   testWidgets('the subtitle default row reads back a stored Off', (

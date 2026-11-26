@@ -504,15 +504,15 @@ void main() {
       return container;
     }
 
-    test('is Auto out of the box', () {
-      expect(const PlayerSettings().subtitleDefault, SubtitleDefault.auto);
+    test('is Off out of the box', () {
+      expect(const PlayerSettings().subtitleDefault, SubtitleDefault.off);
     });
 
-    test('an empty box reads back as Auto, not as null or Off', () async {
+    test('an empty box reads back as Off', () async {
       final PlayerSettings settings = await boot().read(
         playerSettingsProvider.future,
       );
-      expect(settings.subtitleDefault, SubtitleDefault.auto);
+      expect(settings.subtitleDefault, SubtitleDefault.off);
     });
 
     test('a choice survives the next launch', () async {
@@ -543,16 +543,15 @@ void main() {
       expect(reread.subtitleDefault, SubtitleDefault.off);
     });
 
-    test('a value the enum does not know falls back to Auto', () async {
+    test('a value the enum does not know falls back to Off', () async {
       // A build that offered a third choice, or a box that got scribbled on.
-      // Either way the wrong answer here is a player that starts with no
-      // subtitles for somebody who never asked for that.
+      // Either way the fallback is the default: Off.
       await storage.setPlayerSetting('player_subtitle_default', 'forced');
 
       final PlayerSettings settings = await boot().read(
         playerSettingsProvider.future,
       );
-      expect(settings.subtitleDefault, SubtitleDefault.auto);
+      expect(settings.subtitleDefault, SubtitleDefault.off);
     });
 
     test('copyWith carries it', () {
@@ -563,7 +562,7 @@ void main() {
       );
       expect(
         defaults.copyWith(subtitleSize: 30.0).subtitleDefault,
-        SubtitleDefault.auto,
+        SubtitleDefault.off,
         reason: 'an unrelated copyWith must not reset it',
       );
     });
