@@ -731,8 +731,11 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
 
     // Dynamic Capsule: Centered floating glass island.
     // Frosted blur: sigmaX: 18, alpha: 0.80, 1px white/12 border, no colored glow.
+    // Merged mode is the plugin section (plugins + Nuvio + Stremio
+    // add-ons together), so it is titled 'All Addon' (user 2026-11-26);
+    // the add-ons-only sheet keeps 'Stremio Sources'.
     return GlassSheetScaffold(
-      title: 'Stremio Sources',
+      title: widget.merged ? 'All Addon' : 'Stremio Sources',
       subtitle: subtitleText,
       actions: [
         _headerAction(
