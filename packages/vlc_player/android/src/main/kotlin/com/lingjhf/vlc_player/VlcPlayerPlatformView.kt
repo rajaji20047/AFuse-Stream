@@ -1184,6 +1184,12 @@ internal class VlcPlayerPlatformView(
         if (disposed) {
             return
         }
+        // A play still queued behind the font-warmup gate is not playing
+        // yet, so the `isPlaying` branch below never sees it - and when
+        // the gate opens the queued lambda would start the film with no
+        // focus held. pause(), stop() and dispose() all cancel the queue;
+        // the interruption path is the only one that did not.
+        playRequests.cancel()
         restoreDuckedVolume()
         if (mediaPlayer.isPlaying) {
             interruption = reason
