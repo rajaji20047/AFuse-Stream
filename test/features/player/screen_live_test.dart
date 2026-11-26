@@ -166,6 +166,52 @@ void main() {
     },
   );
 
+  testWidgets(
+    'a series episode whose first source is live-shaped stays on demand: '
+    'no LIVE pill, the clock stays',
+    variant: texturePlatform,
+    (tester) async {
+      const beta = 'https://example.com/stream.m3u8';
+      await pumpPlayer(
+        tester,
+        item: MultimediaItem(
+          title: 'The Hunting Wives',
+          url: beta,
+          posterUrl: '',
+          provider: 'Remote',
+          contentType: MultimediaContentType.series,
+        ),
+        episode: Episode(
+          name: 'E1',
+          url: beta,
+          season: 1,
+          episode: 1,
+        ),
+        videoUrl: beta,
+        preloadedStreams: const [
+          StreamResult(url: beta, source: 'Beta'),
+        ],
+        isTv: false,
+        overrides: [
+          syncManagerProvider.overrideWithValue(
+            SyncManager(const <TrackingService>[]),
+          ),
+        ],
+      );
+      final l10n = await english();
+
+      // The first source is shaped like a live feed, but the item is an
+      // episode: the chrome follows the content type, not the address, so
+      // the session never goes live in the first place - there is no later
+      // pick for the freeze to protect.
+      await sendEvent(tester, snapshot(position: 1999, duration: 5400000));
+      expect(find.text('0:01 / 1:30:00'), findsOneWidget);
+      expect(find.text(l10n.live), findsNothing);
+
+      await sendEvent(tester, snapshot(state: 'paused', position: 2500));
+    },
+  );
+
   // Spec section 8: seeking in a live window. The steps are pressed as keys:
   // in a widget test the screen lays out for the host, a desktop, which has
   // no step buttons, and every step - a button, Left and Right, a double tap -

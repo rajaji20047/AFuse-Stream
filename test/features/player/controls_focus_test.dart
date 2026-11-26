@@ -794,9 +794,10 @@ void main() {
       expect(_primary.debugLabel, 'player-key-sink', reason: 'and not moved');
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek is the feedback, '
-            'in place of the bars',
+        findsOneWidget,
+        reason: 'the burst reads on the side the seek moved towards, '
+            'over the video rather than in the chrome - the bars stay down '
+            'while it shows',
       );
 
       // And again, which is the whole point: a second press steps on rather
@@ -2506,9 +2507,11 @@ void main() {
 
     // A screen-centred pill says nothing about which half was tapped, so a
     // viewer who hit the wrong side gets a confirmation that looks exactly like
-    // a correct one.
-    testWidgets('a double-tap on the right half seeks forward, with no '
-        'burst', (tester) async {
+    // a correct one. The burst draws on the tapped half instead - back on
+    // (user 2026-11-26) after the silence that made the double tap read as
+    // nothing at all.
+    testWidgets('a double-tap on the right half seeks forward, with a burst '
+        'on the right', (tester) async {
       final engine = FakeVlcEngine();
       await _pumpControls(tester, isTv: false, engine: engine);
       final centre = tester.getCenter(find.byType(VlcPlayerControls));
@@ -2526,13 +2529,18 @@ void main() {
       expect(find.byType(PlayerToast), findsNothing, reason: 'no centre pill');
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek lands, no pop-up',
+        findsOneWidget,
+        reason: 'the burst reads on the half that was tapped',
       );
-      expect(find.text('10s'), findsNothing);
+      expect(find.text('10s'), findsOneWidget);
+      expect(
+        tester.widget<PlayerSeekBurst>(find.byType(PlayerSeekBurst)).forward,
+        isTrue,
+        reason: 'right half, forward',
+      );
 
       await doubleTap(right);
-      expect(find.text('20s'), findsNothing);
+      expect(find.text('20s'), findsOneWidget);
       expect(find.text('10s'), findsNothing);
       await tester.pump(VlcPlayerController.seekMergeWindow);
       expect(_seeks(engine), [10000, 20000]);
@@ -2540,7 +2548,7 @@ void main() {
       await _snapshot(tester, state: 'paused', position: 20000);
     });
 
-    testWidgets('and the left half seeks backward, with no burst', (
+    testWidgets('and the left half seeks backward, with a burst on the left', (
       tester,
     ) async {
       final engine = FakeVlcEngine();
@@ -2557,15 +2565,20 @@ void main() {
       expect(_seeks(engine), [20000]);
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek lands, no pop-up',
+        findsOneWidget,
+        reason: 'the burst reads on the half that was tapped',
       );
-      expect(find.text('10s'), findsNothing);
+      expect(find.text('-10s'), findsOneWidget);
+      expect(
+        tester.widget<PlayerSeekBurst>(find.byType(PlayerSeekBurst)).forward,
+        isFalse,
+        reason: 'left half, backward',
+      );
 
       await _snapshot(tester, state: 'paused', position: 20000);
     });
 
-    testWidgets('J and L seek the way every other seek does, with no burst', (
+    testWidgets('J and L seek the way every other seek does, with a burst', (
       tester,
     ) async {
       final engine = FakeVlcEngine();
@@ -2575,9 +2588,10 @@ void main() {
       await tester.pump();
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek lands, no pop-up',
+        findsOneWidget,
+        reason: 'the burst reads on the side the seek moved towards',
       );
+      expect(find.text('10s'), findsOneWidget);
       expect(
         find.text('+10s'),
         findsNothing,
@@ -2586,7 +2600,12 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.keyJ);
       await tester.pump();
-      expect(find.byType(PlayerSeekBurst), findsNothing);
+      expect(find.byType(PlayerSeekBurst), findsOneWidget);
+      expect(
+        find.text('0s'),
+        findsOneWidget,
+        reason: 'the chain reversed back to its origin',
+      );
 
       // The J reaches the engine once the presses stop.
       await tester.pump(VlcPlayerController.seekMergeWindow);
@@ -2614,9 +2633,9 @@ void main() {
         await _shoulder(tester, LogicalKeyboardKey.gameButtonRight1);
         expect(
           find.byType(PlayerSeekBurst),
-          findsNothing,
-          reason: 'the burst is gone by design; the chain is verified by '
-              'the seeks, not the readout',
+          findsOneWidget,
+          reason: 'the burst reads on the side the seek moved towards; '
+              'the chain is verified by the seeks, not the readout',
         );
         await tester.pump(VlcPlayerController.seekMergeWindow);
         expect(_seeks(engine), <int>[
@@ -2625,7 +2644,7 @@ void main() {
         ], reason: 'chained, not undone');
 
         await _shoulder(tester, LogicalKeyboardKey.gameButtonLeft1);
-        expect(find.byType(PlayerSeekBurst), findsNothing);
+        expect(find.byType(PlayerSeekBurst), findsOneWidget);
         await tester.pump(VlcPlayerController.seekMergeWindow);
         expect(_seeks(engine), <int>[20000, 30000, 20000]);
 
@@ -2685,7 +2704,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
       await tester.pump();
       expect(_seeks(engine), [10000]);
-      expect(find.byType(PlayerSeekBurst), findsNothing);
+      expect(find.byType(PlayerSeekBurst), findsOneWidget);
 
       // A click near the head of the track, well inside the chain's window.
       final track = tester.getRect(find.byType(PlayerSeekBar));
@@ -2700,7 +2719,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
       await tester.pump();
-      expect(find.byType(PlayerSeekBurst), findsNothing);
+      expect(find.byType(PlayerSeekBurst), findsOneWidget);
 
       await tester.pump(VlcPlayerController.seekMergeWindow);
       expect(_seeks(engine), [
@@ -3649,7 +3668,8 @@ void main() {
     // test the side-aware readout exists for - the same one the double tap
     // passes. They used to get the centred pill instead, so the button and
     // the gesture that do the identical thing said it two different ways.
-    testWidgets('the centre pair seeks like a double tap, with no burst', (
+    testWidgets('the centre pair seeks like a double tap, with a burst on '
+        'the side it moved towards', (
       tester,
     ) async {
       await _pumpControls(
@@ -3666,15 +3686,16 @@ void main() {
 
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek lands, no pop-up',
+        findsOneWidget,
+        reason: 'the burst reads on the side the seek moved towards',
       );
-      expect(find.text('10s'), findsNothing);
+      expect(find.text('10s'), findsOneWidget);
 
       // A second press accumulates, exactly as a second double tap does.
       await _tapControl(tester, find.bySemanticsLabel('Forward 10 seconds'));
       await tester.pump();
-      expect(find.byType(PlayerSeekBurst), findsNothing);
+      expect(find.byType(PlayerSeekBurst), findsOneWidget);
+      expect(find.text('20s'), findsOneWidget);
 
       // Merged with the first, the second press's seek is still waiting.
       await tester.pump(VlcPlayerController.seekMergeWindow);
@@ -4679,7 +4700,7 @@ void main() {
         toast.overlaps(glyph),
         isFalse,
         reason:
-            'on a 390 dp tall frame the nudge is worth about 66 px and '
+            'on a 390 dp tall frame the nudge is worth about 82 px and '
             'the disc reaches 36 px above centre: a smaller nudge lands the '
             'swipe readout on the disc here while still clearing it on a '
             'television',
@@ -4695,7 +4716,7 @@ void main() {
       await _snapshot(tester, state: 'paused', position: 1000);
     });
 
-    testWidgets('the double-tap seeks with no burst, clear of the glyph', (
+    testWidgets('the double-tap seeks with a burst, clear of the glyph', (
       tester,
     ) async {
       final engine = FakeVlcEngine();
@@ -4711,10 +4732,17 @@ void main() {
       expect(_seeks(engine), <int>[10000]);
       expect(
         find.byType(PlayerSeekBurst),
-        findsNothing,
-        reason: 'the burst is gone by design: the seek lands, no pop-up',
+        findsOneWidget,
+        reason: 'the burst reads on the half that was tapped',
       );
-      expect(find.text('10s'), findsNothing);
+      expect(find.text('10s'), findsOneWidget);
+      expect(
+        tester
+            .getRect(find.byType(PlayerSeekBurst))
+            .overlaps(tester.getRect(find.byType(PlayerCenterPlayButton))),
+        isFalse,
+        reason: 'the burst sits off-centre, clear of the disc',
+      );
 
       await _snapshot(tester, state: 'paused', position: 10000);
     });

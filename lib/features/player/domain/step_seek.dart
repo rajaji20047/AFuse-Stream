@@ -42,8 +42,8 @@ const Duration kStepSeekBaseLifetime = Duration(milliseconds: 1500);
 /// [onCommit] is the one seek, sent [kStepSeekDebounce] after the last
 /// step. [onStep] fires at once on every step with the chain's cumulative
 /// offset (target − origin), so the tap feels instant — the mpv badge
-/// shows it; libVLC's burst is deliberately not shown (see
-/// `VlcPlayerControls._showSeekBurst`), so it passes nothing there.
+/// shows it, and libVLC's side burst too (see
+/// `VlcPlayerControls._showSeekBurst`).
 class StepSeekCoalescer {
   StepSeekCoalescer({
     required this.onCommit,

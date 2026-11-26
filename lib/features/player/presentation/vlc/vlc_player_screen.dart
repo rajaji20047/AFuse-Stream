@@ -6458,7 +6458,20 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
                       ? _toggleFullscreen
                       : null,
                   isFullscreen: _isFullscreen,
-                  isLive: _isLive,
+                  // The UI's liveness, not the policy's: [_isLive] is also
+                  // true for a film or episode served over a live-shaped
+                  // address (`stream.m3u8`, `/live/`, rtsp://), and that
+                  // verdict is what the buffering and end-of-media policy
+                  // needs. The chrome must follow the content type instead
+                  // (the same gate the progress recorder uses in
+                  // [_onPlaybackValue]): only a real
+                  // livestream gets the LIVE pill, the hidden scrubber and
+                  // the live-window steps. A live feed typed as a film still
+                  // shows LIVE through the engine's own word
+                  // (`VlcPlayerValue.isLive` with `isSeekable: false`), never
+                  // through this flag.
+                  isLive: widget.item.contentType ==
+                      MultimediaContentType.livestream,
                   liveSegment: _liveSegment,
                   // The delay a live stream opens at, not a fallback
                   // reopen's own: that one is the distance it went back.

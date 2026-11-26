@@ -310,8 +310,12 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
       settings.seekDuration > 0 ? settings.seekDuration : 10;
 
   /// The numbered glyph where Material has one for this step, and the plain
-  /// replay/fast-forward pair where it does not - the picker also offers 15,
-  /// 20, 60 and 120, and a `replay_10` on a 30 s step would lie.
+  /// rotate pair where it does not - the picker also offers 15, 20, 60 and
+  /// 120, and a `replay_10` on a 30 s step would lie. The pair has to match:
+  /// `replay_rounded` back with `fast_forward_rounded` forward read as two
+  /// different actions (a curved arrow against two triangles), so the
+  /// unnumbered steps take `rotate_left_rounded` / `rotate_right_rounded`,
+  /// the same curved arrow in both directions.
   static IconData _stepIcon(int seconds, {required bool forward}) =>
       switch ((seconds, forward)) {
         (5, false) => Icons.replay_5_rounded,
@@ -320,8 +324,8 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
         (5, true) => Icons.forward_5_rounded,
         (10, true) => Icons.forward_10_rounded,
         (30, true) => Icons.forward_30_rounded,
-        (_, false) => Icons.replay_rounded,
-        (_, true) => Icons.fast_forward_rounded,
+        (_, false) => Icons.rotate_left_rounded,
+        (_, true) => Icons.rotate_right_rounded,
       };
 
   /// What the button is called: "Rewind 30 seconds", "Forward 5 seconds".
@@ -470,11 +474,14 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
   /// different shapes in different places, and a press must be able to replace
   /// a toast a swipe left behind, and the other way round.
   ///
-  /// Kept even though [_showSeekBurst] no longer shows one (the viewer
-  /// asked for the seek without the centre pop-up): the overlay below
-  /// still reads it, and removing the plumbing would be a bigger diff than
-  /// the silence it carries.
+  /// Back on (user 2026-11-26): the burst was silenced with the centre
+  /// pop-up, and the double tap then showed nothing on either half. Only
+  /// the centred pill stays gone - this one draws on the tapped side.
   final TransientValue<SeekBurst> _burst = TransientValue<SeekBurst>();
+
+  /// Bumped on every burst so a tap in the same direction replays the
+  /// ripple instead of re-showing an identical value (see [SeekBurst]).
+  int _burstRevision = 0;
 
   /// Torrent statistics are opt-in: useful when a stream is struggling,
   /// clutter the rest of the time.
@@ -586,8 +593,9 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
   /// position lags the seek by a round trip, so counting from it would
   /// send the chain backwards — the old `_seekBase`, now owned by the
   /// coalescer). An absolute seek rebases the chain (see
-  /// [_rebaseSeekChain]). No `onStep`: the seek burst is deliberately not
-  /// shown on this engine (see [_showSeekBurst]).
+  /// [_rebaseSeekChain]). [StepSeekCoalescer.onStep] fires on every step
+  /// with the chain's cumulative offset, and the burst reads it - the side
+  /// from the offset's sign, like the mpv badge (see [_showSeekBurst]).
   late final StepSeekCoalescer _stepSeeks;
 
   /// The controller the progress bar's drag or D-pad burst is holding up, if
@@ -650,6 +658,7 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     super.initState();
     _stepSeeks = StepSeekCoalescer(
       onCommit: widget.controller.seekTo,
+      onStep: (offset) => _showSeekBurst(offset),
     );
     // Defer setFit until the controller is attached to the native player view
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1995,7 +2004,7 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     } else {
       unawaited(widget.controller.seekToWindowFraction(next));
     }
-    _showSeekBurst(delta, delta);
+    _showSeekBurst(delta);
   }
 
   /// The window a live stream can be moved in, or null: not live, or a feed
@@ -2008,21 +2017,28 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
         )
       : null;
 
-  /// The side is [delta]'s - which half the viewer actually tapped - and the
-  /// number is the chain's cumulative [offset] measured in that same
-  /// direction. Where a reversal has carried the chain back past its origin
-  /// the number goes negative and says so.
+  /// The side is [offset]'s sign - which half the seek moved towards -
+  /// and the number is the chain's cumulative [offset]. Where a reversal
+  /// has carried the chain back past its origin the number goes negative
+  /// and says so. The side follows the offset, not the gesture that asked
+  /// for it, so the direction carries it for a key and a wheel just as
+  /// well as for a tap - the mpv badge reads the same value the same way.
   /// Every relative seek reports itself the same way: the burst, on the side
-  /// it moved towards. There used to be a second form - a centred pill
-  /// reading `+10s` - for the callers that are not aimed at half the screen,
-  /// which meant the double tap and the button under the viewer's thumb said
-  /// the identical thing two different ways. The side is a property of the
-  /// *seek*, not of the gesture that asked for it, so the direction carries it
-  /// for a key and a wheel just as well as for a tap.
-  /// The seek burst ("+10s" / "−10s") is deliberately not shown: the viewer
-  /// asked for the seek without the centre pop-up, on both engines. The
-  /// seek itself still lands (see [_seekBy]); only the burst is gone.
-  void _showSeekBurst(Duration delta, Duration offset) {}
+  /// it moved towards. The centred `+10s` pill stays gone (the viewer asked
+  /// for the seek without the centre pop-up); this is the side burst that
+  /// came back with it (user 2026-11-26: the double tap showed nothing on
+  /// either half). Held 700 ms, the mpv badge's own length, so a run of
+  /// taps keeps one burst up that reads the whole chain.
+  void _showSeekBurst(Duration offset) {
+    _burst.show(
+      SeekBurst(
+        forward: !offset.isNegative,
+        seconds: offset.inSeconds,
+        revision: ++_burstRevision,
+      ),
+      hideAfter: const Duration(milliseconds: 700),
+    );
+  }
 
   /// Adopts [target] as the position the next relative step counts from.
   ///
@@ -2668,11 +2684,17 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
             value: _toast,
             // Nudged up off the centre play/pause where there is one: the
             // toast is painted above the glyph, so a swipe readout or the 2x
-            // label would otherwise land dead on the disc.
+            // label would otherwise land dead on the disc. -0.34 was not
+            // enough on a short landscape screen: the disc is 72 dp across
+            // (36 radius) and the pill is ~42 tall, so at -0.34 its bottom
+            // edge sat ~2 dp off the disc and any rounding kissed it - the
+            // overlap in the report. -0.42 clears the disc by ~10 dp even
+            // at 320 dp tall, and still leaves the pill well inside the
+            // frame.
             builder: (_, message) => PlayerToast(
               message,
               alignment: _showCenterGlyph
-                  ? const Alignment(0, -0.34)
+                  ? const Alignment(0, -0.42)
                   : Alignment.center,
             ),
           ),
