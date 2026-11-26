@@ -5304,6 +5304,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       qualityLadder: const <int>[],
       episodes: effectiveEpisodes(widget.item, _currentEpisode),
       currentEpisode: _currentEpisode,
+      // Series or anime only: a film's single synthetic episode must not
+      // open the Episodes drawer (the controls read this, not the count).
+      isSeries: _isSeries,
       subtitleTarget: SubtitleSearchTarget.of(widget.item, _currentEpisode),
     );
   }

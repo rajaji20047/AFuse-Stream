@@ -16,6 +16,8 @@ import 'fake_vlc_engine.dart';
 ///     panel strip and the bottom bar precisely so a button can never open a
 ///     tab that is not there, and both of its `> 1` cuts - one episode is a
 ///     film, one file is not a pack - are boundaries nothing else asserts.
+///     The Episodes tab has a second gate on top: only a series or anime
+///     gets it at all, however many episodes a film's list holds.
 ///   * A tab press that lands on the tab live data substituted in. That press
 ///     is the one the panel used to drop, so the tab it had taken away came
 ///     back and pulled the viewer - and, on a remote, the focus - with it.
@@ -66,11 +68,13 @@ void main() {
       int episodeCount = 0,
       int fileCount = 0,
       int qualityCount = 0,
+      bool isSeries = false,
     }) => availablePanelTabs(
       sourceCount: sourceCount,
       episodeCount: episodeCount,
       fileCount: fileCount,
       qualityCount: qualityCount,
+      isSeries: isSeries,
     );
 
     test('Audio and Subtitles are there with nothing else at all', () {
@@ -93,7 +97,27 @@ void main() {
         isNot(contains(PlayerPanelTab.episodes)),
         reason: 'a one-row Episodes list is a dead D-pad stop',
       );
-      expect(tabs(episodeCount: 2), contains(PlayerPanelTab.episodes));
+      expect(
+        tabs(episodeCount: 2, isSeries: true),
+        contains(PlayerPanelTab.episodes),
+      );
+    });
+
+    test('a film never gets an Episodes tab, however many episodes it has', () {
+      expect(
+        tabs(episodeCount: 2),
+        isNot(contains(PlayerPanelTab.episodes)),
+        reason: 'episode count alone is not a series',
+      );
+      expect(
+        tabs(episodeCount: 10),
+        isNot(contains(PlayerPanelTab.episodes)),
+      );
+      expect(
+        tabs(episodeCount: 2, isSeries: true),
+        contains(PlayerPanelTab.episodes),
+        reason: 'a series with two episodes does',
+      );
     });
 
     test('one file is not a pack, so no Files tab', () {
@@ -141,6 +165,7 @@ void main() {
         PanelData(
           sources: _sources().take(1).toList(),
           episodes: <Episode>[_episode(1), _episode(2)],
+          isSeries: true,
           files: _packFiles(2),
           qualityLadder: const <int>[1080, 720],
         ).tabs,

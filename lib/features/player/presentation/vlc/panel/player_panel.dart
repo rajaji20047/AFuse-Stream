@@ -73,17 +73,20 @@ enum PlayerPanelTab { sources, quality, audio, subtitles, episodes, files }
 /// Audio and Subtitles are always present: an empty list is still something to
 /// say. One episode or one file is not a choice, so neither gets a tab - and
 /// neither does a stream with one quality, or a stream that is not HLS.
+/// A film never gets an Episodes tab at all: its list holds a single synthetic
+/// episode, and episode count alone is not a series.
 Set<PlayerPanelTab> availablePanelTabs({
   required int sourceCount,
   required int episodeCount,
   required int fileCount,
   int qualityCount = 0,
+  required bool isSeries,
 }) => <PlayerPanelTab>{
   if (sourceCount > 0) PlayerPanelTab.sources,
   if (qualityCount > 1) PlayerPanelTab.quality,
   PlayerPanelTab.audio,
   PlayerPanelTab.subtitles,
-  if (episodeCount > 1) PlayerPanelTab.episodes,
+  if (isSeries && episodeCount > 1) PlayerPanelTab.episodes,
   if (fileCount > 1) PlayerPanelTab.files,
 };
 

@@ -4572,6 +4572,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // panel offers and what Next does can never disagree.
       episodes: effectiveEpisodes(widget.item, _currentEpisode),
       currentEpisode: _currentEpisode,
+      // Series or anime only: a film's single synthetic episode must not
+      // get an Episodes tab, however many entries its list holds.
+      isSeries:
+          widget.item.contentType == MultimediaContentType.series ||
+          widget.item.contentType == MultimediaContentType.anime,
       files: torrentFilesOf(_torrentStatus),
       currentFileIndex: _torrentFileIndex,
       // The show title always; season and episode only when the file playing

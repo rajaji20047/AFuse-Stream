@@ -434,7 +434,11 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
 
   bool get _locked => widget.locked?.value ?? false;
 
-  bool get _isSeries => widget.panelData.value.episodes.isNotEmpty;
+  /// Whether the title is a series: read from the panel data, which the
+  /// screen sets from the item's content type. Episode count alone is not
+  /// a series — a film carries one synthetic episode, and that used to
+  /// open the Episodes drawer on it.
+  bool get _isSeries => widget.panelData.value.isSeries;
 
   // -- transport ------------------------------------------------------------
 

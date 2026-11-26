@@ -99,6 +99,7 @@ class PanelData {
     this.qualityPick,
     this.episodes = const <Episode>[],
     this.currentEpisode,
+    this.isSeries = false,
     this.files = const <TorrentFile>[],
     this.currentFileIndex,
     this.subtitleTarget,
@@ -158,6 +159,13 @@ class PanelData {
   final List<Episode> episodes;
   final Episode? currentEpisode;
 
+  /// Whether the title is a series or anime — the only content types that
+  /// get episode UI. A film carries a single synthetic episode (itself, as
+  /// E1) and must never get an Episodes tab or drawer button, however many
+  /// entries its list holds: episode count alone is not a series. The
+  /// screens set this from the item's content type when they publish.
+  final bool isSeries;
+
   /// Playable files inside the active torrent, in the torrent's order.
   final List<TorrentFile> files;
 
@@ -176,6 +184,7 @@ class PanelData {
     episodeCount: episodes.length,
     fileCount: files.length,
     qualityCount: qualityLadder.length,
+    isSeries: isSeries,
   );
 
   PanelData copyWith({
@@ -194,6 +203,7 @@ class PanelData {
     List<Episode>? episodes,
     Episode? currentEpisode,
     bool clearCurrentEpisode = false,
+    bool? isSeries,
     List<TorrentFile>? files,
     int? currentFileIndex,
     bool clearCurrentFileIndex = false,
@@ -217,6 +227,7 @@ class PanelData {
       currentEpisode: clearCurrentEpisode
           ? null
           : currentEpisode ?? this.currentEpisode,
+      isSeries: isSeries ?? this.isSeries,
       files: files ?? this.files,
       currentFileIndex: clearCurrentFileIndex
           ? null
@@ -253,6 +264,7 @@ class PanelData {
         qualityPick == other.qualityPick &&
         listEquals(episodes, other.episodes) &&
         currentEpisode == other.currentEpisode &&
+        isSeries == other.isSeries &&
         _sameFiles(files, other.files) &&
         currentFileIndex == other.currentFileIndex &&
         subtitleTarget == other.subtitleTarget;
@@ -275,6 +287,7 @@ class PanelData {
     qualityPick,
     Object.hashAll(episodes),
     currentEpisode,
+    isSeries,
     Object.hashAll(files.map((f) => Object.hash(f.index, f.name, f.sizeBytes))),
     currentFileIndex,
     subtitleTarget,
