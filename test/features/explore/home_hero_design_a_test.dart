@@ -313,10 +313,18 @@ void main() {
           )
           .style!;
       expect(style.backgroundColor!.resolve({}), Colors.white);
-      // The pill is as tall as the 48 bookmark beside it: its white
+      // The button is as tall as the 48 bookmark beside it: its white
       // only fills minimumSize (the padded tap target is invisible),
       // so the minimum must be 48, not 40 (user 2026-11-26).
       expect(style.minimumSize!.resolve({})?.height, 48);
+      // And boxy like the bookmark: the same 12 px corners, not a
+      // stadium pill (user 2026-11-26).
+      expect(
+        style.shape!.resolve({}),
+        const RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      );
       expect(
         tester.getSize(
           find.byKey(const ValueKey('olympus-hero-bookmark')),

@@ -1115,7 +1115,7 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
   /// Olympus Noir hero (build 102) — the cinematic left-aligned layout
   /// that replaces design A on Home only: gold "NOW FEATURED" label,
   /// large title, one meta line, real-data badge row, white
-  /// "View Details" pill + bookmark. Every part is the item's own
+  /// "View Details" button + bookmark. Every part is the item's own
   /// data (plugin + TMDB enrichment, same as design A) — nothing is
   /// hardcoded, so any featured title renders in this language.
   Widget _buildOlympusHeroContent(BuildContext context, MultimediaItem plain) {
@@ -1270,8 +1270,8 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
         const SizedBox(height: 14),
         Row(
           children: [
-            // View Details — the white pill, as in the Stremio section
-            // (Browse's design A hero); same destination as tapping
+            // View Details — the white button, boxy like the bookmark
+            // beside it (user 2026-11-26); same destination as tapping
             // the poster. Flexible with a scale-down label: on a narrow
             // phone the button shrinks instead of overflowing the row.
             Flexible(
@@ -1284,14 +1284,18 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
                   elevation: 0,
                   // 48, like the 48 bookmark beside it: the white only
                   // fills minimumSize (the padded tap target around it
-                  // is invisible), so at 40 the pill read as shorter
+                  // is invisible), so at 40 the button read as shorter
                   // than its neighbour (user 2026-11-26, screenshot).
                   minimumSize: const Size(0, 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 26,
                     vertical: 10,
                   ),
-                  shape: const StadiumBorder(),
+                  // Boxy like the bookmark: the same 12 px corners,
+                  // not a stadium pill (user 2026-11-26).
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   tapTargetSize: MaterialTapTargetSize.padded,
                   textStyle: const TextStyle(
                     fontSize: 14.5,
