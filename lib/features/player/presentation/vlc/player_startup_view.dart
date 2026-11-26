@@ -209,12 +209,16 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
     final l10n = AppLocalizations.of(context)!;
     final size = MediaQuery.sizeOf(context);
     final backdrop = widget.backdropUrl;
-    // As before the libVLC move: a phone's short side cannot give a backdrop
-    // and a centred column room to both be read.
+    // A backdrop needs room to be read beside the content, not under it: a
+    // portrait phone has none, so it stays black there (the test 'is left off
+    // a phone' pins that). A wide screen — a phone turned landscape, a tablet,
+    // a television — has the width, so the backdrop shows there (user
+    // 2026-11-26: backdrop on the phone's startup screen).
+    final wide = size.width > size.height;
     final showBackdrop =
         backdrop != null &&
         backdrop.isNotEmpty &&
-        (widget.isTv || size.shortestSide >= 600);
+        (widget.isTv || size.shortestSide >= 600 || wide);
 
     return Stack(
       fit: StackFit.expand,
@@ -256,8 +260,8 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
-                  child: _content(l10n, constraints.maxHeight - 48),
+                  constraints: BoxConstraints(maxWidth: wide ? 960 : 640),
+                  child: _content(l10n, constraints.maxHeight - 48, wide: wide),
                 ),
               ),
             ),
@@ -285,7 +289,7 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
     return 0;
   }
 
-  Widget _content(AppLocalizations l10n, double height) {
+  Widget _content(AppLocalizations l10n, double height, {required bool wide}) {
     final logo = widget.logoUrl;
     final logoHeight = _logoHeight(height);
     final attempt = widget.attempt;
@@ -295,144 +299,177 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
     final detail = widget.detail;
     final reason = widget.reason;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IgnorePointer(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (logo != null && logo.isNotEmpty && logoHeight > 0) ...[
-                _Logo(url: logo, height: logoHeight),
-                const SizedBox(height: 20),
-              ],
-              if (widget.failed)
-                Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.red.shade300,
-                  size: 42,
-                )
-              else
-                const SizedBox.square(
-                  dimension: 42,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                widget.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
-                ),
+    // The info block, shared by both layouts below: logo, spinner, title and
+    // the lines under it, and the "Source N of M" pill.
+    final info = IgnorePointer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (logo != null && logo.isNotEmpty && logoHeight > 0) ...[
+            _Logo(url: logo, height: logoHeight),
+            const SizedBox(height: 20),
+          ],
+          if (widget.failed)
+            Icon(
+              Icons.error_outline_rounded,
+              color: Colors.red.shade300,
+              size: 42,
+            )
+          else
+            const SizedBox.square(
+              dimension: 42,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-              if (episodeLine != null && episodeLine.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  episodeLine,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
+            ),
+          const SizedBox(height: 16),
+          Text(
+            widget.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
+          ),
+          if (episodeLine != null && episodeLine.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              episodeLine,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
+          if (sourceName != null && sourceName.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            // One line: a plugin's name for a link can run to a
+            // paragraph, and this column has no room to give on a phone.
+            Text(
+              sourceName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.78),
+                fontSize: 14,
+              ),
+            ),
+          ],
+          if (status != null && status.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              status,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.62),
+                fontSize: 14,
+                height: 1.3,
+              ),
+            ),
+          ],
+          if (detail != null && detail.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              detail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.62),
+                fontSize: 13,
+              ),
+            ),
+          ],
+          if (reason != null && reason.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              reason,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+          ],
+          if (attempt != null) ...[
+            const SizedBox(height: 12),
+            _Pill(text: l10n.sourceAttempt(attempt.index, attempt.total)),
+          ],
+        ],
+      ),
+    );
+
+    final retry = <Widget>[
+      if (widget.failed && widget.onRetry != null) ...[
+        const SizedBox(height: 18),
+        CustomButton(
+          isPrimary: true,
+          autofocus: widget.isTv && _onTop,
+          focusNode: _retryFocus,
+          onPressed: widget.onRetry,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.refresh_rounded, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.retry),
               ],
-              if (sourceName != null && sourceName.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                // One line: a plugin's name for a link can run to a
-                // paragraph, and this column has no room to give on a phone.
-                Text(
-                  sourceName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-              if (status != null && status.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  status,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontSize: 14,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-              if (detail != null && detail.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-              if (reason != null && reason.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  reason,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white38, fontSize: 13),
-                ),
-              ],
-              if (attempt != null) ...[
-                const SizedBox(height: 12),
-                _Pill(text: l10n.sourceAttempt(attempt.index, attempt.total)),
-              ],
-            ],
+            ),
           ),
         ),
-        if (widget.failed && widget.onRetry != null) ...[
-          const SizedBox(height: 18),
-          CustomButton(
-            isPrimary: true,
-            autofocus: widget.isTv && _onTop,
-            focusNode: _retryFocus,
-            onPressed: widget.onRetry,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.refresh_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l10n.retry),
-                ],
-              ),
-            ),
-          ),
+      ],
+    ];
+
+    final Widget? list = widget.rows.isNotEmpty
+        ? _SourceList(
+            key: _list,
+            rows: widget.rows,
+            currentIndex: widget.currentIndex,
+            isTv: widget.isTv,
+            onPick: widget.onPick,
+            maxHeight: wide ? height : 220,
+          )
+        : null;
+
+    if (!wide) {
+      // Portrait, as before: one centred column, info over the list.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          info,
+          ...retry,
+          if (list != null) ...[
+            const SizedBox(height: 18),
+            Flexible(child: list),
+          ],
         ],
-        if (widget.rows.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          Flexible(
-            child: _SourceList(
-              key: _list,
-              rows: widget.rows,
-              currentIndex: widget.currentIndex,
-              isTv: widget.isTv,
-              onPick: widget.onPick,
-            ),
+      );
+    }
+    // Wide: a single column would leave the short landscape screen to the
+    // header and show one row of links, so the info sits left and the list
+    // right, over the backdrop.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 5,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [info, ...retry],
           ),
+        ),
+        if (list != null) ...[
+          const SizedBox(width: 24),
+          Expanded(flex: 6, child: list),
         ],
       ],
     );
@@ -501,12 +538,17 @@ class _SourceList extends StatefulWidget {
     required this.currentIndex,
     required this.isTv,
     required this.onPick,
+    this.maxHeight = 220,
   });
 
   final List<StartupRow> rows;
   final int? currentIndex;
   final bool isTv;
   final ValueChanged<int> onPick;
+
+  /// The tallest the panel gets: 220 in the portrait column, the whole
+  /// content height in the wide layout, where the list is the right column.
+  final double maxHeight;
 
   @override
   State<_SourceList> createState() => _SourceListState();
@@ -602,7 +644,7 @@ class _SourceListState extends State<_SourceList> {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 220),
+      constraints: BoxConstraints(maxHeight: widget.maxHeight),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.35),
