@@ -192,7 +192,13 @@ void main() {
     expect(Focus.of(tester.element(find.text('None'))).hasFocus, isTrue);
 
     await tester.fling(
-      find.byType(SingleChildScrollView),
+      // The type chips' own row: the dialog now has a second horizontal
+      // row (the add-on grouping chips), so the bare SingleChildScrollView
+      // finder matches two.
+      find.ancestor(
+        of: find.text('Movies'),
+        matching: find.byType(SingleChildScrollView),
+      ),
       const Offset(-200, 0),
       1500,
     );
@@ -216,5 +222,41 @@ void main() {
       container.read(activeProviderProvider)?.packageName,
       'fake.provider.2',
     );
+  });
+
+  testWidgets('each row names its add-on under the provider', (tester) async {
+    await _pumpHost(tester, onClosed: () {});
+
+    // No plugins are installed in the test, so each fake provider falls
+    // back to its package name as its add-on — shown as the row subtitle,
+    // not in the grouping chip row above the list.
+    expect(
+      find.descendant(
+        of: find.byType(ListView),
+        matching: find.text('fake.provider.2'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('grouping by add-on filters the list, re-tap clears it', (
+    tester,
+  ) async {
+    await _pumpHost(tester, onClosed: () {});
+
+    final chip = find.widgetWithText(FilterChip, 'fake.provider.2');
+    await tester.ensureVisible(chip);
+    await tester.pumpAndSettle();
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    expect(find.text('Provider 2'), findsOneWidget);
+    expect(find.text('Provider 3'), findsNothing);
+    // The None row belongs to no add-on, so it hides with a grouping on.
+    expect(find.text('None'), findsNothing);
+
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    expect(find.text('None'), findsOneWidget);
+    expect(find.text('Provider 3'), findsOneWidget);
   });
 }

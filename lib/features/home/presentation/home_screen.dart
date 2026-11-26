@@ -900,6 +900,31 @@ Future<void> showProviderSelectorDialog(
   );
 }
 
+/// The add-on a provider belongs to, for the Select Provider dialog:
+/// the CloudStream plugin's display name for a CloudStream provider, the
+/// installed plugin's name for a JS provider (it carries the plugin's
+/// package name) and for a sub-provider (its package is '<parent>::<name>').
+/// Falls back to the owning package name when the plugin is not installed
+/// any more — the row then still names something, and the grouping chip
+/// still filters it.
+String providerAddonName(
+  SkyStreamProvider provider,
+  List<ExtensionPlugin> installed,
+) {
+  final cloudStream = provider is CloudStreamProvider ? provider : null;
+  if (cloudStream != null) {
+    return cleanPluginName(cloudStream.pluginName);
+  }
+  final ownerPackage = provider.packageName.contains('::')
+      ? provider.packageName.substring(0, provider.packageName.indexOf('::'))
+      : provider.packageName;
+  final plugin = installed.cast<ExtensionPlugin?>().firstWhere(
+    (pl) => pl?.packageName == ownerPackage,
+    orElse: () => null,
+  );
+  return plugin?.name ?? ownerPackage;
+}
+
 /// The dialog owns its scroll controllers so they live exactly as long as
 /// its element tree. Creating them in the caller and disposing them once
 /// `showDialog` resolved left the still-animating list and chip row holding
@@ -922,7 +947,15 @@ class _ProviderSelectorDialog extends StatefulWidget {
 class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
   final ScrollController _scrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
+  final ScrollController _addonChipsScrollController = ScrollController();
   bool _didInitialScroll = false;
+
+  /// Grouping (user 2026-11-26, like the quality grouping in the source
+  /// sheets): the add-on the list is filtered to, or null for all. Tapping
+  /// the selected add-on chip again clears it. The effective filter is
+  /// null when the selected add-on has no provider in the type-filtered
+  /// list any more, so a stale selection never empties the list.
+  String? _addonFilter;
 
   /// v2 pins: after a pin tap, how many rows each provider moved (old
   /// index − new index), so its row slides from where it was. Cleared
@@ -938,13 +971,19 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
     final before = _shownOrder;
     final filter = ref.read(homeFilterProvider);
     final pins = togglePin(ref.read(providerPinsProvider), packageName);
-    final filtered = filter == null
+    final installed = ref.read(extensionsControllerProvider).installedPlugins;
+    final typeFiltered = filter == null
         ? widget.providers
         : widget.providers
               .where((p) => p.supportedTypes.contains(filter))
               .toList();
+    final filtered = _addonFilter == null
+        ? typeFiltered
+        : typeFiltered
+              .where((p) => providerAddonName(p, installed) == _addonFilter)
+              .toList();
     final after = <String?>[
-      if (filter == null) null,
+      if (filter == null && _addonFilter == null) null,
       for (final p in orderProvidersWithPins(filtered, pins)) p.packageName,
     ];
     final shift = <String, int>{};
@@ -974,6 +1013,7 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
     _reorderTimer?.cancel();
     _scrollController.dispose();
     _chipsScrollController.dispose();
+    _addonChipsScrollController.dispose();
     super.dispose();
   }
 
@@ -1011,49 +1051,111 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
             Consumer(
               builder: (context, ref, _) {
                 final currentFilter = ref.watch(homeFilterProvider);
-                return DesktopScrollWrapper(
-                  controller: _chipsScrollController,
-                  isCompact: true,
-                  child: SingleChildScrollView(
-                    controller: _chipsScrollController,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        FilterChip(
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          label: Text(l10n.all),
-                          selected: currentFilter == null,
-                          onSelected: (_) => ref
-                              .read(homeFilterProvider.notifier)
-                              .setFilter(null),
+                final installed = ref
+                    .watch(extensionsControllerProvider)
+                    .installedPlugins;
+                // Grouping (user 2026-11-26, like the quality grouping in
+                // the source sheets): one chip per add-on that has a
+                // provider in the type-filtered list. The row shows only
+                // when there is something to group (two or more add-ons).
+                final typeFiltered = currentFilter == null
+                    ? widget.providers
+                    : widget.providers
+                          .where(
+                            (p) => p.supportedTypes.contains(currentFilter),
+                          )
+                          .toList();
+                final addonNames = {
+                  for (final p in typeFiltered)
+                    providerAddonName(p, installed),
+                }.toList()..sort();
+                final effectiveAddon = addonNames.contains(_addonFilter)
+                    ? _addonFilter
+                    : null;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DesktopScrollWrapper(
+                      controller: _chipsScrollController,
+                      isCompact: true,
+                      child: SingleChildScrollView(
+                        controller: _chipsScrollController,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                        const SizedBox(width: 8),
-                        ...ProviderType.values
-                            .where((t) => t != ProviderType.other)
-                            .map((type) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  visualDensity: VisualDensity.compact,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  label: Text(_getLocalizedType(type, l10n)),
-                                  selected: currentFilter == type,
-                                  onSelected: (_) => ref
-                                      .read(homeFilterProvider.notifier)
-                                      .setFilter(type),
-                                ),
-                              );
-                            }),
-                      ],
+                        child: Row(
+                          children: [
+                            FilterChip(
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              label: Text(l10n.all),
+                              selected: currentFilter == null,
+                              onSelected: (_) => ref
+                                  .read(homeFilterProvider.notifier)
+                                  .setFilter(null),
+                            ),
+                            const SizedBox(width: 8),
+                            ...ProviderType.values
+                                .where((t) => t != ProviderType.other)
+                                .map((type) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: FilterChip(
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      label: Text(
+                                        _getLocalizedType(type, l10n),
+                                      ),
+                                      selected: currentFilter == type,
+                                      onSelected: (_) => ref
+                                          .read(homeFilterProvider.notifier)
+                                          .setFilter(type),
+                                    ),
+                                  );
+                                }),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    if (addonNames.length >= 2)
+                      DesktopScrollWrapper(
+                        controller: _addonChipsScrollController,
+                        isCompact: true,
+                        child: SingleChildScrollView(
+                          controller: _addonChipsScrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Row(
+                            children: [
+                              for (final addon in addonNames)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    label: Text(addon),
+                                    selected: effectiveAddon == addon,
+                                    // Tapping the selected add-on again
+                                    // clears the grouping, like the quality
+                                    // chips in the source sheets.
+                                    onSelected: (_) => setState(
+                                      () => _addonFilter =
+                                          effectiveAddon == addon
+                                          ? null
+                                          : addon,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
@@ -1070,23 +1172,46 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                   // v2: pinned providers first, in the order they were
                   // pinned, then the rest as before.
                   final pins = ref.watch(providerPinsProvider);
+                  final typeFiltered = filter == null
+                      ? providers
+                      : providers
+                            .where((p) => p.supportedTypes.contains(filter))
+                            .toList();
+                  // The grouping filter: only providers of the selected
+                  // add-on. A selection whose add-on has no provider in
+                  // the type-filtered list any more reads as no filter.
+                  final addonNames = {
+                    for (final p in typeFiltered)
+                      providerAddonName(p, installedPlugins),
+                  };
+                  final effectiveAddon = addonNames.contains(_addonFilter)
+                      ? _addonFilter
+                      : null;
                   final filteredProviders = orderProvidersWithPins(
-                    filter == null
-                        ? providers
-                        : providers
-                              .where((p) => p.supportedTypes.contains(filter))
+                    effectiveAddon == null
+                        ? typeFiltered
+                        : typeFiltered
+                              .where(
+                                (p) =>
+                                    providerAddonName(p, installedPlugins) ==
+                                    effectiveAddon,
+                              )
                               .toList(),
                     pins,
                   );
+                  // The None row belongs to no add-on, so it shows only
+                  // when neither filter is active.
+                  final hasNoneRow =
+                      filter == null && effectiveAddon == null;
                   _shownOrder = <String?>[
-                    if (filter == null) null,
+                    if (hasNoneRow) null,
                     for (final p in filteredProviders) p.packageName,
                   ];
 
                   // Auto-scroll to selected provider on initial show
                   int targetIndex = -1;
                   if (activeProvider == null) {
-                    if (filter == null) {
+                    if (hasNoneRow) {
                       targetIndex = 0;
                     }
                   } else {
@@ -1094,7 +1219,7 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                       (p) => p.packageName == activeProvider.packageName,
                     );
                     if (idx != -1) {
-                      targetIndex = filter == null ? idx + 1 : idx;
+                      targetIndex = hasNoneRow ? idx + 1 : idx;
                     } else {
                       targetIndex = 0;
                     }
@@ -1107,10 +1232,10 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                     _didInitialScroll = true;
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (_scrollController.hasClients) {
-                        final itemTop = targetIndex * 56.0;
+                        final itemTop = targetIndex * 64.0;
                         final viewportHeight =
                             _scrollController.position.viewportDimension;
-                        const itemHeight = 56.0;
+                        const itemHeight = 64.0;
                         final offset =
                             itemTop - (viewportHeight / 2) + (itemHeight / 2);
                         final maxScroll =
@@ -1138,11 +1263,11 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                         shrinkWrap: true,
                         padding: EdgeInsets.zero,
                         itemCount:
-                            (filter == null ? 1 : 0) + filteredProviders.length,
+                            (hasNoneRow ? 1 : 0) + filteredProviders.length,
                         itemBuilder: (context, index) {
-                          if (filter == null && index == 0) {
+                          if (hasNoneRow && index == 0) {
                             return SizedBox(
-                              height: 56.0,
+                              height: 64.0,
                               child: Center(
                                 child: ListTile(
                                   title: Text(l10n.none),
@@ -1164,45 +1289,29 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                           }
 
                           final p =
-                              filteredProviders[filter == null
+                              filteredProviders[hasNoneRow
                                   ? index - 1
                                   : index];
                           final isDebug = p.isDebug;
-                          final cloudStream = p is CloudStreamProvider
-                              ? p
-                              : null;
-                          // A CloudStream extension can register several providers (one
-                          // plugin, "Netflix" and "Prime Video"): then name the extension too.
-                          final isSubprovider =
-                              p.packageName.contains('::') ||
-                              (cloudStream != null &&
-                                  cloudStream.plugin.providers.length > 1);
-                          String pluginTag = '';
-                          if (cloudStream != null) {
-                            pluginTag = cleanPluginName(cloudStream.pluginName);
-                          } else if (isSubprovider) {
-                            final parentPackageName = p.packageName.substring(
-                              0,
-                              p.packageName.indexOf('::'),
-                            );
-                            final plugin = installedPlugins
-                                .cast<ExtensionPlugin?>()
-                                .firstWhere(
-                                  (pl) => pl?.packageName == parentPackageName,
-                                  orElse: () => null,
-                                );
-                            pluginTag = plugin?.name ?? parentPackageName;
-                          }
-
+                          // Whose add-on this provider is (user
+                          // 2026-11-26): shown small under the name.
+                          final addonName = providerAddonName(
+                            p,
+                            installedPlugins,
+                          );
                           final pinned = pins.contains(p.packageName);
                           final scheme = Theme.of(context).colorScheme;
                           final row = Semantics(
                             key: ValueKey('provider-hold-${p.packageName}'),
                             onLongPressHint: pinned ? 'Unpin' : 'Pin',
                             child: SizedBox(
-                              height: 56.0,
+                              height: 64.0,
                               child: Center(
                                 child: ListTile(
+                                  // Two lines now (name + add-on), so the
+                                  // dense height is 64 — kept in step with
+                                  // the SizedBox and the scroll math above.
+                                  dense: true,
                                   autofocus: index == targetIndex,
                                   // Pins work as in CloudStream (build 82):
                                   // press and hold a row to pin it, press
@@ -1242,38 +1351,6 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                                           ),
                                         ),
                                       ),
-                                      if (isSubprovider) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 120,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .secondaryContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            pluginTag,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSecondaryContainer,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
                                       if (isDebug) ...[
                                         const SizedBox(width: 8),
                                         Container(
@@ -1299,6 +1376,23 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                                       ],
                                     ],
                                   ),
+                                  // Whose add-on this provider is, in
+                                  // small words under the name (user
+                                  // 2026-11-26). The old side chip that
+                                  // named the extension only for
+                                  // sub-providers is gone — every row
+                                  // carries its add-on here now.
+                                  subtitle: addonName.isEmpty
+                                      ? null
+                                      : Text(
+                                          addonName,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                   leading: Radio<String?>(value: p.packageName),
                                   onTap: () {
                                     ref
@@ -1326,7 +1420,7 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                               'provider-row-${p.packageName}'
                               '#$_reorderGeneration',
                             ),
-                            tween: Tween<double>(begin: shift * 56.0, end: 0),
+                            tween: Tween<double>(begin: shift * 64.0, end: 0),
                             duration: kMotionPill,
                             curve: kMotionPillCurve,
                             builder: (context, dy, child) =>
