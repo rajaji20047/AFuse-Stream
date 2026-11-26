@@ -112,7 +112,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
   DateTime _startedAt = DateTime.now();
   bool _disposed = false;
   bool _showDetails = false;
-  bool _hdOnly = false;
+  SourceQualityFilter _quality = SourceQualityFilter.all;
   _KindFilter _kind = _KindFilter.all;
   String? _debridStatus;
 
@@ -380,7 +380,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
 
   List<AddonStreamSource> get _filtered => _result.streams
       .where((s) {
-        if (_hdOnly && s.qualityScore < 1080) return false;
+        if (!_quality.matchesScore(s.qualityScore)) return false;
         if (_downloadMode && (!s.isDirect || s.url == null)) {
           return false;
         }
@@ -885,16 +885,31 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                       horizontal: kSourceSheetGutter,
                     ),
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: SourceFilterChip(
-                          text: '1080p+',
-                          selected: _hdOnly,
-                          outline: glass.tint(0.15),
-                          onSelected: (value) =>
-                              setState(() => _hdOnly = value),
-                        ),
-                      ),
+                      // Quality groups (user 2026-11-26): one chip per
+                      // group, in place of the old single '1080p+'
+                      // toggle. Only groups a loaded stream falls in are
+                      // shown, like the kind chips below. Tapping the
+                      // selected group again clears it back to All.
+                      // Stremio and plugin sources share the merged list,
+                      // so the groups cover both.
+                      for (final filter in SourceQualityFilter.values)
+                        if (filter != SourceQualityFilter.all &&
+                            _result.streams.any(
+                              (s) => filter.matchesScore(s.qualityScore),
+                            ))
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: SourceFilterChip(
+                              text: filter.label,
+                              selected: _quality == filter,
+                              outline: glass.tint(0.15),
+                              onSelected: (selected) => setState(
+                                () => _quality = selected
+                                    ? filter
+                                    : SourceQualityFilter.all,
+                              ),
+                            ),
+                          ),
                       for (final filter in _KindFilter.values)
                         if (filter == _KindFilter.all ||
                             _result.streams.any(filter.matches))

@@ -168,8 +168,8 @@ void main() {
         ],
       );
 
-      // 1080p+ hides the only link there is.
-      await tester.tap(find.text('1080p+'));
+      // '4K' hides the only link there is (480p).
+      await tester.tap(find.text('4K'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

@@ -546,6 +546,40 @@ class _GlassRowState extends State<GlassRow> {
   }
 }
 
+/// Quality groups the two source sheets filter by, on a stream's numeric
+/// quality score (2160 = 4K, 1440 = 2K, then the stated height; 0 = the
+/// stream states no quality). The same buckets the sheets already label
+/// rows with ('4K', '2K', '1080p' …) and score by, so a chip never
+/// disagrees with the badge on its own row. Shared because both sheets
+/// had the same single '1080p+' toggle; the groups are disjoint and cover
+/// every score, and they apply to Stremio and plugin sources alike — both
+/// arrive as streams with a parsed score on the same scale.
+enum SourceQualityFilter {
+  all('All'),
+  q4k('4K'),
+  q2k('2K'),
+  q1080('1080p'),
+  q720('720p'),
+  q480('480p'),
+  q360('360p'),
+  auto('Auto');
+
+  const SourceQualityFilter(this.label);
+  final String label;
+
+  /// Whether a stream with this numeric quality score falls in the group.
+  bool matchesScore(int score) => switch (this) {
+    SourceQualityFilter.all => true,
+    SourceQualityFilter.q4k => score >= 2160,
+    SourceQualityFilter.q2k => score >= 1440 && score < 2160,
+    SourceQualityFilter.q1080 => score >= 1080 && score < 1440,
+    SourceQualityFilter.q720 => score >= 720 && score < 1080,
+    SourceQualityFilter.q480 => score >= 480 && score < 720,
+    SourceQualityFilter.q360 => score > 0 && score < 480,
+    SourceQualityFilter.auto => score == 0,
+  };
+}
+
 /// A filter pill on a source sheet.
 ///
 /// Shared because the two sheets had drifted apart: three copies of this in
