@@ -3637,3 +3637,86 @@ class _TmdbApiKeyDialogState extends ConsumerState<_TmdbApiKeyDialog> {
     );
   }
 }
+
+/// Lets the user paste their own WeTrakr client id.
+///
+/// Mirrors the TMDB key dialog: the id is normally baked in at build time
+/// via `--dart-define=WETRAKR_CLIENT_ID`, and a build without it hides the
+/// WeTrakr row entirely. This dialog is the way in without rebuilding.
+/// No live check here: unlike TMDB there is no cheap key-check endpoint,
+/// and the device-code sign-in surfaces a bad id when Connect is tapped.
+void showWetrakrClientIdDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => const _WetrakrClientIdDialog(),
+  );
+}
+
+class _WetrakrClientIdDialog extends ConsumerStatefulWidget {
+  const _WetrakrClientIdDialog();
+
+  @override
+  ConsumerState<_WetrakrClientIdDialog> createState() =>
+      _WetrakrClientIdDialogState();
+}
+
+class _WetrakrClientIdDialogState
+    extends ConsumerState<_WetrakrClientIdDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: ref.read(generalSettingsProvider).wetrakrClientId,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final id = _controller.text.replaceAll(RegExp(r'\s'), '');
+    // Empty is a legitimate input: it clears the override and falls back
+    // to the build-time id.
+    await ref.read(generalSettingsProvider.notifier).setWetrakrClientId(id);
+    if (mounted) Navigator.pop<void>(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      surfaceTintColor: Colors.transparent,
+      title: const Text('WeTrakr client ID'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'WeTrakr needs a client ID to connect. Paste yours below '
+              'to enable it.',
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Client ID',
+                hintText: 'Your WeTrakr client ID',
+                prefixIcon: Icon(Icons.vpn_key_rounded, size: 20),
+              ),
+              keyboardType: TextInputType.text,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop<void>(context),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(onPressed: _save, child: Text(l10n.save)),
+      ],
+    );
+  }
+}

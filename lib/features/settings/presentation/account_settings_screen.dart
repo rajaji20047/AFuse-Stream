@@ -401,113 +401,121 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                               ref.invalidate(trackingAuthProvider);
                             },
                           ),
-                          if (ref.watch(wetrakrConfiguredProvider))
-                            SettingsTile(
-                              key: const ValueKey('account-wetrakr'),
-                              focusNode: _wetrakrFocusNode,
-                              reicon: Reicon.tv,
-                              title: 'WeTrakr',
-                              subtitle: trackingAuthAsync.when(
-                                data: (state) => state['wetrakr'] == true
-                                    ? 'Connected · sync on'
-                                    : l10n.notLoggedIn,
-                                loading: () => l10n.loading,
-                                error: (_, _) => l10n.unknown,
-                              ),
-                              value: trackingAuthAsync.value?['wetrakr'] == true
-                                  ? 'Active'
-                                  : 'Connect',
-                              onTap: () async {
-                                final state = trackingAuthAsync.value ?? {};
-                                if (state['wetrakr'] == true) {
-                                  final confirm = await _confirmDisconnect(
-                                    context,
-                                    'WeTrakr',
-                                  );
-                                  if (confirm) {
-                                    await ref
-                                        .read(wetrakrServiceProvider)
-                                        .logout();
-                                    ref.invalidate(trackingAuthProvider);
-                                    if (context.mounted) {
-                                      _wetrakrFocusNode.requestFocus();
-                                    }
-                                  }
-                                } else {
-                                  bool isCancelled = false;
-                                  bool isDialogShowing = false;
-                                  BuildContext? dialogContext;
-                                  bool success = false;
-                                  try {
-                                    success = await ref
-                                        .read(wetrakrServiceProvider)
-                                        .login(
-                                          isCancelled: () => isCancelled,
-                                          onDeviceCodeGenerated: (url, code) async {
-                                            if (context.mounted) {
-                                              isDialogShowing = true;
-                                              unawaited(
-                                                showDialog<void>(
-                                                  context: context,
-                                                  barrierDismissible: true,
-                                                  builder: (ctx) {
-                                                    dialogContext = ctx;
-                                                    return TrackingAuthDialog(
-                                                      providerName: 'WeTrakr',
-                                                      verificationUrl: url,
-                                                      userCode: code,
-                                                    );
-                                                  },
-                                                ).then((_) {
-                                                  isCancelled = true;
-                                                  isDialogShowing = false;
-                                                  if (context.mounted) {
-                                                    _wetrakrFocusNode
-                                                        .requestFocus();
-                                                  }
-                                                }),
-                                              );
-                                            }
-                                          },
-                                        );
-                                  } catch (error, stackTrace) {
-                                    talker.error(
-                                      'AccountSettingsScreen: WeTrakr login threw',
-                                      error,
-                                      stackTrace,
-                                    );
-                                  }
-                                  if (success && context.mounted) {
-                                    ref
-                                        .read(notificationServiceProvider)
-                                        .showSuccess(
-                                          'Successfully connected to WeTrakr!',
-                                          title: 'WeTrakr',
-                                          icon: Icons.sync_rounded,
-                                        );
-                                  } else if (!isCancelled && context.mounted) {
-                                    // A device-code login that times out, is denied, or
-                                    // throws all land here. Without this branch the tile
-                                    // just falls back to "Not logged in" and the viewer
-                                    // is told nothing at all. A dialog the viewer
-                                    // dismissed is not a failure, hence the isCancelled
-                                    // guard.
-                                    ref
-                                        .read(notificationServiceProvider)
-                                        .showError(
-                                          l10n.connectionFailed,
-                                          title: 'WeTrakr',
-                                          icon: Icons.sync_problem_rounded,
-                                        );
-                                  }
-                                  if (isDialogShowing &&
-                                      dialogContext != null &&
-                                      dialogContext!.mounted) {
-                                    Navigator.of(dialogContext!).pop();
+                          SettingsTile(
+                            key: const ValueKey('account-wetrakr'),
+                            focusNode: _wetrakrFocusNode,
+                            reicon: Reicon.tv,
+                            title: 'WeTrakr',
+                            subtitle: !ref.watch(wetrakrConfiguredProvider)
+                                ? 'Client ID not set'
+                                : trackingAuthAsync.when(
+                                    data: (state) => state['wetrakr'] == true
+                                        ? 'Connected · sync on'
+                                        : l10n.notLoggedIn,
+                                    loading: () => l10n.loading,
+                                    error: (_, _) => l10n.unknown,
+                                  ),
+                            value: !ref.watch(wetrakrConfiguredProvider)
+                                ? 'Set up'
+                                : trackingAuthAsync.value?['wetrakr'] == true
+                                ? 'Active'
+                                : 'Connect',
+                            onTap: () async {
+                              // No id yet: the row is the way to add one.
+                              if (!ref.read(wetrakrConfiguredProvider)) {
+                                showWetrakrClientIdDialog(context, ref);
+                                return;
+                              }
+                              final state = trackingAuthAsync.value ?? {};
+                              if (state['wetrakr'] == true) {
+                                final confirm = await _confirmDisconnect(
+                                  context,
+                                  'WeTrakr',
+                                );
+                                if (confirm) {
+                                  await ref
+                                      .read(wetrakrServiceProvider)
+                                      .logout();
+                                  ref.invalidate(trackingAuthProvider);
+                                  if (context.mounted) {
+                                    _wetrakrFocusNode.requestFocus();
                                   }
                                 }
-                                ref.invalidate(trackingAuthProvider);
-                              },
+                              } else {
+                                bool isCancelled = false;
+                                bool isDialogShowing = false;
+                                BuildContext? dialogContext;
+                                bool success = false;
+                                try {
+                                  success = await ref
+                                      .read(wetrakrServiceProvider)
+                                      .login(
+                                        isCancelled: () => isCancelled,
+                                        onDeviceCodeGenerated: (url, code) async {
+                                          if (context.mounted) {
+                                            isDialogShowing = true;
+                                            unawaited(
+                                              showDialog<void>(
+                                                context: context,
+                                                barrierDismissible: true,
+                                                builder: (ctx) {
+                                                  dialogContext = ctx;
+                                                  return TrackingAuthDialog(
+                                                    providerName: 'WeTrakr',
+                                                    verificationUrl: url,
+                                                    userCode: code,
+                                                  );
+                                                },
+                                              ).then((_) {
+                                                isCancelled = true;
+                                                isDialogShowing = false;
+                                                if (context.mounted) {
+                                                  _wetrakrFocusNode
+                                                      .requestFocus();
+                                                }
+                                              }),
+                                            );
+                                          }
+                                        },
+                                      );
+                                } catch (error, stackTrace) {
+                                  talker.error(
+                                    'AccountSettingsScreen: WeTrakr login threw',
+                                    error,
+                                    stackTrace,
+                                  );
+                                }
+                                if (success && context.mounted) {
+                                  ref
+                                      .read(notificationServiceProvider)
+                                      .showSuccess(
+                                        'Successfully connected to WeTrakr!',
+                                        title: 'WeTrakr',
+                                        icon: Icons.sync_rounded,
+                                      );
+                                } else if (!isCancelled && context.mounted) {
+                                  // A device-code login that times out, is denied, or
+                                  // throws all land here. Without this branch the tile
+                                  // just falls back to "Not logged in" and the viewer
+                                  // is told nothing at all. A dialog the viewer
+                                  // dismissed is not a failure, hence the isCancelled
+                                  // guard.
+                                  ref
+                                      .read(notificationServiceProvider)
+                                      .showError(
+                                        l10n.connectionFailed,
+                                        title: 'WeTrakr',
+                                        icon: Icons.sync_problem_rounded,
+                                      );
+                                }
+                                if (isDialogShowing &&
+                                    dialogContext != null &&
+                                    dialogContext!.mounted) {
+                                  Navigator.of(dialogContext!).pop();
+                                }
+                              }
+                              ref.invalidate(trackingAuthProvider);
+                            },
                             ),
                           SettingsTile(
                             focusNode: _malFocusNode,

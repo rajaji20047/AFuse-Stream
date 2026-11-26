@@ -97,6 +97,17 @@ class SettingsRepository {
 
   String getTmdbApiKey() => _storageService.getString(kTmdbApiKey) ?? '';
 
+  /// User-supplied WeTrakr client id, entered in Accounts. Empty string
+  /// means "not set" — callers fall back to the compile-time
+  /// `--dart-define=WETRAKR_CLIENT_ID` value.
+  static const String kWetrakrClientId = 'wetrakr_client_id';
+
+  Future<void> setWetrakrClientId(String value) =>
+      _storageService.setString(kWetrakrClientId, value.isEmpty ? null : value);
+
+  String getWetrakrClientId() =>
+      _storageService.getString(kWetrakrClientId) ?? '';
+
   /// Home rows customise (v7): one JSON object, source key -> {order, hidden}.
   /// See `home_row_prefs.dart` for the shape. Null/absent = nothing saved.
   static const String kHomeRowPrefs = 'home_row_prefs';

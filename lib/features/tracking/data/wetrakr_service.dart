@@ -9,6 +9,7 @@ import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
+import '../../settings/presentation/general_settings_provider.dart';
 
 /// WeTrakr (https://wetrakr.com): sign-in by device code and scrobbling.
 ///
@@ -81,8 +82,8 @@ class WetrakrService implements TrackingService {
   static Future<String> _packageVersion() =>
       _version ??= PackageInfo.fromPlatform().then((info) => info.version);
 
-  /// False in a build made without the WeTrakr client id: the Accounts row
-  /// is hidden and nothing here makes a request.
+  /// False without a WeTrakr client id (neither a build-time one nor
+  /// one the user entered in Accounts): nothing here makes a request.
   bool get isConfigured => _clientId.isNotEmpty;
 
   Future<void> _initToken() async {
@@ -492,15 +493,20 @@ class WetrakrService implements TrackingService {
   Future<bool> removePlaybackProgress(String id) async => false;
 }
 
-/// Whether this build carries the WeTrakr client id. The Accounts row is
-/// shown only when it does.
+/// Whether WeTrakr can be used: a client id from the build, or one the
+/// user entered in Accounts. The row is always shown; without an id it
+/// offers to set one up instead of connecting.
 final wetrakrConfiguredProvider = Provider<bool>(
-  (ref) => SyncConfig.wetrakrClientId.isNotEmpty,
+  (ref) =>
+      ref.watch(generalSettingsProvider).wetrakrClientId.isNotEmpty ||
+      SyncConfig.wetrakrClientId.isNotEmpty,
 );
 
 final wetrakrServiceProvider = Provider<WetrakrService>((ref) {
+  final userId = ref.watch(generalSettingsProvider).wetrakrClientId;
   return WetrakrService(
     ref.watch(dioClientProvider),
     ref.watch(secureTokenStorageProvider),
+    clientId: userId.isNotEmpty ? userId : SyncConfig.wetrakrClientId,
   );
 });

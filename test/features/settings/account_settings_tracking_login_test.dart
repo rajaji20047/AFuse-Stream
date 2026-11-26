@@ -274,6 +274,16 @@ class QuietSettings extends SettingsRepository {
   @override
   String getTmdbApiKey() => '';
 
+  String _wetrakrClientId = '';
+
+  @override
+  String getWetrakrClientId() => _wetrakrClientId;
+
+  @override
+  Future<void> setWetrakrClientId(String value) async {
+    _wetrakrClientId = value;
+  }
+
   @override
   bool isAnimeSkipIntegrationEnabled() => false;
 

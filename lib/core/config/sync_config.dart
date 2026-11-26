@@ -19,7 +19,7 @@ class SyncConfig {
   /// WeTrakr's app key (a public client: device flow, no secret - the
   /// app must never carry one). Supplied at build time and kept out of
   /// the source, as WeTrakr's terms ask; empty in a build without it,
-  /// which hides the WeTrakr row.
+  /// in which case the user can enter one in Accounts instead.
   static const String wetrakrClientId = String.fromEnvironment(
     'WETRAKR_CLIENT_ID',
   );

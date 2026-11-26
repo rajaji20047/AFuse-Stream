@@ -27,12 +27,13 @@ class _Trackers extends TrackingAuth {
   };
 }
 
-/// The WeTrakr row under TRACKING & SYNC: there only in a build that
-/// carries the client id, and saying whether the person is connected.
+/// The WeTrakr row under TRACKING & SYNC: always there now — with the
+/// client id it offers to connect, without one it offers to set it up,
+/// and entering an id turns it into Connect.
 void main() {
   Future<void> pump(
     WidgetTester tester, {
-    required bool configured,
+    bool? configured,
     bool signedIn = false,
   }) async {
     // Tall enough for the lazy list to build the tracking rows.
@@ -51,7 +52,8 @@ void main() {
             (_, _) => const PlayerSettings(),
           ),
           trackingAuthProvider.overrideWith(() => _Trackers(signedIn)),
-          wetrakrConfiguredProvider.overrideWithValue(configured),
+          if (configured != null)
+            wetrakrConfiguredProvider.overrideWithValue(configured),
         ],
         child: const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -88,13 +90,61 @@ void main() {
     );
   });
 
-  testWidgets('a build without the client id has no WeTrakr row', (
+  testWidgets('without the client id the row offers to set one up', (
     tester,
   ) async {
     await pump(tester, configured: false);
-    expect(find.byKey(row), findsNothing);
-    expect(find.text('WeTrakr'), findsNothing);
+    expect(find.byKey(row), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(row), matching: find.text('WeTrakr')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: find.byKey(row), matching: find.text('Set up')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(row),
+        matching: find.text('Client ID not set'),
+      ),
+      findsOneWidget,
+    );
     // The other trackers are untouched.
     expect(find.text('Trakt'), findsOneWidget);
+  });
+
+  testWidgets('entering a client id turns the row into Connect', (
+    tester,
+  ) async {
+    // No override: the row follows the stored id, empty at first.
+    await pump(tester);
+    expect(
+      find.descendant(of: find.byKey(row), matching: find.text('Set up')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(row));
+    await tester.pumpAndSettle();
+    expect(find.text('WeTrakr client ID'), findsOneWidget);
+
+    final field = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(field, 'test-client-id');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Save'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('WeTrakr client ID'), findsNothing);
+    expect(
+      find.descendant(of: find.byKey(row), matching: find.text('Connect')),
+      findsOneWidget,
+    );
   });
 }

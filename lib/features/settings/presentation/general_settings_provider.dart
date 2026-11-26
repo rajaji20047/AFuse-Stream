@@ -78,6 +78,11 @@ class GeneralSettings {
   /// `--dart-define=TMDB_API_KEY` value" (which may itself be empty).
   final String tmdbApiKey;
 
+  /// User-supplied WeTrakr client id. Empty means "fall back to the
+  /// build-time `--dart-define=WETRAKR_CLIENT_ID` value" (which may itself
+  /// be empty, in which case the WeTrakr row offers to set one up).
+  final String wetrakrClientId;
+
   const GeneralSettings({
     this.watchHistoryEnabled = true,
     this.defaultHomeScreen = '/home',
@@ -89,6 +94,7 @@ class GeneralSettings {
     this.downloadConcurrency = 3,
     this.downloadChunks = 8,
     this.tmdbApiKey = '',
+    this.wetrakrClientId = '',
     this.navBarStyle = NavBarStyle.adaptive,
     this.navBarGlowEnabled = true,
     this.navBarGlassEnabled = true,
@@ -107,6 +113,7 @@ class GeneralSettings {
     int? downloadConcurrency,
     int? downloadChunks,
     String? tmdbApiKey,
+    String? wetrakrClientId,
     NavBarStyle? navBarStyle,
     bool? navBarGlowEnabled,
     bool? navBarGlassEnabled,
@@ -131,6 +138,7 @@ class GeneralSettings {
       downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
       downloadChunks: downloadChunks ?? this.downloadChunks,
       tmdbApiKey: tmdbApiKey ?? this.tmdbApiKey,
+      wetrakrClientId: wetrakrClientId ?? this.wetrakrClientId,
       navBarStyle: navBarStyle ?? this.navBarStyle,
       navBarGlowEnabled: navBarGlowEnabled ?? this.navBarGlowEnabled,
       navBarGlassEnabled: navBarGlassEnabled ?? this.navBarGlassEnabled,
@@ -172,6 +180,7 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       downloadConcurrency: repository.getDownloadConcurrency(),
       downloadChunks: repository.getDownloadChunks(),
       tmdbApiKey: repository.getTmdbApiKey(),
+      wetrakrClientId: repository.getWetrakrClientId(),
       // An unrecognised stored name — written by a newer build, or a
       // corrupted box — reads as the default, the safe side (same shape
       // as the GitHub proxy choice above).
@@ -290,6 +299,16 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
     await repository.setTmdbApiKey(trimmed);
     TmdbConfig.setUserApiKey(trimmed);
     state = state.copyWith(tmdbApiKey: trimmed);
+  }
+
+  /// Persists a user-supplied WeTrakr client id. Passing an empty string
+  /// clears it and reverts to the build-time id. The Accounts row and the
+  /// service both read this state, so they pick it up without a restart.
+  Future<void> setWetrakrClientId(String value) async {
+    final trimmed = value.trim();
+    final repository = ref.read(settingsRepositoryProvider);
+    await repository.setWetrakrClientId(trimmed);
+    state = state.copyWith(wetrakrClientId: trimmed);
   }
 
   Future<void> setDownloadChunks(int value) async {
