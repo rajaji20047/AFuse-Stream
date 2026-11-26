@@ -121,11 +121,116 @@ bool _looksCopyrightRisky(AddonManifest manifest) {
   return _copyrightRiskPattern.hasMatch(haystack);
 }
 
-/// Community add-on entry from Stremio's public collection.
+/// Community add-on entry from the stremio-addons.net directory.
 class CommunityAddon {
   final String transportUrl;
   final AddonManifest manifest;
-  const CommunityAddon({required this.transportUrl, required this.manifest});
+
+  /// Category display names the directory files this add-on under
+  /// (e.g. 'Movies', 'Subtitles'); empty when the directory says none.
+  final List<String> categories;
+
+  /// Directory stars, shown on the Discover tile's freshness line.
+  final int stars;
+
+  /// When the directory last saw this add-on change; null when it did
+  /// not say, or the date did not parse.
+  final DateTime? updatedAt;
+
+  /// The add-on's own configure page, when the directory lists one;
+  /// the Discover tile prefers it over deriving '/configure' itself.
+  final String? configureUrl;
+
+  const CommunityAddon({
+    required this.transportUrl,
+    required this.manifest,
+    this.categories = const [],
+    this.stars = 0,
+    this.updatedAt,
+    this.configureUrl,
+  });
+}
+
+/// One page of the stremio-addons.net directory: the entries on the page
+/// plus the cursor for the next page, null on the last page.
+///
+/// Pure: takes a decoded JSON page and returns entries, so tests can feed
+/// it a hand-written payload without Dio.
+class StremioAddonsNetPage {
+  final List<CommunityAddon> entries;
+  final String? nextCursor;
+
+  const StremioAddonsNetPage({required this.entries, this.nextCursor});
+}
+
+/// Parses one decoded page of `GET /api/v0/addons`.
+///
+/// `{"addons": [...], "pagination": {"hasNextPage": bool,
+/// "nextCursor": string?}}`. Junk entries are skipped, never fatal — one
+/// bad manifest must not sink the whole page.
+StremioAddonsNetPage parseStremioAddonsNetPage(Map<String, dynamic> json) {
+  final entries = <CommunityAddon>[];
+  final rawAddons = json['addons'];
+  if (rawAddons is List) {
+    for (final raw in rawAddons) {
+      if (raw is! Map) continue;
+      try {
+        final entry = _parseDirectoryEntry(Map<String, dynamic>.from(raw));
+        if (entry != null) entries.add(entry);
+      } catch (error) {
+        // One junk entry must not sink the whole page.
+        if (kDebugMode) {
+          debugPrint('[AddonClient] directory entry skipped: $error');
+        }
+      }
+    }
+  }
+  // The cursor only means anything while the server says there is a next
+  // page; a stale cursor on the last page is ignored.
+  String? nextCursor;
+  final rawPagination = json['pagination'];
+  if (rawPagination is Map) {
+    final pagination = Map<String, dynamic>.from(rawPagination);
+    if (pagination['hasNextPage'] == true) {
+      final cursor = pagination['nextCursor'] as String?;
+      if (cursor != null && cursor.isNotEmpty) nextCursor = cursor;
+    }
+  }
+  return StremioAddonsNetPage(entries: entries, nextCursor: nextCursor);
+}
+
+/// One directory entry: the manifest plus the directory's own metadata.
+/// Null when the entry is unusable — no manifest URL, no manifest, or an
+/// id/name too empty to show.
+CommunityAddon? _parseDirectoryEntry(Map<String, dynamic> map) {
+  final transportUrl = map['manifestUrl'] as String?;
+  final manifest = map['manifest'];
+  if (transportUrl == null || transportUrl.isEmpty || manifest is! Map) {
+    return null;
+  }
+  final parsed = AddonManifest.fromJson(Map<String, dynamic>.from(manifest));
+  if (parsed.id.isEmpty || parsed.name.isEmpty) return null;
+  final categories = <String>[];
+  final rawCategories = map['categories'];
+  if (rawCategories is List) {
+    for (final raw in rawCategories) {
+      if (raw is Map) {
+        final name = (raw['name'] as String?)?.trim();
+        if (name != null && name.isNotEmpty) categories.add(name);
+      }
+    }
+  }
+  final configureUrl = (map['configureUrl'] as String?)?.trim();
+  return CommunityAddon(
+    transportUrl: transportUrl,
+    manifest: parsed,
+    categories: categories,
+    stars: (map['stars'] as num?)?.toInt() ?? 0,
+    updatedAt: DateTime.tryParse((map['updatedAt'] as String?) ?? ''),
+    configureUrl: configureUrl == null || configureUrl.isEmpty
+        ? null
+        : configureUrl,
+  );
 }
 
 /// HTTP layer for the Stremio add-on protocol.
@@ -510,11 +615,16 @@ class AddonClient {
     });
   }
 
-  /// Stremio's official community collection, used by the Discover tab.
+  /// The Discover tab's add-on directory.
   ///
-  /// This is the same `api.strem.io/addonscollection.json` the official
-  /// Stremio apps render as their Community add-ons page, so what the
-  /// Discover tab shows tracks what a Play Store Stremio install shows.
+  /// The Discover tab's directory: stremio-addons.net's public listing
+  /// (`GET /api/v0/addons`, newest first), which replaced Stremio's own
+  /// `api.strem.io/addonscollection.json` — the official collection is a
+  /// frozen ~95 entries with no categories, while this one lists every
+  /// approved add-on (~600) with its categories, stars and last update.
+  /// Pages are followed by cursor until the server says there is no next
+  /// page; 10 pages is a safety valve against a runaway cursor loop,
+  /// not a target.
   ///
   /// Failure handling is deliberate: a failed request throws (the Discover
   /// tab shows an error row with a retry) and, because it throws, it is NOT
@@ -530,49 +640,42 @@ class AddonClient {
     if (forceRefresh) _cache.invalidatePrefix(key);
 
     return _cache.run(key, const Duration(hours: 3), () async {
-      final response = await _dio.get<dynamic>(
-        'https://api.strem.io/addonscollection.json',
-        options: _options(_slow),
-      );
-      final data = response.data;
-      if (data is! List) {
-        throw const AddonException(
-          'The add-on directory returned an unexpected response.',
-        );
-      }
+      const base =
+          'https://stremio-addons.net/api/v0/addons?limit=100&sort_by=createdAt&order=desc';
       final out = <CommunityAddon>[];
       final seenIds = <String>{};
-      for (final entry in data) {
-        if (entry is! Map) continue;
-        try {
-          final map = Map<String, dynamic>.from(entry);
-          final transportUrl = map['transportUrl'] as String?;
-          final manifest = map['manifest'];
-          if (transportUrl == null ||
-              transportUrl.isEmpty ||
-              manifest is! Map) {
-            continue;
-          }
-          final parsed = AddonManifest.fromJson(
-            Map<String, dynamic>.from(manifest),
+      String? cursor;
+      for (var page = 0; page < 10; page++) {
+        final url = cursor == null
+            ? base
+            : '$base&cursor=${Uri.encodeComponent(cursor)}';
+        final response = await _dio.get<dynamic>(
+          url,
+          options: _options(_slow),
+        );
+        final data = response.data;
+        if (data is! Map) {
+          throw const AddonException(
+            'The add-on directory returned an unexpected response.',
           );
-          if (parsed.id.isEmpty || parsed.name.isEmpty) continue;
-          if (!seenIds.add(parsed.id)) continue; // server duplicate
-          if (_looksCopyrightRisky(parsed)) {
+        }
+        final parsed = parseStremioAddonsNetPage(
+          Map<String, dynamic>.from(data),
+        );
+        for (final entry in parsed.entries) {
+          if (!seenIds.add(entry.manifest.id)) continue; // server duplicate
+          if (_looksCopyrightRisky(entry.manifest)) {
             if (kDebugMode) {
               debugPrint(
-                '[AddonClient] copyright-risk add-on hidden: ${parsed.id}',
+                '[AddonClient] copyright-risk add-on hidden: ${entry.manifest.id}',
               );
             }
             continue;
           }
-          out.add(CommunityAddon(transportUrl: transportUrl, manifest: parsed));
-        } catch (error) {
-          // One junk manifest must not sink the whole directory.
-          if (kDebugMode) {
-            debugPrint('[AddonClient] community entry skipped: $error');
-          }
+          out.add(entry);
         }
+        cursor = parsed.nextCursor;
+        if (cursor == null) break;
       }
       if (out.isEmpty) {
         throw const AddonException('The add-on directory returned nothing.');

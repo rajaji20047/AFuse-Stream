@@ -766,6 +766,10 @@ class _DiscoverTab extends ConsumerStatefulWidget {
 class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
   final TextEditingController _searchController = TextEditingController();
 
+  /// The selected directory category (null = All). Tapping the selected
+  /// chip again clears it back to All.
+  String? _category;
+
   /// Up and down leave the field while the keyboard is put away, and Select
   /// brings it back - see [remoteTextFieldKeys].
   final FocusNode _searchNode = FocusNode(
@@ -811,6 +815,25 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
     }
   }
 
+  /// The category chips for the loaded directory: one per category the
+  /// loaded entries actually carry, most-used first, ties by name.
+  /// Categories with no loaded add-on never appear — the same rule as
+  /// the quality chips in the source sheets.
+  List<MapEntry<String, int>> _categories(List<CommunityAddon> entries) {
+    final counts = <String, int>{};
+    for (final entry in entries) {
+      for (final category in entry.categories) {
+        counts[category] = (counts[category] ?? 0) + 1;
+      }
+    }
+    final sorted = counts.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        return byCount != 0 ? byCount : a.key.compareTo(b.key);
+      });
+    return sorted;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -839,17 +862,16 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
         }
 
         final query = _searchController.text.trim().toLowerCase();
-        final filtered = query.isEmpty
-            ? entries
-            : entries
-                  .where(
-                    (entry) =>
-                        entry.manifest.name.toLowerCase().contains(query) ||
-                        entry.manifest.description.toLowerCase().contains(
-                          query,
-                        ),
-                  )
-                  .toList(growable: false);
+        final categories = _categories(entries);
+        final filtered = entries.where((entry) {
+          if (_category != null &&
+              !entry.categories.contains(_category)) {
+            return false;
+          }
+          if (query.isEmpty) return true;
+          return entry.manifest.name.toLowerCase().contains(query) ||
+              entry.manifest.description.toLowerCase().contains(query);
+        }).toList(growable: false);
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -880,6 +902,39 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
                   onChanged: (_) => setState(() {}),
                 ),
               ),
+              // Category chips, under the search field: one per category
+              // the loaded directory actually has, most-used first, plus
+              // All. A selected chip tapped again clears back to All.
+              if (categories.isNotEmpty)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
+                        label: Text(l10n.all),
+                        selected: _category == null,
+                        onSelected: (_) => setState(() => _category = null),
+                      ),
+                      for (final category in categories) ...[
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          label: Text(category.key),
+                          selected: _category == category.key,
+                          onSelected: (selected) => setState(
+                            () => _category = selected ? category.key : null,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               Expanded(
                 child: filtered.isEmpty
                     ? ListView(
@@ -939,7 +994,53 @@ class _CommunityAddonTile extends StatelessWidget {
 
   bool get _needsSetup => entry.manifest.behaviorHints.configurationRequired;
 
+  /// '★ 2,480 · Updated Jul 2026' — directory stars and last update,
+  /// when the directory reported them. Nothing to show, no line at all.
+  String? get _metaLine {
+    final parts = <String>[];
+    if (entry.stars > 0) parts.add('★ ${_grouped(entry.stars)}');
+    final updated = entry.updatedAt;
+    if (updated != null) parts.add('Updated ${_monthYear(updated)}');
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
+  /// 2480 -> '2,480'. Hand-rolled so the grouping never follows the
+  /// device locale.
+  String _grouped(int value) {
+    final digits = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  /// 'Jul 2026'. Short English month + year, like the rest of the app.
+  String _monthYear(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
   String get _configureUrl {
+    // The directory lists the add-on's own configure page when it has
+    // one; otherwise the configure page sits next to the manifest.
+    final configured = entry.configureUrl;
+    if (configured != null && configured.isNotEmpty) return configured;
     final base = AddonTransport.baseUrl(entry.transportUrl);
     return '$base/configure';
   }
@@ -991,6 +1092,18 @@ class _CommunityAddonTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
+            if (_metaLine != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  _metaLine!,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
         ),
         trailing: isInstalled
