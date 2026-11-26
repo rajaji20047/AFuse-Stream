@@ -794,6 +794,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   RememberedTrack? _rememberedAudio;
   RememberedTrack? _rememberedSubtitle;
 
+  /// The viewer turned subtitles off by hand on this content.
+  ///
+  /// [_rememberedSubtitle] going null cannot say it: null also means "never
+  /// had subtitles". Without this, a reopen re-runs the auto-pick and the
+  /// subtitles come back on by themselves. Scoped to the content like the
+  /// remembered tracks - [_startEpisode] clears it, a reopen does not.
+  bool _viewerSubtitleOff = false;
+
   /// The audio track the viewer put on from the Audio tab, for this content.
   ///
   /// The one audio choice that is the viewer's own. [_rememberedAudio] is
@@ -856,6 +864,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
 
   /// Set while a look for [_subtitleToRestore] is in flight.
   bool _restoringSubtitle = false;
+
+  /// The track list revision the last look for [_audioToRestore] read.
+  ///
+  /// Set by the first look that misses ([_restoreTracks], or the audio
+  /// language setting's fallthrough in [_pickPreferredAudio]); the retry
+  /// ([_maybeRestoreAudio]) waits for the list to change, not for the
+  /// next tick. Null until a look has missed, so the retry never runs
+  /// before the first look.
+  int? _audioRestoreRevision;
+
+  /// Set while a look for [_audioToRestore] is in flight.
+  bool _restoringAudio = false;
 
   /// The ids the last snapshot reported, so a change can be spotted without
   /// asking the engine for its track list on every tick.
@@ -1507,7 +1527,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         ),
       },
       onModeChanged: (inPip) {
-        if (!mounted || _disposed || inPip == _inPip) return;
+        if (!mounted || _disposed) return;
+        // The window's own answer on Android: the `pictureInPicture`
+        // event that stands the watchdog down exists only on iOS, and
+        // `_inPip` was already set optimistically by [_enterPip], so
+        // without this the watchdog fires 5 s after every successful
+        // Android PiP open. Cancel before the equality return below.
+        _pipWatchdog?.cancel();
+        _pipWatchdog = null;
+        if (inPip == _inPip) return;
         // The other way into PiP: the user swiped home, or pressed the
         // system's own PiP control, and `_enterPip` never ran. Same reason -
         // a locked PiP window has no chip in it.
@@ -1837,11 +1865,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // Auto picks only for media with nothing to put back: a track inside the
     // video that was on before this reopen is [_restoreTracks]' to restore,
     // and a subtitle file turned on over it would switch it off again.
-    _autoPickPending = !_subtitlesOffPending && _rememberedSubtitle == null;
+    _autoPickPending =
+        !_subtitlesOffPending &&
+        _rememberedSubtitle == null &&
+        !_viewerSubtitleOff;
     _autoPickLook = null;
     _viewerChoseSubtitle = false;
     _subtitleToRestore = null;
     _subtitleRestoreRevision = null;
+    _audioRestoreRevision = null;
     // The audio language setting speaks for every media this screen opens, a
     // reopen included - see [_pickPreferredAudio]. A track the viewer picked
     // on this content outranks it wherever that track goes back on, and the
@@ -2413,10 +2445,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       if (audioId != null) unawaited(_snapshotAudio(audioId));
     }
     if (subtitleId != _seenSubtitleTrackId) {
-      _seenSubtitleTrackId = subtitleId;
       // A cleared subtitle is a choice too - "off" has to survive a reopen as
-      // surely as a language does.
+      // surely as a language does. Read the previous value first: the
+      // assignment below overwrites it.
+      final wasOn = _seenSubtitleTrackId != null;
+      _seenSubtitleTrackId = subtitleId;
       _rememberedSubtitle = null;
+      _viewerSubtitleOff = subtitleId == null && wasOn;
       if (subtitleId != null) unawaited(_snapshotSubtitle(subtitleId));
     }
   }
@@ -2542,7 +2577,6 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         return;
       }
       final carried = _audioToRestore;
-      _audioToRestore = null;
       final back =
           matchRememberedTrack(tracks, carried) ??
           (enginesCommentary
@@ -2550,7 +2584,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
                     .where((track) => !isCommentaryOrDescription(track))
                     .firstOrNull
               : null);
-      if (back != null) await _switchAudio(back.id);
+      // Spent only when something went on: a track not listed yet is
+      // looked for again as the list fills in ([_maybeRestoreAudio]),
+      // not dropped.
+      if (back != null) {
+        _audioToRestore = null;
+        await _switchAudio(back.id);
+      } else {
+        _audioRestoreRevision = _controller.value.trackRevision;
+      }
     } on Object {
       // An engine that will not list or set keeps its own choice, which is
       // where the viewer would have been without the setting.
@@ -2672,8 +2714,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         if (_disposed || generation != _generation) return;
         // Unless the viewer has picked meanwhile: theirs stands.
         if (_audioToRestore == audio) {
-          _audioToRestore = null;
-          if (match != null) await _switchAudio(match.id);
+          if (match != null) {
+            _audioToRestore = null;
+            await _switchAudio(match.id);
+          } else {
+            // Most likely not listed yet: looked for again as the list
+            // fills in, as the subtitle half is.
+            _audioRestoreRevision = _controller.value.trackRevision;
+          }
         }
       }
 
@@ -2715,6 +2763,40 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _restoringSubtitle = true;
     unawaited(
       _restoreSubtitle(wanted).whenComplete(() => _restoringSubtitle = false),
+    );
+  }
+
+  /// Puts [wanted] on if the list now has it. Stands down for a newer media,
+  /// for a newer want, and for the audio language setting having spent it.
+  Future<void> _restoreAudio(RememberedTrack wanted) async {
+    final generation = _generation;
+    bool superseded() =>
+        _disposed ||
+        generation != _generation ||
+        _audioToRestore != wanted;
+    try {
+      final tracks = await _audioTracksWithLanguages();
+      if (superseded()) return;
+      final match = matchRememberedTrack(tracks, wanted);
+      if (match == null) return;
+      _audioToRestore = null;
+      await _switchAudio(match.id);
+    } on Object {
+      // As in [_restoreTracks]: the engine's own choice stands.
+    }
+  }
+
+  void _maybeRestoreAudio(VlcPlayerValue value) {
+    final wanted = _audioToRestore;
+    if (wanted == null || _restoringAudio) return;
+    // Null until a look has missed: the retry never runs before the
+    // first look ([_restoreTracks] or the setting's fallthrough).
+    if (_audioRestoreRevision == null) return;
+    if (value.trackRevision == _audioRestoreRevision) return;
+    _audioRestoreRevision = value.trackRevision;
+    _restoringAudio = true;
+    unawaited(
+      _restoreAudio(wanted).whenComplete(() => _restoringAudio = false),
     );
   }
 
@@ -2955,11 +3037,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   void _handSideCarToEngine(SideCarTrack track) {
     unawaited(() async {
       try {
+        final generation = _generation;
         final headers = track.headers;
         final uri = headers == null
             ? track.url
             : await _proxied(track.url, headers);
-        if (_disposed) return;
+        // The proxy handshake is a real async window: a failover, an
+        // episode advance or a picked source in between hands a new media
+        // to the engine, and this side-car belongs to the old one.
+        // libVLC's add selects what it adds, so the wrong subtitle would
+        // turn itself on over the new media.
+        if (_disposed || generation != _generation) return;
         await _controller.addSubtitle(uri);
       } on Object {
         // Nothing more can show it.
@@ -3182,10 +3270,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         onProbe: (index, outcome) => _onProbe(generation, index, outcome),
       );
     } on Object {
-      if (_disposed) return;
+      if (_disposed || generation != _resolveGeneration) return;
       return _giveUp(detail);
     }
-    if (_disposed) return;
+    if (_disposed || generation != _resolveGeneration) return;
     _resolved = resolved;
     _checkGeneration += 1;
     _policy.candidatesChanged([
@@ -3926,6 +4014,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// seek left until it lands. Re-seeking to that undid the viewer's skip.
   Future<void> _nudge(VlcPlayerValue value) async {
     final generation = _generation;
+    final pauses = _controller.pauseRequests;
     final at = _controller.pendingSeekTarget.value ?? value.position;
     if (value.isSeekable && at > Duration.zero) {
       await _controller.seekTo(at);
@@ -3935,6 +4024,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // restart the window it is trying to run down.
       _seenSeekRequests = _controller.seekRequests;
       if (_disposed || generation != _generation) return;
+    }
+    // The seek above is an await: the viewer may have paused during it,
+    // recovery may have parked the dead source, or the phase may have
+    // moved on. Playing now would resume over the viewer's pause or
+    // restart a source recovery had just decided to wait on.
+    if (_controller.pauseRequests != pauses ||
+        _parked ||
+        _policy.phase != RecoveryPhase.watching) {
+      return;
     }
     await _controller.play();
   }
@@ -4919,6 +5017,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // would answer a question this viewer has not been asked yet.
     _rememberedAudio = null;
     _rememberedSubtitle = null;
+    _viewerSubtitleOff = false;
     _viewerAudio = null;
     _viewerAudioCopy = null;
     _viewerAudioOutranks = false;
@@ -5023,6 +5122,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _applySubtitleDefault(value);
     _rememberTracks(value);
     _maybeRestoreSubtitle(value);
+    _maybeRestoreAudio(value);
     _maybePickPreferredSubtitle(value);
     _maybeRefreshSubtitlePresence(value);
     final recorder = _recorder;
@@ -5974,7 +6074,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
           ? _readOpenedPlaylist(url, headers)
           : _fetchPlaylist(url, headers),
     );
-    if (_disposed || generation != _generation || length == null) return;
+    if (_disposed || generation != _generation) return;
+    if (length == null) {
+      // A failed measure is not a verdict: the next length report asks
+      // again, and the playlist cache is cleared by [_readOpenedPlaylist]
+      // so the retry refetches instead of reading the same null.
+      _videoLengthAsked = false;
+      return;
+    }
     _videoLength = length;
     if (_controller.value.duration > length + _kLengthSlack) {
       _capLength(length);
@@ -6107,6 +6214,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     if (read != null && read.uri == uri) return read.playlist;
     final playlist = _fetchPlaylist(uri, headers);
     _openedPlaylist = (uri: uri, playlist: playlist);
+    // Only a successful playlist is cached: a failed fetch resolves to
+    // null, and keeping that null would poison every later caller in
+    // this attempt — the Quality tab's retry would read the same null
+    // and never see a ladder.
+    unawaited(
+      playlist.then((p) {
+        if (p == null && _openedPlaylist?.playlist == playlist) {
+          _openedPlaylist = null;
+        }
+      }),
+    );
     return playlist;
   }
 
