@@ -86,4 +86,44 @@ void main() {
       expect(nearestLadderHeight(1080, const []), isNull);
     });
   });
+
+  group('bitrateCapForPick', () {
+    const variants = [
+      HlsVariant(height: 1080, bandwidth: 6221600),
+      HlsVariant(height: 1080, bandwidth: 8178040),
+      HlsVariant(height: 720, bandwidth: 2149280),
+      HlsVariant(height: 480, bandwidth: 836280),
+    ];
+    const ladder = [1080, 720, 480];
+
+    test('Auto is 0: no limit, so it lifts a pick', () {
+      expect(bitrateCapForPick(null, ladder, variants), 0);
+    });
+
+    test('a pick caps at the playing rendition, highest bitrate at it', () {
+      // 1080p is listed twice: the higher bitrate is the one the player
+      // would take, so it is the cap.
+      expect(bitrateCapForPick(1080, ladder, variants), 8178040);
+      expect(bitrateCapForPick(720, ladder, variants), 2149280);
+    });
+
+    test('a pick between rungs caps at the rung below it', () {
+      // 900p is no rung: 720p plays, so its bandwidth caps it.
+      expect(bitrateCapForPick(900, ladder, variants), 2149280);
+      // Below the lowest rung the lowest plays.
+      expect(bitrateCapForPick(100, ladder, variants), 836280);
+    });
+
+    test('null when there is nothing to cap on', () {
+      expect(bitrateCapForPick(720, const [], variants), isNull);
+      // The playing rung's variants carry no bandwidth at all.
+      expect(
+        bitrateCapForPick(720, ladder, const [
+          HlsVariant(height: 720),
+          HlsVariant(height: 480, bandwidth: 836280),
+        ]),
+        isNull,
+      );
+    });
+  });
 }

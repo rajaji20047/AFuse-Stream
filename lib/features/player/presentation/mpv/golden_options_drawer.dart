@@ -4,8 +4,8 @@
 /// Audio tracks come from the engine (embedded + the plugin's files, via
 /// the controller). A tap switches the track at once. Sources live in
 /// their own drawer ([GoldenSourcesDrawer]) — the two were one drawer,
-/// and the viewer asked for them apart. No Quality section: mpv's ABR
-/// picks the rendition, so there is no ladder to offer.
+/// and the viewer asked for them apart. Quality lives in its own drawer
+/// too ([GoldenQualityDrawer]).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -13,7 +13,10 @@ import 'package:flutter/material.dart';
 import 'package:vlc_player/vlc_player.dart';
 
 import '../../../../../core/domain/entity/multimedia_item.dart';
+import '../../../../../core/network/link_probe_service.dart'
+    show resolutionLabelFor;
 import '../../../../../core/utils/source_language.dart';
+import '../../domain/hls_quality.dart' show heightUnderCap;
 import '../../domain/source_row_status.dart';
 import '../../domain/stream_resolver.dart' show streamStatesLanguage;
 import '../vlc/panel/player_panel_data.dart';
@@ -564,6 +567,67 @@ class _OptionTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The golden "Quality" drawer: a right-side sliding panel with the
+/// qualities this HLS source offers.
+///
+/// Auto comes first — mpv's own choice, following the device and the
+/// viewer's quality preference. Each height the stream offers follows,
+/// tallest first, labelled as the source lists label resolutions. A tap
+/// picks it (the controls close the drawer); the screen caps the stream
+/// through `hls-bitrate` and reopens it where it is. The drawer only
+/// opens where the source offers a choice: the button that opens it
+/// never renders on a ladder of one height or none, the way VLC's
+/// Quality tab only appears past one quality.
+class GoldenQualityDrawer extends StatelessWidget {
+  const GoldenQualityDrawer({
+    required this.panelData,
+    required this.onPick,
+    required this.onClose,
+    super.key,
+  });
+
+  /// The screen's published data (the HLS ladder + the pick).
+  final ValueListenable<PanelData> panelData;
+
+  /// A height, or null for Auto.
+  final ValueChanged<int?> onPick;
+
+  /// Closes the drawer (overlay close, never a Navigator pop).
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = panelData.value;
+    final ladder = data.qualityLadder;
+    final pick = data.qualityPick;
+    final ticked = pick == null ? null : heightUnderCap(pick, ladder);
+    final width = MediaQuery.sizeOf(context).width;
+    final drawerWidth = width * 0.85 > 400 ? 400.0 : width * 0.85;
+    return GoldenDrawer(
+      title: 'Quality',
+      width: drawerWidth,
+      onClose: onClose,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: <Widget>[
+          const GoldenSectionLabel('Quality'),
+          _OptionTile(
+            label: 'Auto',
+            selected: pick == null,
+            onTap: () => onPick(null),
+          ),
+          for (final height in ladder)
+            _OptionTile(
+              label: resolutionLabelFor(height),
+              selected: height == ticked,
+              onTap: () => onPick(height),
+            ),
+        ],
       ),
     );
   }

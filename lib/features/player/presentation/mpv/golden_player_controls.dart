@@ -70,7 +70,7 @@ import 'golden_subtitle_style_drawer.dart';
 const Duration _kGoldenSeekStep = Duration(seconds: 10);
 
 /// Which right-side drawer is open, if any.
-enum _GoldenDrawerKind { none, episodes, subtitleStyle, audio, sources, video }
+enum _GoldenDrawerKind { none, episodes, subtitleStyle, audio, sources, video, quality }
 
 /// The axis a single-finger pan has committed to, if any.
 ///
@@ -184,6 +184,7 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
     this.lockAvailable = true,
     this.onEnterPip,
     this.onSwitchEngine,
+    this.onPickQuality,
     this.onVideoPresetChanged,
     this.onPictureChanged,
     this.videoIsHdr,
@@ -285,6 +286,11 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
   /// persists the choice and reopens the player on it. Non-null where
   /// the screen offers the switch; the top-row button is absent otherwise.
   final VoidCallback? onSwitchEngine;
+
+  /// A quality picked in the Quality drawer: a height, or null for Auto.
+  /// The screen caps the HLS stream through `hls-bitrate` and reopens it
+  /// where it is. Non-null where the screen offers the drawer.
+  final ValueChanged<int?>? onPickQuality;
 
   /// Applies a Video output preset to the live mpv instance (+57).
   /// Non-null on iOS (the Video panel is iOS mpv only); null on Android,
@@ -1626,6 +1632,19 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
                                       ? () =>
                                             _openDrawer(_GoldenDrawerKind.video)
                                       : null,
+                                  // Quality: only where this source offers
+                                  // a choice — an HLS ladder past one
+                                  // height. The bar rebuilds on every
+                                  // position tick, so the button appears
+                                  // within a second of the ladder landing.
+                                  onOpenQuality:
+                                      widget.panelData.value.qualityLadder
+                                                  .length >
+                                              1
+                                      ? () => _openDrawer(
+                                          _GoldenDrawerKind.quality,
+                                        )
+                                      : null,
                                   onPickVolume: _pickVolume,
                                   // While a 2x hold is down, the chip shows
                                   // the speed the hold will restore (1x) —
@@ -1832,6 +1851,19 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
           onPresetPicked: (preset) {
             unawaited(widget.settingsNotifier.setVideoOutputPreset(preset));
             widget.onVideoPresetChanged?.call(preset);
+          },
+          onClose: _closeDrawer,
+        );
+      case _GoldenDrawerKind.quality:
+        // Quality: Auto first, then the heights this HLS source offers,
+        // tallest first. A tap picks it and closes the drawer; the
+        // screen caps the stream and reopens it where it is.
+        return GoldenQualityDrawer(
+          key: ValueKey<_GoldenDrawerKind>(kind),
+          panelData: widget.panelData,
+          onPick: (height) {
+            _closeDrawer();
+            widget.onPickQuality?.call(height);
           },
           onClose: _closeDrawer,
         );
@@ -2186,6 +2218,7 @@ class _BottomBar extends StatelessWidget {
     required this.onCycleFit,
     required this.onRotate,
     this.onOpenVideo,
+    this.onOpenQuality,
     this.sleepTimer,
   });
 
@@ -2214,6 +2247,11 @@ class _BottomBar extends StatelessWidget {
   /// Opens the Video output-preset drawer (+57). Null where the panel
   /// does not exist (Android) — the button never renders then.
   final VoidCallback? onOpenVideo;
+
+  /// Opens the Quality drawer. Null where the current source offers no
+  /// choice (no HLS ladder, or one height) — the button never renders
+  /// then, the way VLC's Quality tab only appears past one quality.
+  final VoidCallback? onOpenQuality;
 
   final VoidCallback onPickVolume;
   final double speed;
@@ -2329,6 +2367,17 @@ class _BottomBar extends StatelessWidget {
               size: 38,
             ),
             const SizedBox(width: 6),
+            // Quality, beside Sources: the HLS ladder's heights, or Auto.
+            // Only where the source offers a choice — one height or none
+            // is no choice, and the button never renders then.
+            if (onOpenQuality != null)
+              GoldenIconButton(
+                icon: Icons.high_quality_rounded,
+                onPressed: onOpenQuality!,
+                tooltip: 'Quality',
+                size: 38,
+              ),
+            if (onOpenQuality != null) const SizedBox(width: 6),
             // Video output presets (+57), beside Sources — the panel the
             // Infuse screenshot shows. iOS mpv only: onOpenVideo is null
             // on Android, and the button never renders then.

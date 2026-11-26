@@ -61,7 +61,10 @@ import '../../../../core/utils/source_language.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data' show BytesBuilder, Uint8List;
 
+import 'package:dio/dio.dart'
+    show CancelToken, Options, ResponseBody, ResponseType;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -74,6 +77,9 @@ import 'package:vlc_player/vlc_player.dart';
 import 'package:raja_mpv_pip/raja_mpv_pip.dart';
 
 import '../../../../core/domain/entity/multimedia_item.dart';
+import '../../../../core/network/dio_client_provider.dart';
+import '../../../../core/network/link_probe_service.dart'
+    show HlsVariant, hlsVariantsOf;
 import '../../../../core/providers/device_info_provider.dart';
 import '../../../../core/providers/thermal_state.dart';
 import '../../../../core/services/local_proxy_service.dart';
@@ -93,6 +99,8 @@ import '../../../skip/data/skip_service.dart';
 import '../../../tracking/data/simkl_service.dart';
 import '../../domain/episode_navigator.dart';
 import '../../domain/hls_fmp4_detection.dart';
+import '../../domain/hls_quality.dart'
+    show bitrateCapForPick, qualityLadderOf;
 import '../../domain/hls_video_length.dart';
 import '../../domain/next_episode_autoplay.dart';
 import '../../domain/episode_duration.dart';
@@ -200,6 +208,14 @@ const Duration _kThermalPoll = Duration(seconds: 30);
 /// The mpv stats overlay's refresh (+34): the live measurements are
 /// re-read this often while playing.
 const Duration _kMpvStatsInterval = Duration(seconds: 2);
+
+/// How long the Quality drawer's ladder read may wait on one playlist, how
+/// much of an answer is read before deciding whether it is a playlist at
+/// all, and the most of one that is read — the same bounds as VLC's ladder
+/// read, so a three-hour media playlist cannot sit in memory whole.
+const Duration _kQualityPlaylistTimeout = Duration(seconds: 8);
+const int _kQualityPlaylistHeadBytes = 64;
+const int _kQualityPlaylistMaxBytes = 4 << 20;
 
 /// Build 100: the fMP4 probe's bounds. The playlist head is read through
 /// the local proxy (no headers needed — the proxy re-injects them
@@ -447,6 +463,29 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
 
   /// Where to resume, resolved once before the first open.
   Duration _resumePosition = Duration.zero;
+
+  /// The quality the viewer picked in the Quality drawer, as the height
+  /// cap it asks for, or null for Auto. Holds for the rest of this player
+  /// session, like VLC's pick: a failover or a source change keeps it, and
+  /// the cap follows the new source's ladder (see [bitrateCapForPick]).
+  int? _qualityPick;
+
+  /// The heights the current source's HLS master offers, tallest first,
+  /// and the variants they came from (for the pick's bitrate cap). Empty
+  /// for anything else. See [_maybeReadQualityLadder].
+  List<int> _qualityLadder = const <int>[];
+  List<HlsVariant> _qualityVariants = const <HlsVariant>[];
+
+  /// The source (its URL, before any proxy) [_qualityLadder] was read from.
+  String? _qualityLadderOf;
+
+  /// What the Quality drawer's ladder is read from: the address mpv was
+  /// given, with its headers — an inline playlist too.
+  ({Uri uri, Map<String, String> headers, String source})? _qualityMedia;
+
+  /// The `hls-bitrate` cap last set on the engine, or null when nothing
+  /// has been set yet (mpv's own default — 0, no limit — stands).
+  int? _appliedQualityCap;
 
   /// Progress tracking (history, scrobbling, watched) — the same tracker the
   /// VLC screen uses, fed from mpv's state stream.
@@ -3646,6 +3685,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _audioAutoSelectSetFor = -1;
     _adapter.clearError();
     final stream = _streams[index];
+    // The Quality drawer's ladder is one source's. Another source's open
+    // takes it down and reads its own; the pick holds for the session and
+    // follows the new ladder (see [_pickQuality]).
+    if (stream.url != _qualityLadderOf) {
+      _qualityLadderOf = null;
+      _qualityLadder = const <int>[];
+      _qualityVariants = const <HlsVariant>[];
+      _qualityMedia = null;
+    }
     // Build 119: a different film's temp download is STOPPED when a
     // new film opens, but its file is KEPT (see [_stopTempDownload]) —
     // the file lives as long as Fuse is open, so going back to the old
@@ -3797,6 +3845,24 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         await _applyHlsProxyHwdec(useSoftwareDecode);
       }
+      // What the Quality drawer's ladder is read from: the address mpv
+      // is about to be given, with its headers — the same condition VLC
+      // uses (an HLS address, or a source with no parsed quality). Never
+      // a local temp file: there is no playlist to read behind it.
+      final mediaUri = Uri.tryParse(mediaUrl);
+      if (localFileUrl == null &&
+          mediaUri != null &&
+          (looksLikeHls(mediaUri) || stream.quality == 0)) {
+        _qualityMedia = (
+          uri: mediaUri,
+          headers: stream.headers,
+          source: stream.url,
+        );
+      }
+      // The pick's cap governs the file being opened (mpv reads
+      // `hls-bitrate` when it loads the playlist), so it is set before
+      // the open, like the hwdec mode below.
+      await _applyQualityCap();
       try {
         await _player.open(
           Media(
@@ -3823,6 +3889,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _tryNextStream();
       return;
     }
+    _maybeReadQualityLadder();
     _armWatchdog();
     if (skipPrebuffer) {
       _prebufferToken++;
@@ -4982,6 +5049,156 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     await _openStream(index, start: _position);
   }
 
+  /// A quality picked in the Quality drawer: a height, or null for Auto.
+  ///
+  /// Holds for the rest of this player session, like VLC's pick. Reopens
+  /// this source where it is when it changes the cap the media plays
+  /// under; a pick of what already plays changes only the tick. The cap
+  /// itself is set before the reopen (see [_applyQualityCap]).
+  void _pickQuality(int? height) {
+    if (_disposed || _stage != _Stage.playing) return;
+    if (height == _qualityPick) return;
+    final cap = bitrateCapForPick(height, _qualityLadder, _qualityVariants);
+    final currentCap = _appliedQualityCap ?? 0;
+    _qualityPick = height;
+    _publishPanelData();
+    if (cap == null || cap == currentCap) return;
+    unawaited(_openStream(_streamIndex, start: _position, autoPlay: true));
+  }
+
+  /// Sets mpv's `hls-bitrate` cap for this open from the viewer's Quality
+  /// pick (see [bitrateCapForPick]): the picked rendition's bandwidth, or
+  /// 0 for Auto (no limit — mpv's default). Only when the cap moved, so
+  /// an ordinary open costs no extra property set; a pick of nothing to
+  /// cap on (no ladder, no bandwidth) leaves the property alone.
+  /// Best-effort: a failed set never breaks the open.
+  Future<void> _applyQualityCap() async {
+    final cap = bitrateCapForPick(
+      _qualityPick,
+      _qualityLadder,
+      _qualityVariants,
+    );
+    if (cap == null) return;
+    if (cap == _appliedQualityCap) return;
+    // Auto before any pick: the engine already runs uncapped, so there
+    // is nothing to set.
+    if (_appliedQualityCap == null && cap == 0) return;
+    final platform = _player.platform;
+    if (platform is! NativePlayer) return;
+    try {
+      await platform.setProperty('hls-bitrate', cap.toString());
+      _appliedQualityCap = cap;
+    } catch (_) {
+      // Best-effort: the open goes on uncapped.
+    }
+  }
+
+  /// Reads the current source's HLS ladder, once per source, for the
+  /// Quality drawer. A fetch that fails asks again the next time this
+  /// source opens; a ladder of one height or none leaves the drawer
+  /// button hidden (there is nothing to pick).
+  void _maybeReadQualityLadder() {
+    final media = _qualityMedia;
+    if (media == null || media.source == _qualityLadderOf) return;
+    _qualityLadderOf = media.source;
+    unawaited(_readQualityLadder(media.uri, media.headers, media.source));
+  }
+
+  Future<void> _readQualityLadder(
+    Uri uri,
+    Map<String, String> headers,
+    String source,
+  ) async {
+    final playlist = await _fetchQualityPlaylist(uri, headers);
+    // Another source's open has taken the ladder down and asks for its own.
+    if (_disposed || _qualityLadderOf != source) return;
+    if (playlist == null) {
+      // Asked again the next time this source opens.
+      _qualityLadderOf = null;
+      return;
+    }
+    final variants = hlsVariantsOf(playlist).toList();
+    _qualityVariants = variants;
+    _qualityLadder = qualityLadderOf(variants);
+    _publishPanelData();
+    // A pick already active follows the new source's ladder at once, so a
+    // failover does not silently go back to Auto.
+    if (_qualityPick != null) unawaited(_applyQualityCap());
+  }
+
+  /// One playlist, asked for with the headers mpv was given for it — the
+  /// same shape as VLC's fetch: streamed, stopped early past the cap, and
+  /// null for an answer that doesn't start `#EXTM3U`.
+  Future<String?> _fetchQualityPlaylist(
+    Uri url,
+    Map<String, String> headers,
+  ) async {
+    final hangUp = CancelToken();
+    final Stream<Uint8List>? body;
+    try {
+      final response = await ref
+          .read(dioClientProvider)
+          .getUri<ResponseBody>(
+            url,
+            cancelToken: hangUp,
+            options: Options(
+              headers: headers,
+              responseType: ResponseType.stream,
+              receiveTimeout: _kQualityPlaylistTimeout,
+              sendTimeout: _kQualityPlaylistTimeout,
+            ),
+          );
+      body = response.data?.stream;
+    } catch (_) {
+      return null;
+    }
+    if (body == null) return null;
+    final read = Completer<String?>();
+    final bytes = BytesBuilder(copy: false);
+    var looked = false;
+    late final StreamSubscription<Uint8List> reading;
+    // Dio reads a streamed answer to its end after its reader has stopped,
+    // so stopping is not enough: only a cancel hangs up the rest.
+    void stop() {
+      unawaited(reading.cancel());
+      hangUp.cancel();
+      if (!read.isCompleted) read.complete(null);
+    }
+
+    reading = body.listen(
+      (chunk) {
+        bytes.add(chunk);
+        if (bytes.length > _kQualityPlaylistMaxBytes) {
+          stop();
+        } else if (!looked && bytes.length >= _kQualityPlaylistHeadBytes) {
+          if (_startsAsPlaylist(bytes.toBytes())) {
+            looked = true;
+          } else {
+            stop();
+          }
+        }
+      },
+      onError: (_) => stop(),
+      onDone: () {
+        if (read.isCompleted) return;
+        if (!looked) {
+          read.complete(null);
+          return;
+        }
+        read.complete(utf8.decode(bytes.toBytes(), allowMalformed: true));
+      },
+      cancelOnError: true,
+    );
+    return read.future;
+  }
+
+  static bool _startsAsPlaylist(List<int> bytes) => utf8
+      .decode(bytes.take(_kQualityPlaylistHeadBytes).toList(),
+          allowMalformed: true)
+      .replaceFirst('\uFEFF', '')
+      .trimLeft()
+      .startsWith('#EXTM3U');
+
   /// Re-applies the audio/subtitle picks the viewer made in the panel, when
   /// a new source reports its tracks (mpv resets tracks to auto on open).
   void _applyRememberedTracks() {
@@ -5335,8 +5552,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
               ?.value
               .preferredSourceLanguage ??
           SourceLanguage.off,
-      // mpv's ABR picks the rendition: no quality ladder, so no Quality tab.
-      qualityLadder: const <int>[],
+      // mpv's ABR picks the rendition, but the viewer can now cap it: the
+      // Quality drawer lists this source's HLS ladder, and a pick caps it
+      // through `hls-bitrate` (see [_pickQuality]). Empty until the ladder
+      // is read, so the drawer button stays hidden on a source that
+      // offers no choice.
+      qualityLadder: _qualityLadder,
+      qualityPick: _qualityPick,
       episodes: effectiveEpisodes(widget.item, _currentEpisode),
       currentEpisode: _currentEpisode,
       // Series or anime only: a film's single synthetic episode must not
@@ -6403,6 +6625,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
                   // opens this same video, resuming from the recorded
                   // progress like any fresh open.
                   onSwitchEngine: _switchEngine,
+                  // The Quality drawer: a height pick caps this HLS
+                  // stream through `hls-bitrate` (see [_pickQuality]).
+                  onPickQuality: _pickQuality,
                   // Video output presets (+57) and PICTURE sliders: iOS
                   // mpv, and since v2 Android mpv (see
                   // [videoPanelSupportedOn]). Null elsewhere, so the panel

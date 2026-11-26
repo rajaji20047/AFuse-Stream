@@ -44,3 +44,31 @@ int? nearestLadderHeight(double? videoHeight, List<int> ladder) {
   }
   return nearest;
 }
+
+/// The mpv `hls-bitrate` cap for a Quality pick, in bits per second.
+///
+/// The pick is a height cap, like VLC's: the rendition that plays is the
+/// tallest at or below it ([heightUnderCap]), and the cap is that
+/// rendition's bandwidth — of several variants at the height, the highest
+/// bitrate, the one the player would take. Auto is 0: mpv reads 0 as no
+/// limit (its default), so going back to Auto lifts a pick's cap. Null
+/// when there is no ladder to pick from, or no variant at the playing
+/// height carries a bandwidth: the caller then leaves the property alone
+/// rather than capping on a guess.
+int? bitrateCapForPick(
+  int? pick,
+  List<int> ladder,
+  List<HlsVariant> variants,
+) {
+  if (pick == null) return 0;
+  final playing = heightUnderCap(pick, ladder);
+  if (playing == null) return null;
+  int? cap;
+  for (final variant in variants) {
+    final bandwidth = variant.bandwidth;
+    if (variant.height == playing && bandwidth != null) {
+      cap = cap == null || bandwidth > cap ? bandwidth : cap;
+    }
+  }
+  return cap;
+}
