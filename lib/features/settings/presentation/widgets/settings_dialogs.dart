@@ -2244,7 +2244,9 @@ void showDeveloperDialog(BuildContext context) {
                     0xFF909692,
                   ), // GitHub Official Black/Dark Grey
                   onTap: () => launchUrl(
-                    Uri.parse('https://github.com/techforfriend'),
+                    Uri.parse(
+                      'https://github.com/techforfriend/Fuse_android',
+                    ),
                     mode: LaunchMode.externalApplication,
                   ),
                 ),
