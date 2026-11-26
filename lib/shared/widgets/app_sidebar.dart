@@ -136,7 +136,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     final isDpadMode = ref.watch<bool>(isDpadActiveProvider);
 
     // Raja (approved design preview): the nav is exactly
-    // Home / Search / Plugins / Library / Browse. Settings is a 6th
+    // Home / Search / Plugins / Library / Stremio. Settings is a 6th
     // shell branch (reachable from the Home AppBar gear), so it is
     // not one of the 5 sidebar destinations.
     final destinations = [
@@ -144,7 +144,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
       (Icons.search, Icons.search, l10n.search),
       (Icons.extension_outlined, Icons.extension, 'Plugins'),
       (Icons.video_library_outlined, Icons.video_library, l10n.library),
-      (Icons.explore_outlined, Icons.explore, 'Browse'),
+      (Icons.explore_outlined, Icons.explore, 'Stremio'),
     ];
     assert(
       destinations.length == kSidebarDestinationCount,

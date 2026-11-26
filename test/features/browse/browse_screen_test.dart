@@ -1,4 +1,4 @@
-/// The Browse tab, without the shell behind it. It has no content of its
+/// The Stremio tab, without the shell behind it. It has no content of its
 /// own: blank with a hint and a button until a catalog add-on is installed,
 /// then that add-on's catalogs as rows. No network: the add-on client is a
 /// fake.
@@ -266,12 +266,12 @@ void main() {
     await tester.pump(const Duration(minutes: 1));
   }
 
-  testWidgets('with nothing installed Browse is blank: a hint, a button, '
+  testWidgets('with nothing installed Stremio is blank: a hint, a button, '
       'no posters and no request', (tester) async {
     await pumpBrowse(tester, repo: _Repo.new);
     await settle(tester);
 
-    expect(find.text('Browse'), findsOneWidget);
+    expect(find.text('Stremio'), findsOneWidget);
     expect(find.byKey(const ValueKey('browse-empty-hint')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('browse-empty-addons-button')),
@@ -291,7 +291,7 @@ void main() {
       DefaultTabController.of(tester.element(find.byType(TabBar))).index;
 
   testWidgets('the blank page button opens Stremio add-ons on Discover, '
-      'and Back returns to Browse', (tester) async {
+      'and Back returns to Stremio', (tester) async {
     await pumpBrowse(tester, repo: _Repo.new);
 
     await tester.tap(find.byKey(const ValueKey('browse-empty-addons-button')));
@@ -313,7 +313,7 @@ void main() {
   });
 
   testWidgets('the header button opens Stremio add-ons on Installed, and '
-      'the system back returns to Browse', (tester) async {
+      'the system back returns to Stremio', (tester) async {
     await pumpBrowse(tester, repo: _Repo.new);
 
     await tester.tap(find.byKey(const ValueKey('browse-addons-button')));
@@ -330,7 +330,7 @@ void main() {
     await tearDownTree(tester);
   });
 
-  testWidgets('an installed catalog add-on fills Browse with its own rows '
+  testWidgets('an installed catalog add-on fills Stremio with its own rows '
       'only', (tester) async {
     await pumpBrowse(tester, repo: _KitsuRepo.new);
     await settle(tester);

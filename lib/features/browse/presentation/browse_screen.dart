@@ -136,7 +136,9 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
           ),
         ),
         title: Text(
-          l10n.browse,
+          // Brand name, not translated: the section is called Stremio
+          // (user 2026-11-26); the `browse` l10n key is unused now.
+          'Stremio',
           style: TextStyle(
             color: theme.colorScheme.onSurface,
             fontSize: 24,

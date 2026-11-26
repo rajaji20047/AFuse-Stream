@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_bottom_nav/liquid_glass_bottom_nav.dart';
 import 'package:reicons/reicons.dart';
+import 'package:raja/core/icons/stremio_mark.dart';
 import 'package:raja/core/utils/boot_trace.dart';
 import 'package:raja/l10n/generated/app_localizations.dart';
 
@@ -10,10 +11,12 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 /// package (0.0.14): a floating frosted-glass pill with a physics sliding
 /// bubble, drag-to-switch and haptics.
 ///
-/// The five tabs use the Reicon icon font as plain [IconData] — Filled
-/// (`ReiconFilledIcons.home/.puzzle/.library/.grid`), except Search which
+/// Four tabs use the Reicon icon font as plain [IconData] — Filled
+/// (`ReiconFilledIcons.home/.puzzle/.library`), except Search which
 /// is Outline (`ReiconIcons.search`, per M M 2026-11-14) — so the exact
 /// same icons render on iOS and Android — the font is bundled in the app,
+/// and the Stremio tab wears the brand mark ([StremioMarkIcon]) instead
+/// of a font glyph, in the same size and colours.
 /// no per-platform work, no asset files.
 ///
 /// Build 110 (user 2026-11-21 01:44, 01:49–01:50): the selected tab is
@@ -239,14 +242,28 @@ class CustomBottomNavBar extends StatelessWidget {
           label: localizations.library,
           icon: ReiconFilledIcons.library,
         ),
-        const LiquidGlassNavItem(
+        LiquidGlassNavItem(
           id: 'browse',
           // Preview tab name (no l10n key for it): the user asked for a
-          // "Browse" tab here in place of the Detail tab (v4) — the world's
-          // movies, from TMDB when a key is set, the active provider's home
-          // page otherwise.
-          label: 'Browse',
-          icon: ReiconFilledIcons.grid,
+          // "Stremio" tab here in place of the Detail tab (v4) — the
+          // world's movies, from TMDB when a key is set, the active
+          // provider's home page otherwise. Renamed from "Browse"
+          // (user 2026-11-26); the route stays '/browse'.
+          label: 'Stremio',
+          // The Stremio mark (user 2026-11-26), not the grid: the nav
+          // package wraps iconWidget in the tab's IconTheme, so the mark
+          // takes the same active/inactive colour and 28 dp size as the
+          // other tabs, and the same 1.08 selection pop.
+          iconWidget: Builder(
+            builder: (context) {
+              final iconTheme = IconTheme.of(context);
+              return StremioMarkIcon(
+                key: const ValueKey('stremio-nav-icon'),
+                color: iconTheme.color ?? Colors.white,
+                size: iconTheme.size ?? 28,
+              );
+            },
+          ),
         ),
       ],
       selectedIndex: currentIndex,

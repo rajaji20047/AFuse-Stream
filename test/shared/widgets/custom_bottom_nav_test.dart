@@ -7,8 +7,9 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:raja/shared/widgets/custom_bottom_nav.dart';
 
 /// The v20 bar: the `liquid_glass_bottom_nav` package's floating glass pill
-/// with the five Reicon icons — Filled, except Search which is Outline
-/// (M M, 2026-11-14). The package renders its glass only
+/// with four Reicon icons — Filled, except Search which is Outline
+/// (M M, 2026-11-14) — and the Stremio brand mark on the fifth tab
+/// (user 2026-11-26). The package renders its glass only
 /// on Impeller; in the test environment the renderer falls back, but the
 /// tabs, labels, selection colour and tap routing are all plain widgets and
 /// are what this tests.
@@ -52,19 +53,21 @@ void main() {
     expect(find.text('Search'), findsOneWidget);
     expect(find.text('Plugins'), findsOneWidget);
     expect(find.text('Library'), findsOneWidget);
-    expect(find.text('Browse'), findsOneWidget);
+    expect(find.text('Stremio'), findsOneWidget);
   });
 
-  testWidgets('shows the five Reicon icons', (tester) async {
+  testWidgets('shows the four Reicon icons and the Stremio mark', (
+    tester,
+  ) async {
     await pump(tester, Brightness.dark);
     await tester.pumpAndSettle();
     expect(find.byIcon(ReiconFilledIcons.home), findsOneWidget);
-    // Search is Outline, not Filled (M M, 2026-11-14); the other four
-    // stay Filled.
+    // Search is Outline, not Filled (M M, 2026-11-14); the other two
+    // stay Filled. The Stremio tab wears the brand mark, not a Reicon.
     expect(find.byIcon(ReiconIcons.search), findsOneWidget);
     expect(find.byIcon(ReiconFilledIcons.puzzle), findsOneWidget);
     expect(find.byIcon(ReiconFilledIcons.library), findsOneWidget);
-    expect(find.byIcon(ReiconFilledIcons.grid), findsOneWidget);
+    expect(find.byKey(const ValueKey('stremio-nav-icon')), findsOneWidget);
   });
 
   testWidgets('tapping a tab reports its index', (tester) async {
@@ -121,7 +124,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Plugins'), findsOneWidget);
-    expect(find.byIcon(ReiconFilledIcons.grid), findsOneWidget);
+    expect(find.byKey(const ValueKey('stremio-nav-icon')), findsOneWidget);
   });
 
   // v20+21: the pill must sit at the bottom edge on iOS. The package

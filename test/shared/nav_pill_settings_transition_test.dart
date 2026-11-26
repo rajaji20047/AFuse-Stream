@@ -286,7 +286,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(labelOpacity('Home'), 0.0, reason: 'labels hidden after scroll down');
-    expect(labelOpacity('Browse'), 0.0);
+    expect(labelOpacity('Stremio'), 0.0);
     expect(pillMargin(), 49.0, reason: 'pill narrowed by 30 pt');
 
     await tester.drag(find.byType(ListView), const Offset(0, 500));
