@@ -892,12 +892,13 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                 if (_showDetails) _details(theme, cs),
 
                 // Filter Chips Rail (user 2026-11-26): the quality
-                // groups and the All / Torrent kind chips stay — only
-                // Direct, Auto and 'Opens app' are gone (Direct and Auto
-                // were asked about, then asked off; external links never
-                // list, see _filtered). A chip shows only when a listed
-                // stream falls in it; tapping the selected quality group
-                // again clears it back to All.
+                // Quality chips, in enum order: All, Auto, 360p … 4K, then
+                // the Torrent kind chip. Direct and 'Opens app' are gone
+                // (asked off; external links never list, see _filtered).
+                // A chip shows only when a listed stream falls in it;
+                // tapping the selected quality group again clears it back
+                // to All — and All clears the kind filter too, so there is
+                // no second All chip for the kind row.
                 SizedBox(
                   height: 34,
                   child: ListView(
@@ -907,29 +908,32 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                     ),
                     children: [
                       for (final filter in SourceQualityFilter.values)
-                        if (filter != SourceQualityFilter.all &&
-                            filter != SourceQualityFilter.auto &&
-                            listedStreams.any(
-                              (s) => filter.matchesScore(s.qualityScore),
-                            ))
+                        if (listedStreams.any(
+                          (s) => filter.matchesScore(s.qualityScore),
+                        ))
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(
                               text: filter.label,
                               selected: _quality == filter,
                               outline: glass.tint(0.15),
-                              onSelected: (selected) => setState(
-                                () => _quality = selected
-                                    ? filter
-                                    : SourceQualityFilter.all,
-                              ),
+                              onSelected: (selected) => setState(() {
+                                if (filter == SourceQualityFilter.all) {
+                                  _quality = SourceQualityFilter.all;
+                                  _kind = _KindFilter.all;
+                                } else {
+                                  _quality = selected
+                                      ? filter
+                                      : SourceQualityFilter.all;
+                                }
+                              }),
                             ),
                           ),
                       for (final filter in _KindFilter.values)
                         if (filter != _KindFilter.direct &&
                             filter != _KindFilter.external &&
-                            (filter == _KindFilter.all ||
-                                listedStreams.any(filter.matches)))
+                            filter != _KindFilter.all &&
+                            listedStreams.any(filter.matches))
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(

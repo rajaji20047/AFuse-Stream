@@ -34,12 +34,12 @@ void main() {
     expect(SourceQualityFilter.auto.matchesScore(360), isFalse);
   });
 
-  test('labels are the chip texts', () {
+  test('labels are the chip texts, in chip order', () {
     expect(
       [
         for (final f in SourceQualityFilter.values) f.label,
       ],
-      ['All', '4K', '2K', '1080p', '720p', '480p', '360p', 'Auto'],
+      ['All', 'Auto', '360p', '480p', '720p', '1080p', '2K', '4K'],
     );
   });
 }

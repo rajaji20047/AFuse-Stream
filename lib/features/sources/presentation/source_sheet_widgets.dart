@@ -554,15 +554,19 @@ class _GlassRowState extends State<GlassRow> {
 /// had the same single '1080p+' toggle; the groups are disjoint and cover
 /// every score, and they apply to Stremio and plugin sources alike — both
 /// arrive as streams with a parsed score on the same scale.
+///
+/// Declared in chip order (user 2026-11-26): All, Auto, then ascending
+/// quality — 360p up to 4K. Both sheets render [SourceQualityFilter.values]
+/// in this order.
 enum SourceQualityFilter {
   all('All'),
-  q4k('4K'),
-  q2k('2K'),
-  q1080('1080p'),
-  q720('720p'),
-  q480('480p'),
+  auto('Auto'),
   q360('360p'),
-  auto('Auto');
+  q480('480p'),
+  q720('720p'),
+  q1080('1080p'),
+  q2k('2K'),
+  q4k('4K');
 
   const SourceQualityFilter(this.label);
   final String label;
@@ -570,13 +574,13 @@ enum SourceQualityFilter {
   /// Whether a stream with this numeric quality score falls in the group.
   bool matchesScore(int score) => switch (this) {
     SourceQualityFilter.all => true,
-    SourceQualityFilter.q4k => score >= 2160,
-    SourceQualityFilter.q2k => score >= 1440 && score < 2160,
-    SourceQualityFilter.q1080 => score >= 1080 && score < 1440,
-    SourceQualityFilter.q720 => score >= 720 && score < 1080,
-    SourceQualityFilter.q480 => score >= 480 && score < 720,
-    SourceQualityFilter.q360 => score > 0 && score < 480,
     SourceQualityFilter.auto => score == 0,
+    SourceQualityFilter.q360 => score > 0 && score < 480,
+    SourceQualityFilter.q480 => score >= 480 && score < 720,
+    SourceQualityFilter.q720 => score >= 720 && score < 1080,
+    SourceQualityFilter.q1080 => score >= 1080 && score < 1440,
+    SourceQualityFilter.q2k => score >= 1440 && score < 2160,
+    SourceQualityFilter.q4k => score >= 2160,
   };
 }
 
