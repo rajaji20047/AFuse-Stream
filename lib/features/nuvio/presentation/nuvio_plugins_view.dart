@@ -137,51 +137,63 @@ class _NuvioPluginsViewState extends ConsumerState<NuvioPluginsView> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: LayoutConstants.spacingMd),
-                  // Full width, or the Wrap shrink-wraps to its button and
-                  // `alignment: end` has nothing to align it within - the
-                  // button stays at the left.
-                  SizedBox(
-                    width: double.infinity,
-                    child: Wrap(
-                      // Right-aligned. "Add Repository" is the only action
-                      // here: scrapers update themselves on every launch and
-                      // each repository below has its own refresh button.
-                      alignment: WrapAlignment.end,
-                      spacing: LayoutConstants.spacingSm,
-                      runSpacing: LayoutConstants.spacingXs,
-                      children: [
-                        CustomButton(
-                          isPrimary: true,
-                          onPressed: _busy
-                              ? null
-                              : () => unawaited(_addRepository()),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (_busy) ...[
-                                const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: AppLoadingIndicator(
-                                    constraints: BoxConstraints(
-                                      maxWidth: 16,
-                                      maxHeight: 16,
+                  // The button only when the empty state below is NOT
+                  // showing its own: with no repositories the screen
+                  // would otherwise show two identical "Add Repository"
+                  // buttons, and with repositories this one is the only
+                  // way to add another (the empty state is gone then).
+                  // The spacer goes with it, so the card's padding stays
+                  // even (16 all around) when the button is hidden.
+                  if (state.isLoading || state.repos.isNotEmpty) ...[
+                    const SizedBox(height: LayoutConstants.spacingMd),
+                    // Full width, or the Wrap shrink-wraps to its button and
+                    // `alignment: end` has nothing to align it within - the
+                    // button stays at the left.
+                    SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        // Right-aligned. "Add Repository" is the only action
+                        // here: scrapers update themselves on every launch and
+                        // each repository below has its own refresh button.
+                        alignment: WrapAlignment.end,
+                        spacing: LayoutConstants.spacingSm,
+                        runSpacing: LayoutConstants.spacingXs,
+                        children: [
+                          CustomButton(
+                            isPrimary: true,
+                            onPressed: _busy
+                                ? null
+                                : () => unawaited(_addRepository()),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_busy) ...[
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: AppLoadingIndicator(
+                                      constraints: BoxConstraints(
+                                        maxWidth: 16,
+                                        maxHeight: 16,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                              ] else ...[
-                                const Icon(Icons.add_circle_outline, size: 18),
-                                const SizedBox(width: 8),
+                                  const SizedBox(width: 8),
+                                ] else ...[
+                                  const Icon(
+                                    Icons.add_circle_outline,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                const Text('Add Repository'),
                               ],
-                              const Text('Add Repository'),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -230,15 +242,35 @@ class _NuvioPluginsViewState extends ConsumerState<NuvioPluginsView> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: LayoutConstants.spacingLg),
+                      // Same busy state as the top card's button: when
+                      // the top button is hidden (no repositories yet)
+                      // this is the only Add Repository on screen, so
+                      // it carries the spinner and the double-tap guard.
                       CustomButton(
                         isPrimary: true,
-                        onPressed: () => unawaited(_addRepository()),
-                        child: const Row(
+                        onPressed: _busy
+                            ? null
+                            : () => unawaited(_addRepository()),
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_circle_outline, size: 18),
-                            SizedBox(width: 8),
-                            Text('Add Repository'),
+                            if (_busy) ...[
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: AppLoadingIndicator(
+                                  constraints: BoxConstraints(
+                                    maxWidth: 16,
+                                    maxHeight: 16,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ] else ...[
+                              const Icon(Icons.add_circle_outline, size: 18),
+                              const SizedBox(width: 8),
+                            ],
+                            const Text('Add Repository'),
                           ],
                         ),
                       ),

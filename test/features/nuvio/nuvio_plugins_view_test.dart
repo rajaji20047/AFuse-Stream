@@ -345,4 +345,25 @@ void main() {
       },
     );
   });
+
+  group('Add Repository button', () {
+    // With no repositories the empty state already has its own Add
+    // Repository, so the top card must not show a second identical one
+    // (user 2026-11-26). With repositories the empty state is gone and
+    // the top card's button is the only way to add another.
+    testWidgets('exactly one button, in either state', (tester) async {
+      await tester.pumpWidget(
+        _app(const NuvioState(isLoading: false, repos: [])),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('No Nuvio Repositories Yet'), findsOneWidget);
+      expect(find.text('Add Repository'), findsOneWidget);
+
+      await tester.pumpWidget(_app(_twoScrapers()));
+      await tester.pumpAndSettle();
+      expect(find.text('No Nuvio Repositories Yet'), findsNothing);
+      expect(find.text('Test Repo'), findsOneWidget);
+      expect(find.text('Add Repository'), findsOneWidget);
+    });
+  });
 }
