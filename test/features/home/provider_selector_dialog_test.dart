@@ -2,9 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
 import 'package:raja/core/domain/entity/multimedia_item.dart';
 import 'package:raja/core/extensions/base_provider.dart';
 import 'package:raja/core/extensions/extension_manager.dart';
+import 'package:raja/core/extensions/models/extension_plugin.dart';
+import 'package:raja/core/extensions/models/extension_repository.dart';
 import 'package:raja/core/providers/device_info_provider.dart';
 import 'package:raja/features/extensions/providers/extensions_controller.dart';
 import 'package:raja/features/home/presentation/home_provider.dart';
@@ -76,16 +79,32 @@ class _FakeHomeData extends HomeData {
 }
 
 class _FakeExtensionsController extends ExtensionsController {
+  final List<ExtensionPlugin> plugins;
+  final List<ExtensionRepository> repos;
+
+  _FakeExtensionsController({
+    this.plugins = const [],
+    this.repos = const [],
+  });
+
   @override
-  ExtensionsState build() => const ExtensionsSuccess(
-    installedPlugins: [],
-    repositories: [],
+  ExtensionsState build() => ExtensionsSuccess(
+    installedPlugins: plugins,
+    repositories: repos,
     availablePlugins: {},
     availableUpdates: {},
   );
 
   @override
   Future<void> ensureInitialized() async {}
+}
+
+/// The dialog also watches the CloudStream repositories for the row
+/// subtitle; the real one starts a load on build, so it is faked with no
+/// repos, like the extensions controller above.
+class _FakeCloudStreamRepository extends CloudStreamRepository {
+  @override
+  CloudStreamState build() => const CloudStreamState();
 }
 
 class _Host extends StatelessWidget {
@@ -113,13 +132,23 @@ class _Host extends StatelessWidget {
 Future<ProviderContainer> _pumpHost(
   WidgetTester tester, {
   required VoidCallback onClosed,
+  List<ExtensionPlugin> installedPlugins = const [],
+  List<ExtensionRepository> repositories = const [],
 }) async {
   final container = ProviderContainer(
     overrides: [
       homeFilterProvider.overrideWith(_FakeHomeFilter.new),
       activeProviderProvider.overrideWith(_FakeActiveProvider.new),
       homeDataProvider.overrideWith(_FakeHomeData.new),
-      extensionsControllerProvider.overrideWith(_FakeExtensionsController.new),
+      extensionsControllerProvider.overrideWith(
+        () => _FakeExtensionsController(
+          plugins: installedPlugins,
+          repos: repositories,
+        ),
+      ),
+      cloudStreamRepositoryProvider.overrideWith(
+        _FakeCloudStreamRepository.new,
+      ),
       deviceProfileProvider.overrideWithValue(
         const AsyncValue.data(DeviceProfile()),
       ),
@@ -224,18 +253,66 @@ void main() {
     );
   });
 
-  testWidgets('each row names its add-on under the provider', (tester) async {
-    await _pumpHost(tester, onClosed: () {});
+  testWidgets(
+    'each row falls back to its add-on under the provider when it has no repository',
+    (tester) async {
+      await _pumpHost(tester, onClosed: () {});
 
-    // No plugins are installed in the test, so each fake provider falls
-    // back to its package name as its add-on — shown as the row subtitle,
-    // not in the grouping chip row above the list.
+      // No plugins are installed in the test, so no fake provider has a
+      // repository recorded — each falls back to its package name as its
+      // add-on, shown as the row subtitle, not in the grouping chip row
+      // above the list.
+      expect(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text('fake.provider.2'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('each row names its repository under the provider', (
+    tester,
+  ) async {
+    await _pumpHost(
+      tester,
+      onClosed: () {},
+      installedPlugins: [
+        ExtensionPlugin(
+          packageName: 'fake.provider.2',
+          name: 'Provider 2',
+          repositoryId: 'example',
+          repositoryUrl: 'https://example.com/repo.json',
+          sourceUrl: 'https://example.com/plugin.zip',
+          version: 1,
+        ),
+      ],
+      repositories: [
+        ExtensionRepository(
+          name: 'Example Repo',
+          url: 'https://example.com/repo.json',
+          pluginLists: const [],
+        ),
+      ],
+    );
+
+    // Provider 2's plugin was installed from Example Repo, so the row
+    // subtitle names the repo — not the add-on, which would repeat the
+    // provider's own name here.
+    expect(
+      find.descendant(
+        of: find.byType(ListView),
+        matching: find.text('Example Repo'),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: find.byType(ListView),
         matching: find.text('fake.provider.2'),
       ),
-      findsOneWidget,
+      findsNothing,
     );
   });
 

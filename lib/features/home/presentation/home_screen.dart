@@ -1,6 +1,9 @@
 import 'package:flutter/services.dart';
 
+import 'package:raja/core/cloudstream/cloudstream_models.dart';
+import 'package:raja/core/cloudstream/cloudstream_repository.dart';
 import '../../../core/cloudstream/cloudstream_provider.dart';
+import '../../../core/extensions/models/extension_repository.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -925,6 +928,76 @@ String providerAddonName(
   return plugin?.name ?? ownerPackage;
 }
 
+/// The repository a provider comes from, for the Select Provider dialog
+/// subtitle (user 2026-11-26): the row used to repeat the add-on name under
+/// the provider name (DesireMovies / DesireMovies). Now it names the repo
+/// instead — the added repo's manifest name when the address matches one,
+/// else a short form of the address. Falls back to the add-on name when the
+/// provider has no repository at all, so the row still names something.
+String providerRepoName(
+  SkyStreamProvider provider,
+  List<ExtensionPlugin> installed,
+  List<ExtensionRepository> extRepos,
+  List<CsRepository> csRepos,
+) {
+  final url = _providerRepoUrl(provider, installed);
+  if (url != null) {
+    for (final repo in extRepos) {
+      if (repo.name.isNotEmpty &&
+          ExtensionsController.sameAddress(repo.url, url)) {
+        return repo.name;
+      }
+    }
+    for (final repo in csRepos) {
+      if (repo.name.isNotEmpty &&
+          ExtensionsController.sameAddress(repo.url, url)) {
+        return repo.name;
+      }
+    }
+    return repoShortName(url);
+  }
+  return providerAddonName(provider, installed);
+}
+
+/// The address of the repository a provider was installed from, or null
+/// when nothing records one. A CloudStream provider carries its plugin's
+/// manifest, which records the address directly; a JS provider resolves
+/// through its installed plugin, the same owner-package lookup
+/// [providerAddonName] uses.
+String? _providerRepoUrl(
+  SkyStreamProvider provider,
+  List<ExtensionPlugin> installed,
+) {
+  final cloudStream = provider is CloudStreamProvider ? provider : null;
+  if (cloudStream != null) {
+    return cloudStream.plugin.info.repositoryUrl;
+  }
+  final ownerPackage = provider.packageName.contains('::')
+      ? provider.packageName.substring(0, provider.packageName.indexOf('::'))
+      : provider.packageName;
+  final plugin = installed.cast<ExtensionPlugin?>().firstWhere(
+    (pl) => pl?.packageName == ownerPackage,
+    orElse: () => null,
+  );
+  return plugin?.repositoryUrl;
+}
+
+/// A short, readable form of a repository address for when the repo is no
+/// longer added, so its manifest name is unavailable: owner/repo for a
+/// GitHub address, else the host. Never the full URL — it would not fit
+/// under the row.
+String repoShortName(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) return url;
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  if ((uri.host == 'raw.githubusercontent.com' ||
+          uri.host == 'github.com') &&
+      segments.length >= 2) {
+    return '${segments[0]}/${segments[1]}';
+  }
+  return uri.host.isNotEmpty ? uri.host : url;
+}
+
 /// The dialog owns its scroll controllers so they live exactly as long as
 /// its element tree. Creating them in the caller and disposing them once
 /// `showDialog` resolved left the still-animating list and chip row holding
@@ -1168,6 +1241,12 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                     extensionsControllerProvider,
                   );
                   final installedPlugins = extensionsState.installedPlugins;
+                  // The CloudStream repos live apart from the extensions
+                  // repos above; the row subtitle checks both (see
+                  // [providerRepoName]).
+                  final csRepos = ref
+                      .watch(cloudStreamRepositoryProvider)
+                      .repositories;
 
                   // v2: pinned providers first, in the order they were
                   // pinned, then the rest as before.
@@ -1293,11 +1372,16 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                                   ? index - 1
                                   : index];
                           final isDebug = p.isDebug;
-                          // Whose add-on this provider is (user
-                          // 2026-11-26): shown small under the name.
-                          final addonName = providerAddonName(
+                          // Which repository this provider is from (user
+                          // 2026-11-26): shown small under the name. The
+                          // add-on name used to sit here and repeated the
+                          // title whenever the two matched (DesireMovies /
+                          // DesireMovies).
+                          final repoName = providerRepoName(
                             p,
                             installedPlugins,
+                            extensionsState.repositories,
+                            csRepos,
                           );
                           final pinned = pins.contains(p.packageName);
                           final scheme = Theme.of(context).colorScheme;
@@ -1376,16 +1460,15 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                                       ],
                                     ],
                                   ),
-                                  // Whose add-on this provider is, in
-                                  // small words under the name (user
-                                  // 2026-11-26). The old side chip that
-                                  // named the extension only for
-                                  // sub-providers is gone — every row
-                                  // carries its add-on here now.
-                                  subtitle: addonName.isEmpty
+                                  // Which repository the provider is from,
+                                  // in small words under the name (user
+                                  // 2026-11-26). The add-on name used to sit
+                                  // here and repeated the title whenever the
+                                  // two matched.
+                                  subtitle: repoName.isEmpty
                                       ? null
                                       : Text(
-                                          addonName,
+                                          repoName,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: scheme.onSurfaceVariant,
