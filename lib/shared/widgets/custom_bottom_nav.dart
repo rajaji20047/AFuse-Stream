@@ -111,7 +111,10 @@ class CustomBottomNavBar extends StatelessWidget {
   /// still lands 21 pt up.
   static const double _kBottomMargin = 19.0;
 
-  /// The pill's height (package: fixed 63 since build 109).
+  /// The pill's EXPANDED height (63) — the clearance math below uses the
+  /// tallest the pill gets; the collapsed pill is 47 (see
+  /// [LiquidGlassNavBar.pillHeightFor]). The rim uses the live height,
+  /// not this constant, so it stays on the pill's edge while it shrinks.
   static const double _kPillHeight = 63.0;
 
   /// The pill's corner radius. Zenith-style (user 2026-11-25): 34 pt —
@@ -375,7 +378,9 @@ class _NavPillRim extends StatelessWidget {
             left: horizontalMargin,
             right: horizontalMargin,
             bottom: edgePadding + CustomBottomNavBar._kBottomMargin,
-            height: CustomBottomNavBar._kPillHeight,
+            // The live pill height (63 expanded, 47 collapsed) — a fixed
+            // 63 here would outline a taller box than the shrunken pill.
+            height: LiquidGlassNavBar.pillHeightFor(labelFraction),
             child: IgnorePointer(
               child: Container(
                 decoration: BoxDecoration(

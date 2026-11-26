@@ -151,7 +151,7 @@ class LiquidGlassNavBar extends StatefulWidget {
   final double insets;
 
   /// Corner radius of the floating capsule. Defaults to 34.0, which — at the
-  /// fixed 63px bar height — renders as a full stadium/pill shape. Lower
+  /// 63 pt expanded pill height — renders as a full stadium/pill shape. Lower
   /// values produce a squarer capsule; the active tab bubble follows the same
   /// radius so its shape always matches the capsule around it.
   ///
@@ -182,14 +182,37 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// Vertical space the floating nav occupies above the system bottom inset.
   /// Tab screens with scrollable content should add this as bottom padding.
   /// Composition: pill height 63 + bottom margin 19 + 12px breathing buffer = 94.0.
+  /// The 63 is the EXPANDED pill height — the clearance must fit the
+  /// tallest the pill gets; the collapsed pill is 47 (see [pillHeightFor]).
   static const double contentBottomInset = 94.0;
+
+  /// Expanded pill height (labels shown): 63 pt. Collapsed (labels
+  /// hidden): 47 pt. Nuvio's pill is content-driven — 65 pt expanded,
+  /// 48 pt collapsed — so it loses its whole label stack (14 pt label
+  /// + 3 pt gap = 17) when the labels hide; Fuse's stack is 14 + 2
+  /// (gap) = 16, so the pill loses 16. At every fraction the height is
+  /// the content + a constant 19 pt of edge padding (9.5 top/bottom),
+  /// exactly like Nuvio's constant 10 pt (4 row + 6 item) padding.
+  static const double expandedPillHeight = 63.0;
+  static const double collapsedPillHeight = 47.0;
+
+  /// Pill height for a label fraction: 63 at 1 (labels shown), 47 at 0
+  /// (icons only), linear in between. The shell's rim uses the same
+  /// number so it stays on the pill's edge while the pill shrinks.
+  static double pillHeightFor(double labelFraction) =>
+      collapsedPillHeight +
+      (expandedPillHeight - collapsedPillHeight) *
+          labelFraction.clamp(0.0, 1.0);
 
   /// Label visibility, 1 = labels fully shown, 0 = icons only. Nuvio's
   /// ADAPTIVE style: scrolling down collapses the labels (the pill narrows
   /// as they hide) and scrolling up brings them back; EXPANDED pins this
-  /// at 1, COMPACT pins it at 0. Rendered directly — the shell animates
-  /// the value (so the rim in `CustomBottomNavBar` stays in sync with the
-  /// pill), this widget only draws the fraction it is given.
+  /// at 1, COMPACT pins it at 0. The pill shrinks vertically with the
+  /// same fraction (63 → 47, see [pillHeightFor]) as well as narrowing
+  /// horizontally — Nuvio's pill loses its label stack both ways.
+  /// Rendered directly — the shell animates the value (so the rim in
+  /// `CustomBottomNavBar` stays in sync with the pill), this widget only
+  /// draws the fraction it is given.
   final double labelFraction;
 
   /// Accent glow under the resting selection bubble. Nuvio's nav-bar
@@ -375,6 +398,11 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
     // geometry (19 pt gutters, 21 pt gap) does not move.
     final baseMargin = screenWidth < 360 ? widget.insets / 2 : widget.insets;
     final horizontalMargin = baseMargin + 30.0 * (1.0 - labelFraction);
+    // Nuvio: the pill also shrinks vertically as the labels collapse
+    // (65 → 48 there, 63 → 47 here — see [pillHeightFor]). Bottom-anchored
+    // (see the Positioned below), so it shrinks upward and the bottom
+    // edge never moves.
+    final pillHeight = LiquidGlassNavBar.pillHeightFor(labelFraction);
     final activeColor = widget.activeColor ?? Theme.of(context).colorScheme.primary;
     final inactiveColor = widget.inactiveColor ?? Theme.of(context).colorScheme.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -449,7 +477,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
               ),
             ),
             SizedBox(
-              height: 63,
+              height: pillHeight,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final itemWidth = constraints.maxWidth / widget.items.length;
@@ -543,20 +571,21 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                       children: [
                         Builder(
                           builder: (context) {
-                            // Normal state: Original stadium pill capsule
+                            // Normal state: Original stadium pill capsule.
+                            // The resting bubble keeps its 5 px inset in
+                            // the pill at every height — 53 in the 63 pt
+                            // expanded pill, 37 in the 47 pt collapsed one.
                             final normalWidth = itemWidth - 8;
-                            // Build 109: 58 -> 53, so the resting bubble
-                            // keeps its 5 px inset in the 63 px pill.
-                            const normalHeight = 53.0; // Taller, closer to the edges
-                            const normalTop = (63.0 - normalHeight) / 2;
+                            final normalHeight = pillHeight - 10.0;
+                            const normalTop = 5.0;
                             final normalLeft = displayIndex * itemWidth + 4.0;
 
                             // Held state: Enlarged capsule (maintains horizontal pill shape)
                             final heldWidth = itemWidth + 16.0;
-                            // Build 109: 80 -> 75, so it still overlaps the
-                            // 63px container by 6 px top and bottom.
-                            const heldHeight = 75.0; // Overlaps top and bottom of 63px container
-                            const heldTop = (63.0 - heldHeight) / 2;
+                            // Still overlaps the pill by 6 px top and
+                            // bottom at every height — 75 / 59.
+                            final heldHeight = pillHeight + 12.0;
+                            const heldTop = -6.0;
                             
                             // Track exact finger position clamped within the bar bounds
                             final exactCenterX = _dragX?.clamp(0.0, constraints.maxWidth) 
@@ -690,7 +719,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                             final color = isActive ? activeColor : inactiveColor;
                             return SizedBox(
                               width: itemWidth,
-                              height: 63,
+                              height: pillHeight,
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -721,11 +750,11 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                   ),
                                   // Nuvio ADAPTIVE: the label box shrinks
                                   // to nothing and fades as labelFraction
-                                  // goes 1 → 0, so the icon recentres in
-                                  // the 63 pt pill (the Column is centred)
-                                  // and the pill narrows via the growing
-                                  // side margins. At fraction 1 this is
-                                  // the old layout (2 + 14).
+                                  // goes 1 → 0, so the icon recentres — and
+                                  // the pill itself shortens (63 → 47, the
+                                  // label stack leaving) as well as narrowing
+                                  // via the growing side margins. At fraction
+                                  // 1 this is the old layout (2 + 14).
                                   SizedBox(height: 2 * labelFraction),
                                   ClipRect(
                                     child: SizedBox(

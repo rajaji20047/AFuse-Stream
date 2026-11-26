@@ -231,10 +231,13 @@ void main() {
 
   // Nuvio ADAPTIVE/COMPACT: at labelFraction 0 the labels are gone
   // (Opacity 0, zero height — still in the tree, so the icons stay put)
-  // and the pill narrows by Nuvio's 30 pt (19 → 49 gutters).
+  // and the pill narrows by Nuvio's 30 pt (19 → 49 gutters) AND shortens
+  // by its label stack (63 → 47 — Nuvio 65 → 48, same mechanism, Fuse's
+  // label gap is 2 pt where Nuvio's is 3).
   testWidgets('collapsed labels hide and the pill narrows', (tester) async {
     await pump(tester, Brightness.dark, labelFraction: 0.0);
     await tester.pumpAndSettle();
+    expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 47.0);
     final opacities = tester.widgetList<Opacity>(find.byType(Opacity));
     expect(opacities, hasLength(5));
     expect(opacities.map((o) => o.opacity), everyElement(0.0));
