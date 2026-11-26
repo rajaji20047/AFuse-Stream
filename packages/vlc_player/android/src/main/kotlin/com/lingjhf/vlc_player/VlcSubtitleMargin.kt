@@ -15,7 +15,12 @@ import kotlin.math.roundToInt
 /// leaves. The picture on screen is placed in the view as libVLC's
 /// vout_display_PlacePicture places it.
 ///
-/// A rotated video is laid out unrotated here, so its raise comes out short.
+/// A rotated video is laid out rotated: its displayed height is the stored
+/// width, so the cropped picture's axes are swapped for the display math
+/// below (the crop itself is in stored coordinates). [orientation] is the
+/// track's libVLC orientation value; its fourth bit is libVLC's own
+/// ORIENT_IS_SWAP, the same test the Dart side's VlcVideoOrientation
+/// calls swapsAxes.
 internal object VlcSubtitleMargin {
     fun pixels(
         raise: Double,
@@ -28,6 +33,7 @@ internal object VlcSubtitleMargin {
         viewHeight: Int,
         stretched: Boolean,
         drawnOnDisplay: Boolean,
+        orientation: Int = 0,
     ): Int {
         if (raise.isNaN() || raise <= 0.0 || videoWidth <= 0 || videoHeight <= 0) {
             return 0
@@ -36,13 +42,18 @@ internal object VlcSubtitleMargin {
         val num = if (known) sarNum.toLong() else 1L
         val den = if (known) sarDen.toLong() else 1L
         val (cropWidth, cropHeight) = cropped(crop, videoWidth, videoHeight, num, den)
-        var height = cropHeight
+        val (displayWidth, displayHeight) = if (orientation and 4 != 0) {
+            cropHeight to cropWidth
+        } else {
+            cropWidth to cropHeight
+        }
+        var height = displayHeight
         if (drawnOnDisplay && viewWidth > 0 && viewHeight > 0) {
             val (placeWidth, placeHeight) = if (stretched) {
                 // An aspect ratio of the view's own shape.
                 viewWidth.toLong() to viewHeight.toLong()
             } else {
-                place(cropWidth, cropHeight, num, den, viewWidth, viewHeight)
+                place(displayWidth, displayHeight, num, den, viewWidth, viewHeight)
             }
             if (placeWidth * placeHeight > videoWidth.toLong() * videoHeight) {
                 height = placeHeight

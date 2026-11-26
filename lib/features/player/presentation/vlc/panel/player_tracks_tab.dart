@@ -519,19 +519,33 @@ class PlayerTracksTab extends StatelessWidget {
     return PlayerValueSelector<Duration>(
       controller: controller,
       selector: select,
-      builder: (context, delay) => PanelStepperRow(
-        label: label,
-        value: delayLabel(delay),
-        increasedValue: delayLabel(delay + delayStepFor(PanelStep.fine)),
-        decreasedValue: delayLabel(delay - delayStepFor(PanelStep.fine)),
-        onDecrease: (step) =>
-            unawaited(_step(() => apply(delay - delayStepFor(step)))),
-        onIncrease: (step) =>
-            unawaited(_step(() => apply(delay + delayStepFor(step)))),
-        onReset: delay == Duration.zero
-            ? null
-            : () => unawaited(_step(() => apply(Duration.zero))),
-      ),
+      builder: (context, delay) {
+        // Rapid presses arrive faster than the engine's ~250 ms echo, so
+        // each one builds on the last press, not on the stale echoed
+        // value - or five quick presses all apply the same absolute value
+        // and net one step. Seeded per rebuild from the echo.
+        var base = delay;
+        return PanelStepperRow(
+          label: label,
+          value: delayLabel(delay),
+          increasedValue: delayLabel(delay + delayStepFor(PanelStep.fine)),
+          decreasedValue: delayLabel(delay - delayStepFor(PanelStep.fine)),
+          onDecrease: (step) {
+            base -= delayStepFor(step);
+            unawaited(_step(() => apply(base)));
+          },
+          onIncrease: (step) {
+            base += delayStepFor(step);
+            unawaited(_step(() => apply(base)));
+          },
+          onReset: delay == Duration.zero
+              ? null
+              : () {
+                  base = Duration.zero;
+                  unawaited(_step(() => apply(Duration.zero)));
+                },
+        );
+      },
     );
   }
 

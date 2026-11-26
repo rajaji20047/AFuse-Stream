@@ -604,7 +604,15 @@ internal class VlcPlayerPlatformView(
         if (requestAudioFocusToPlay()) {
             val player = mediaPlayer
             playRequests.request {
-                if (!disposed && player === mediaPlayer) player.play()
+                if (!disposed && player === mediaPlayer) {
+                    // As setSource's auto-play does: without this the
+                    // surface-wait timer never arms for a button-started
+                    // play, and QoE reports 0/stale for it.
+                    surfaceWait.playAsked(
+                        surfaceReady = surfacesReady || target !is VlcRenderTarget.VideoLayout,
+                    )
+                    player.play()
+                }
             }
         }
         result.success(null)
@@ -730,6 +738,7 @@ internal class VlcPlayerPlatformView(
                 viewHeight = viewHeight,
                 stretched = aspectRatio != null,
                 drawnOnDisplay = VlcNativeSubtitles.drawnOnDisplay(mediaPlayer),
+                orientation = track?.orientation ?: 0,
             )
         } else {
             0

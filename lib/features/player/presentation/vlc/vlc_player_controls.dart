@@ -1193,8 +1193,10 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     final split = splitVolume(clamped, routing: routing);
 
     _appliedVolume = split.engine;
-    // Zero is the mute, never a level to come back to.
-    if (clamped != 0) _volumeBeforeMute = clamped;
+    // Zero is the mute, never a level to come back to - and a mute request
+    // the floor lifts above zero is not a level either: recording it would
+    // destroy the boost level the next M should restore.
+    if (clamped != 0 && volume != 0) _volumeBeforeMute = clamped;
     widget.controller.setVolume(split.engine);
 
     final system = split.system;
@@ -1398,11 +1400,18 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
   /// Ends a swipe-seek: seeks to the target its updates arrived at.
   void _endSwipeSeek() {
     final target = _horizontalDragTarget;
+    final start = _horizontalDragStartPosition;
     _horizontalDragStartX = null;
     _horizontalDragStartPosition = null;
     _horizontalDragTarget = null;
     _updateChoosingPlace();
     if (target != null) {
+      // A swipe that ends where it started moved nothing: seeking to the
+      // current position would stall and rebuffer for a zero net move.
+      if (start != null &&
+          (target - start).abs() < const Duration(milliseconds: 500)) {
+        return;
+      }
       widget.controller.seekTo(target);
       _rebaseSeekChain(target);
       _chrome.keepAlive();
@@ -1884,6 +1893,11 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.keyM) {
+      // On a television the volume floor is the 100% boost level: zero is
+      // unreachable, so M can never mute - and treating the floor as a
+      // level to remember would destroy the boost level the next M should
+      // restore. Let the key go to whatever else wants it.
+      if (_volumeRouting.minimum > 0) return KeyEventResult.ignored;
       final current = _volume;
       if (current == 0) {
         _setVolume(_volumeBeforeMute ?? 100);
@@ -2010,7 +2024,10 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     } else {
       unawaited(widget.controller.seekToWindowFraction(next));
     }
-    _showSeekBurst(delta);
+    // The burst reads the distance actually moved, not the step asked
+    // for: near the window's edge the step clamps, so "+10s" would lie
+    // about a +3s move.
+    _showSeekBurst(window.length * (next - from));
   }
 
   /// The window a live stream can be moved in, or null: not live, or a feed

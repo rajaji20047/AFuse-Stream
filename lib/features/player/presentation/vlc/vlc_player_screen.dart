@@ -620,6 +620,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// read ([_maybeReadLiveSegment]).
   ({Uri uri, Map<String, String> headers})? _liveMedia;
 
+  /// A retry of the live-segment read, armed when the first read fails.
+  /// Cancelled in [dispose]; the retry itself is guarded by generation.
+  Timer? _liveSegmentRetry;
+
   /// A live HLS stream's target duration, which sets the stretch of its window
   /// the controls offer; null until read, and the window assumes 10 s.
   Duration? _liveSegment;
@@ -629,6 +633,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// whether it was LIVE's.
   ({Duration target, Duration behind, Duration segment, bool toLive})?
   _liveSeek;
+
+  /// The seek counter when [_liveSeek] was recorded: a newer seek issued
+  /// after it means the settle [_onSeekSettled] hears is not the live
+  /// seek's, and the stale record must not reopen the stream.
+  int _liveSeekRequests = 0;
 
   /// The live delay the next open asks for, once, instead of
   /// [kLiveDelayMs]: a window seek libVLC didn't take reopens that far back.
@@ -1567,7 +1576,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         delta;
     if (target < Duration.zero) target = Duration.zero;
     if (value.duration > Duration.zero && target > value.duration) {
-      target = value.duration;
+      // One second short of the end: landing exactly on the duration
+      // trips the end-of-media handler and advances an episode the
+      // viewer only meant to skip forward in.
+      target = value.duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
     }
     unawaited(_controller.seekTo(target));
   }
@@ -2450,9 +2463,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // assignment below overwrites it.
       final wasOn = _seenSubtitleTrackId != null;
       _seenSubtitleTrackId = subtitleId;
-      _rememberedSubtitle = null;
-      _viewerSubtitleOff = subtitleId == null && wasOn;
-      if (subtitleId != null) unawaited(_snapshotSubtitle(subtitleId));
+      if (subtitleId == null) {
+        _rememberedSubtitle = null;
+        _viewerSubtitleOff = wasOn;
+      } else {
+        // Do not clear the old memory here, as the audio half above does
+        // not: the snapshot below writes the new track, and if a reopen
+        // lands before it finishes, the old memory is a better restore
+        // than none.
+        _viewerSubtitleOff = false;
+        unawaited(_snapshotSubtitle(subtitleId));
+      }
     }
   }
 
@@ -4748,6 +4769,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // Carry the position across, exactly as failover does, including before
     // the first sample lands.
     final at = _reopenTarget();
+    // A source pick leaves the season-pack torrent behind: the file index
+    // belongs to the torrent, and a plain source picked after it would
+    // otherwise keep the torrent buffer plan and stall patience.
+    _torrentFileIndex = null;
+    _torrentFileLabel = null;
     // The pick is on trial: recovery remembers what it interrupted, so its
     // failure puts that back rather than taking the session down with it. A
     // hand-picked source otherwise deserves the full ladder rather than the
@@ -5281,10 +5307,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // end-of-media has to judge by on a source too short to be resumable,
       // and the only proof that a source which reports none never had one.
       _checkReportedLength(value);
-      if (value.duration > Duration.zero) _lastSeenDuration = value.duration;
+      // The cap above lands synchronously on the controller's value, but
+      // this tick's snapshot predates it: read the duration from the
+      // controller, so the capped length stands in the sample and the
+      // last-seen duration instead of the inflated one this tick saw.
+      final duration = _controller.value.duration;
+      if (duration > Duration.zero) _lastSeenDuration = duration;
       final sample = ProgressSample(
         position: value.position,
-        duration: value.duration,
+        duration: duration,
         token: _token,
       );
       if (advanced) _onProgress();
@@ -6095,7 +6126,6 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   void _maybeReadLiveSegment() {
     final media = _liveMedia;
     if (media == null) return;
-    _liveMedia = null;
     final generation = _generation;
     unawaited(() async {
       var playlist = await _readOpenedPlaylist(media.uri, media.headers);
@@ -6111,7 +6141,25 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
             : await _fetchPlaylist(variant, media.headers);
       }
       final segment = playlist == null ? null : targetDurationOf(playlist);
-      if (segment == null || _disposed || generation != _generation) return;
+      if (_disposed || generation != _generation) return;
+      if (segment == null) {
+        // The read failed (a blip at first frame): the window keeps
+        // assuming 10 s segments, and the read is tried again shortly -
+        // the playlist cache is cleared on failure, so the retry
+        // refetches instead of reading the same null.
+        _liveSegmentRetry?.cancel();
+        _liveSegmentRetry = Timer(const Duration(seconds: 10), () {
+          if (_disposed ||
+              generation != _generation ||
+              _liveSegment != null ||
+              _liveMedia == null) {
+            return;
+          }
+          _maybeReadLiveSegment();
+        });
+        return;
+      }
+      _liveMedia = null;
       setState(() => _liveSegment = segment);
     }());
   }
@@ -6129,6 +6177,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       toLive: toLive,
     );
     unawaited(_controller.seekToWindowFraction(fraction));
+    // Recorded after the seek is issued, so the count includes it: only
+    // a seek issued after this one moves the counter.
+    _liveSeekRequests = _controller.seekRequests;
   }
 
   /// Back to the live edge: one segment from the end, as close as libVLC 3
@@ -6150,6 +6201,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     final seek = _liveSeek;
     if (seek == null || _controller.pendingSeekTarget.value != null) return;
     _liveSeek = null;
+    // A seek issued after the live one owns this settle: the live seek's
+    // record is stale, and acting on it would reopen the stream over a
+    // seek the viewer already made.
+    if (_controller.seekRequests != _liveSeekRequests) return;
     final value = _controller.value;
     if (_disposed || _stage != _Stage.playing) return;
     // Settled because the media went away: that is the recovery's business.
@@ -6322,6 +6377,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     }
     _waitAwake?.cancel();
     _pickCooldown?.cancel();
+    _liveSegmentRetry?.cancel();
     _abandonPendingResolve();
     _backEcho?.cancel();
     _lockEscape?.cancel();
