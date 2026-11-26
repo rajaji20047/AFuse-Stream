@@ -45,11 +45,31 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Gradle had no cache at all: every run re-downloaded the Gradle
+      # distribution + all Maven dependencies and recompiled Kotlin +
+      # R8 from scratch — that is why the build step alone took 14 of
+      # the run's 16 minutes (run 45659719796: Build Release APK 851 s).
+      # setup-gradle caches the dependencies and the Gradle build cache
+      # (task outputs) in the Actions cache, so a warm run reuses them.
+      # The first run after this still builds the cache and stays slow;
+      # the runs after it are the fast ones.
+      - uses: gradle/actions/setup-gradle@v3
+
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+
+      # The pub cache: `flutter pub get` re-downloaded every package on
+      # each run. Keyed on pubspec.lock, so a dependency change busts it.
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
 
       - name: Install Dependencies
         run: |
