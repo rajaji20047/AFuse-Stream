@@ -168,8 +168,10 @@ void main() {
         ],
       );
 
-      // '4K' hides the only link there is (480p).
-      await tester.tap(find.text('4K'));
+      // 'Tested' hides the only link there is (no probe ran for it, so
+      // nothing is verified). The quality chips no longer include '4K'
+      // (user 2026-11-26: only Direct and Auto stay).
+      await tester.tap(find.text('Tested'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

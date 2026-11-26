@@ -380,6 +380,11 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
 
   List<AddonStreamSource> get _filtered => _result.streams
       .where((s) {
+        // External links never list (user 2026-11-26): they cannot play
+        // in-app — tapping one only opens another app — and their
+        // 'Opens app' chip is gone with them. The header count below
+        // counts the same listed links, so it still matches the rows.
+        if (s.isExternal) return false;
         if (!_quality.matchesScore(s.qualityScore)) return false;
         if (_downloadMode && (!s.isDirect || s.url == null)) {
           return false;
@@ -711,11 +716,22 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     final glass = GlassPalette.of(context);
     final l10n = AppLocalizations.of(context)!;
     final episode = widget.episode;
+    // Links that can list: external links never list (see [_filtered]),
+    // so the header counts them out — the number still matches the rows.
+    // The same listed streams decide whether either kept filter chip
+    // (Direct / Auto) has anything behind it.
+    final listedStreams =
+        _result.streams.where((s) => !s.isExternal).toList(growable: false);
+    final listedCount = listedStreams.length;
+    final hasAutoChip = listedStreams.any(
+      (s) => SourceQualityFilter.auto.matchesScore(s.qualityScore),
+    );
+    final hasDirectChip = listedStreams.any((s) => s.isDirect);
     final subtitleText = episode != null
         ? 'S${episode.season} · E${episode.episode} ${episode.name}'
         : (_result.isLoading
               ? '${widget.merged ? 'Asking plugins & add-ons…' : 'Asking add-ons…'} ${_result.completedCount}/${_result.totalCount}'
-              : '${_result.streams.length} links from ${_result.respondedCount} ${widget.merged ? 'source(s)' : 'add-on(s)'}');
+              : '$listedCount links from ${_result.respondedCount} ${widget.merged ? 'source(s)' : 'add-on(s)'}');
     final visible = _visible;
 
     final topPick = visible.isNotEmpty ? visible.first : null;
@@ -778,7 +794,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                           _result.isLoading
                               ? '${widget.merged ? 'Asking plugins & add-ons…' : 'Asking add-ons…'} '
                                     '${_result.completedCount}/${_result.totalCount}'
-                              : '${_result.streams.length} links from '
+                              : '$listedCount links from '
                                     '${_result.respondedCount} '
                                     '${widget.merged ? 'source(s)' : 'add-on(s)'}',
                           style: theme.textTheme.bodySmall?.copyWith(
@@ -879,55 +895,53 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
 
                 if (_showDetails) _details(theme, cs),
 
-                // Filter Chips Rail
-                SizedBox(
-                  height: 34,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: kSourceSheetGutter,
-                    ),
-                    children: [
-                      // Quality groups (user 2026-11-26): one chip per
-                      // group, in place of the old single '1080p+'
-                      // toggle. Only groups a loaded stream falls in are
-                      // shown, like the kind chips below. Tapping the
-                      // selected group again clears it back to All.
-                      // Stremio and plugin sources share the merged list,
-                      // so the groups cover both.
-                      for (final filter in SourceQualityFilter.values)
-                        if (filter != SourceQualityFilter.all &&
-                            _result.streams.any(
-                              (s) => filter.matchesScore(s.qualityScore),
-                            ))
+                // Filter Chips Rail (user 2026-11-26): only Direct and
+                // Auto stay — the other quality chips and the All /
+                // Torrent / 'Opens app' kind chips are gone, and external
+                // links never list (see _filtered). A chip shows only when
+                // a listed stream falls in it; tapping the selected chip
+                // again clears it. The rail hides entirely when neither
+                // chip has a stream behind it, instead of a blank strip.
+                if (hasAutoChip || hasDirectChip)
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: kSourceSheetGutter,
+                      ),
+                      children: [
+                        if (hasAutoChip)
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(
-                              text: filter.label,
-                              selected: _quality == filter,
+                              text: SourceQualityFilter.auto.label,
+                              selected: _quality == SourceQualityFilter.auto,
                               outline: glass.tint(0.15),
                               onSelected: (selected) => setState(
                                 () => _quality = selected
-                                    ? filter
+                                    ? SourceQualityFilter.auto
                                     : SourceQualityFilter.all,
                               ),
                             ),
                           ),
-                      for (final filter in _KindFilter.values)
-                        if (filter == _KindFilter.all ||
-                            _result.streams.any(filter.matches))
+                        if (hasDirectChip)
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(
-                              text: filter.label,
-                              selected: _kind == filter,
+                              text: _KindFilter.direct.label,
+                              selected: _kind == _KindFilter.direct,
                               outline: glass.tint(0.15),
-                              onSelected: (_) => setState(() => _kind = filter),
+                              onSelected: (selected) => setState(
+                                () => _kind = selected
+                                    ? _KindFilter.direct
+                                    : _KindFilter.all,
+                              ),
                             ),
                           ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
                 if (_searchOpen) ...[
                   Padding(

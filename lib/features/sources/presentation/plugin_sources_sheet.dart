@@ -314,6 +314,10 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
   final Set<String> _providerFilter = {};
   SourceQualityFilter _quality = SourceQualityFilter.all;
   bool _verifiedOnly = false;
+  // Direct-only filter (user 2026-11-26): the sheet keeps only the Direct
+  // and Auto chips, like the Stremio sheet — a direct link is one that is
+  // not a torrent.
+  bool _directOnly = false;
   bool _disposed = false;
 
   @override
@@ -542,6 +546,7 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
       return false;
     }
     if (!_quality.matchesScore(row.qualityScore)) return false;
+    if (_directOnly && row.isTorrent) return false;
     // Opened to download: a stream-only link is not a candidate. Matches the
     // addon sheet, and restores the filter PR #98 dropped along with the
     // Play/Download toggle.
@@ -949,14 +954,14 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
                       horizontal: kSourceSheetGutter,
                     ),
                     children: [
-                      // Quality groups (user 2026-11-26): one chip per
-                      // group, in place of the old single '1080p+'
-                      // toggle. Only groups a loaded row falls in are
-                      // shown. Tapping the selected group again clears
-                      // it back to All. Same groups as the Stremio
-                      // Sources sheet (SourceQualityFilter).
+                      // Quality groups (user 2026-11-26): only the Auto
+                      // group stays — the other quality chips are gone, like
+                      // the kind chips below except Direct. Only groups a
+                      // loaded row falls in are shown. Tapping the selected
+                      // group again clears it back to All. Same groups as
+                      // the Stremio Sources sheet (SourceQualityFilter).
                       for (final filter in SourceQualityFilter.values)
-                        if (filter != SourceQualityFilter.all &&
+                        if (filter == SourceQualityFilter.auto &&
                             _allRows.any(
                               (row) => filter.matchesScore(row.qualityScore),
                             ))
@@ -970,6 +975,19 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
                                   : SourceQualityFilter.all,
                             ),
                           ),
+                      // Direct only (user 2026-11-26): the one kind chip
+                      // this sheet keeps, matching the Stremio sheet — a
+                      // direct link is one that is not a torrent. Shown
+                      // only when a loaded row is direct. Tapping again
+                      // clears it.
+                      if (_allRows.any((row) => !row.isTorrent))
+                        _chip(
+                          palette,
+                          text: 'Direct',
+                          selected: _directOnly,
+                          onSelected: (selected) =>
+                              setState(() => _directOnly = selected),
+                        ),
                       _chip(
                         palette,
                         text: 'Tested',
