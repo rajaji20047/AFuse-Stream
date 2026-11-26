@@ -256,25 +256,25 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   /// the official CloudStream providers repository is the "CloudStream"
   /// option. The owner's repo (RajajiX) is a CloudStream-format repository
   /// too, but it is NOT shown in the CloudStream section: it has its own
-  /// "Fuse" section above the SkyStream one, labelled "Fuse Repo"
-  /// ([displayNameFor]). A manifest's own `name` is what a refresh stores,
-  /// so a stored rename would not survive one, which is why both labels
-  /// are computed from the URL at display time. Anything else is shown
-  /// under its manifest name.
+  /// "Fuse" section above the SkyStream one, and keeps its own manifest
+  /// name there ("TojiX Repo" — user 2026-11-26: the app name does not
+  /// replace it). A manifest's own `name` is what a refresh stores, so a
+  /// stored rename would not survive one, which is why the "CloudStream"
+  /// label is computed from the URL at display time. Anything else is
+  /// shown under its manifest name.
   static bool isCloudStreamRepository(String url) =>
       url == _cloudStreamRepositoryUrl;
 
-  /// The owner's own repository: the same RajajiX repo.json, shown as the
-  /// "Fuse Repo" in its own section. It stays in this (CloudStream) store
-  /// — it is a CloudStream-format repository, and the installed plugins
-  /// (Anikoto et al.) update through this store — only its display
-  /// grouping moved. Never remove it from the store to hide the row:
-  /// [removeRepository] would uninstall its plugins.
+  /// The owner's own repository: the same RajajiX repo.json, in its own
+  /// "Fuse" section. It stays in this (CloudStream) store — it is a
+  /// CloudStream-format repository, and the installed plugins (Anikoto
+  /// et al.) update through this store — only its display grouping moved.
+  /// Never remove it from the store to hide the row: [removeRepository]
+  /// would uninstall its plugins.
   static bool isFuseRepository(String url) => url == _rajajiXRepositoryUrl;
 
   static String displayNameFor(CsRepository repo) {
     if (isCloudStreamRepository(repo.url)) return 'CloudStream';
-    if (isFuseRepository(repo.url)) return 'Fuse Repo';
     return repo.name;
   }
 

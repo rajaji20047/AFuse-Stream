@@ -1,6 +1,6 @@
 /// The owner's repo as its own "Fuse" section: the same RajajiX repo.json,
-/// shown as "Fuse Repo" above the "Fuse (SkyStream)" section — and NOT in
-/// the CloudStream section, which keeps only the official repository.
+/// shown under its manifest name above the "Fuse (SkyStream)" section — and
+/// NOT in the CloudStream section, which keeps only the official repository.
 /// The repo stays in the CloudStream store (the .cs3 install / update
 /// flow runs through it); only its display grouping moved, so an
 /// installed Anikoto keeps working and updating.
@@ -85,10 +85,10 @@ class _MockExtensionManager extends ExtensionManager {
 
 void main() {
   group('displayNameFor', () {
-    test('the owner repo is "Fuse Repo", not its manifest name', () {
+    test('the owner repo keeps its manifest name', () {
       expect(
         CloudStreamRepository.displayNameFor(_repo(_rajajiXUrl, 'RajajiX Repo')),
-        'Fuse Repo',
+        'RajajiX Repo',
       );
     });
 
@@ -116,7 +116,9 @@ void main() {
   });
 
   group('FuseRepositorySection', () {
-    testWidgets('shows the Fuse header and the Fuse Repo card', (tester) async {
+    testWidgets('shows the Fuse header and the owner repo card', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _hosted(
           const FuseRepositorySection(),
@@ -129,8 +131,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Fuse'), findsOneWidget);
-      expect(find.text('Fuse Repo'), findsOneWidget);
-      expect(find.text('RajajiX Repo'), findsNothing);
+      expect(find.text('Fuse Repo'), findsNothing);
+      expect(find.text('RajajiX Repo'), findsOneWidget);
     });
 
     testWidgets('hides entirely when the repository is not stored', (
@@ -175,7 +177,7 @@ void main() {
   });
 
   testWidgets(
-    'Extensions screen: Fuse Repo above Fuse (SkyStream), RajajiX gone',
+    'Extensions screen: owner repo above Fuse (SkyStream), under its manifest name',
     (tester) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
@@ -219,17 +221,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('plugins-segment-add')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Fuse Repo'), findsOneWidget);
+      expect(find.text('Fuse Repo'), findsNothing);
       expect(find.text('Fuse (SkyStream)'), findsOneWidget);
-      expect(find.text('RajajiX Repo'), findsNothing);
+      expect(find.text('RajajiX Repo'), findsOneWidget);
       // No .sky repositories stored: the SkyStream section's empty state
-      // names SkyStream now, not Fuse (the Fuse Repo sits above it).
+      // names SkyStream now, not Fuse (the owner repo sits above it).
       expect(find.text('No SkyStream repos yet'), findsOneWidget);
 
-      // The Fuse Repo card sits above the SkyStream header.
-      final fuseRepo = tester.getTopLeft(find.text('Fuse Repo'));
+      // The owner repo card sits above the SkyStream header.
+      final ownerRepo = tester.getTopLeft(find.text('RajajiX Repo'));
       final skyHeader = tester.getTopLeft(find.text('Fuse (SkyStream)'));
-      expect(fuseRepo.dy, lessThan(skyHeader.dy));
+      expect(ownerRepo.dy, lessThan(skyHeader.dy));
     },
   );
 }

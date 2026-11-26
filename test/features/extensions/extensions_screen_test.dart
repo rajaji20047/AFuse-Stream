@@ -280,7 +280,8 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Add'), findsOneWidget);
     expect(find.text('Fuse'), findsOneWidget);
-    expect(find.text('Fuse Repo'), findsOneWidget);
+    expect(find.text('Fuse Repo'), findsNothing);
+    expect(find.text('RajajiX Repo'), findsOneWidget);
     expect(find.text('Fuse (SkyStream)'), findsOneWidget);
     expect(find.text('Test Repo'), findsOneWidget);
     expect(find.text('CloudStream'), findsWidgets);
@@ -288,8 +289,8 @@ void main() {
     expect(find.text('Nuvio Plugins'), findsOneWidget);
     expect(find.text('Stremio Add-ons'), findsOneWidget);
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
-    expect(top('ADD REPOSITORY'), lessThan(top('Fuse Repo')));
-    expect(top('Fuse Repo'), lessThan(top('Fuse (SkyStream)')));
+    expect(top('ADD REPOSITORY'), lessThan(top('RajajiX Repo')));
+    expect(top('RajajiX Repo'), lessThan(top('Fuse (SkyStream)')));
     expect(top('Fuse (SkyStream)'), lessThan(top('MORE SOURCES')));
 
     // ... and the installed list is gone from this segment.

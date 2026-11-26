@@ -530,7 +530,7 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
       return [const Center(child: AppLoadingIndicator())];
     }
     // Three separate sections, so a repository lands in the section it
-    // belongs to. The owner's own repo (Fuse Repo repo.json, .cs3) has its
+    // belongs to. The owner's own repo (TojiX repo.json, .cs3) has its
     // own "Fuse" section first ([FuseRepositorySection]); Fuse's own
     // extension system (.sky manifests) takes the "Fuse (SkyStream)"
     // section next; CloudStream's store (repo.json) takes the

@@ -25,9 +25,10 @@ import 'plugin_check_bar.dart';
 ///
 /// The owner's repo (RajajiX) is a CloudStream-format repository (repo.json),
 /// but it does NOT sit in the "CloudStream" section: it has its own "Fuse"
-/// section above the SkyStream one ([FuseRepositorySection]), labelled
-/// "Fuse Repo". The "CloudStream" section here holds the official
-/// CloudStream providers repository and any repository the user added.
+/// section above the SkyStream one ([FuseRepositorySection]), keeping its own
+/// manifest name ("TojiX Repo"). The "CloudStream" section here holds the
+/// official CloudStream providers repository and any repository the user
+/// added.
 /// The section has its own add row, which uses the CloudStream
 /// fetcher: a repo.json manifest (name + pluginLists, no id/packageName
 /// needed) or a bare plugin list lands here, and a repository that is
@@ -40,10 +41,11 @@ import 'plugin_check_bar.dart';
 
 /// The owner's own repository, in its own "Fuse" section above the
 /// "Fuse (SkyStream)" one: the same RajajiX repo.json (14 .cs3 extensions),
-/// shown as "Fuse Repo". It is still stored in the CloudStream store —
-/// the .cs3 install / update flow and the installed plugins (Anikoto)
-/// run through that store — so this section only groups it for display,
-/// keeping the .cs3 own-repo apart from the .sky repos below.
+/// keeping its manifest name ("TojiX Repo"). It is still stored in the
+/// CloudStream store — the .cs3 install / update flow and the installed
+/// plugins (Anikoto) run through that store — so this section only groups
+/// it for display, keeping the .cs3 own-repo apart from the .sky repos
+/// below.
 /// Hidden entirely when the repository is not stored (the user removed
 /// it); the seed never re-adds a removed repository.
 class FuseRepositorySection extends ConsumerWidget {
@@ -347,8 +349,8 @@ class _CloudStreamRepositoryCard extends ConsumerWidget {
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    // The card's label: "Fuse Repo" for the owner's repository,
-    // "CloudStream" for the official one, else the manifest's own name.
+    // The card's label: "CloudStream" for the official repository, else
+    // the manifest's own name (the owner's repo shows "TojiX Repo").
     final displayName = CloudStreamRepository.displayNameFor(repo);
     final remove = await showDialog<bool>(
       context: context,
@@ -390,8 +392,8 @@ class _CloudStreamRepositoryCard extends ConsumerWidget {
   Future<void> _refresh(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context)!;
-    // The card's label: "Fuse Repo" for the owner's repository,
-    // "CloudStream" for the official one, else the manifest's own name.
+    // The card's label: "CloudStream" for the official repository, else
+    // the manifest's own name (the owner's repo shows "TojiX Repo").
     final displayName = CloudStreamRepository.displayNameFor(repo);
     final failure = await ref
         .read(cloudStreamRepositoryProvider.notifier)
@@ -429,8 +431,9 @@ class _CloudStreamRepositoryCard extends ConsumerWidget {
         collapsedShape: const Border(),
         initiallyExpanded: repo.plugins.length <= 12,
         title: Text(
-          // The card's label: "Fuse Repo" for the owner's repository,
-          // "CloudStream" for the official one, else the manifest's name.
+          // The card's label: "CloudStream" for the official repository,
+          // else the manifest's own name (the owner's repo shows
+          // "TojiX Repo").
           CloudStreamRepository.displayNameFor(repo),
           style: theme.textTheme.titleMedium?.copyWith(
             color: cs.primary,

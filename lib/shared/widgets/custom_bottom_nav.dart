@@ -233,7 +233,7 @@ class CustomBottomNavBar extends StatelessWidget {
         const LiquidGlassNavItem(
           id: 'plugins',
           // Preview tab name (no l10n key for it): the user approved
-          // "Plugins" — the Extensions screen (Fuse Repo + providers).
+          // "Plugins" — the Extensions screen (TojiX Repo + providers).
           label: 'Plugins',
           icon: ReiconFilledIcons.puzzle,
         ),
