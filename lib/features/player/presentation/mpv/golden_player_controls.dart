@@ -329,8 +329,14 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   /// The step-seek badge ("+20s" / "−10s"), shown at once on every tap
   /// so the tap feels instant while the one seek is still 150 ms away,
   /// or null when no badge is up. Same pill shape as the swipe-seek
-  /// preview, centred.
+  /// preview, but on the side that was tapped — back on the left,
+  /// forward on the right — never in the middle under the play button.
   String? _stepSeekLabel;
+
+  /// Which side the badge sits on: true for a forward seek (right),
+  /// false for a back seek (left). Follows the chain's cumulative
+  /// offset, so a run of taps keeps one badge up on the right side.
+  bool _stepSeekForward = true;
   Timer? _stepSeekLabelTimer;
 
   /// A seekbar drag in flight, and its preview target.
@@ -475,12 +481,16 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   /// The step-seek badge: the chain's cumulative offset ("+20s" /
   /// "−10s"), shown at once and held 700 ms, the centre flash's own
   /// length, so a run of taps keeps one badge up that reads the whole
-  /// chain.
+  /// chain. The side follows the offset's sign — forward on the right,
+  /// back on the left.
   void _showStepSeekBadge(Duration offset) {
     final seconds = offset.inSeconds;
     final label = seconds < 0 ? '${seconds}s' : '+${seconds}s';
     _stepSeekLabelTimer?.cancel();
-    setState(() => _stepSeekLabel = label);
+    setState(() {
+      _stepSeekLabel = label;
+      _stepSeekForward = !offset.isNegative;
+    });
     _stepSeekLabelTimer = Timer(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       setState(() => _stepSeekLabel = null);
@@ -1392,22 +1402,32 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
         // The step-seek badge (build 86): the coalesced chain's offset
         // ("+20s" / "−10s") the moment a ±10 s tap lands, so the tap
         // feels instant while the one seek is still 150 ms away. Same
-        // pill shape as the swipe-seek preview, centred, over the video,
-        // chrome or not.
+        // pill shape as the swipe-seek preview, on the side that was
+        // tapped — back on the left, forward on the right — over the
+        // video, chrome or not.
         if (_stepSeekLabel != null)
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _stepSeekLabel!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+          Align(
+            alignment: _stepSeekForward
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _stepSeekLabel!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
