@@ -557,7 +557,7 @@ class _GlassRowState extends State<GlassRow> {
 ///
 /// Declared in chip order (user 2026-11-26): All, Auto, then ascending
 /// quality — 360p up to 4K. Both sheets render [SourceQualityFilter.values]
-/// in this order.
+/// in this order, except Auto, which stays hidden from the chips.
 enum SourceQualityFilter {
   all('All'),
   auto('Auto'),

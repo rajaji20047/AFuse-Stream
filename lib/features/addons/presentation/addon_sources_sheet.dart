@@ -892,13 +892,14 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                 if (_showDetails) _details(theme, cs),
 
                 // Filter Chips Rail (user 2026-11-26): the quality
-                // Quality chips, in enum order: All, Auto, 360p … 4K, then
-                // the Torrent kind chip. Direct and 'Opens app' are gone
-                // (asked off; external links never list, see _filtered).
-                // A chip shows only when a listed stream falls in it;
-                // tapping the selected quality group again clears it back
-                // to All — and All clears the kind filter too, so there is
-                // no second All chip for the kind row.
+                // Quality chips, in enum order: All, 360p … 4K, then the
+                // Torrent kind chip. Auto stays hidden (user 2026-11-26).
+                // Direct and 'Opens app' are gone (asked off; external
+                // links never list, see _filtered). A chip shows only when
+                // a listed stream falls in it; tapping the selected quality
+                // group again clears it back to All — and All clears the
+                // kind filter too, so there is no second All chip for the
+                // kind row.
                 SizedBox(
                   height: 34,
                   child: ListView(
@@ -908,9 +909,10 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                     ),
                     children: [
                       for (final filter in SourceQualityFilter.values)
-                        if (listedStreams.any(
-                          (s) => filter.matchesScore(s.qualityScore),
-                        ))
+                        if (filter != SourceQualityFilter.auto &&
+                            listedStreams.any(
+                              (s) => filter.matchesScore(s.qualityScore),
+                            ))
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(

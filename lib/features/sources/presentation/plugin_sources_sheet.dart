@@ -949,15 +949,16 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
                       horizontal: kSourceSheetGutter,
                     ),
                     children: [
-                      // Quality groups, in enum order: All, Auto, 360p …
-                      // 4K. Only groups a loaded row falls in are shown.
-                      // Tapping the selected group again clears it back to
-                      // All. Same groups as the All Sources sheet
-                      // (SourceQualityFilter).
+                      // Quality groups, in enum order: All, 360p … 4K.
+                      // Auto stays hidden (user 2026-11-26). Only groups a
+                      // loaded row falls in are shown. Tapping the selected
+                      // group again clears it back to All. Same groups as
+                      // the All Sources sheet (SourceQualityFilter).
                       for (final filter in SourceQualityFilter.values)
-                        if (_allRows.any(
-                          (row) => filter.matchesScore(row.qualityScore),
-                        ))
+                        if (filter != SourceQualityFilter.auto &&
+                            _allRows.any(
+                              (row) => filter.matchesScore(row.qualityScore),
+                            ))
                           _chip(
                             palette,
                             text: filter.label,
