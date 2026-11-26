@@ -2396,9 +2396,14 @@ class _BottomBar extends StatelessWidget {
               size: 38,
             ),
             const SizedBox(width: 6),
-            GoldenPill(
-              onTap: onPickSpeed,
-              child: Text('${_formatSpeed(speed)}x'),
+            // Speed, as one of the row's round buttons (2026-11-26): the
+            // gold-outlined pill read as a different control from the
+            // discs beside it. Same 38 disc, white "1x" in it.
+            GoldenIconButton(
+              label: '${_formatSpeed(speed)}x',
+              onPressed: onPickSpeed,
+              tooltip: 'Speed',
+              size: 38,
             ),
             const SizedBox(width: 6),
             if (lockAvailable)

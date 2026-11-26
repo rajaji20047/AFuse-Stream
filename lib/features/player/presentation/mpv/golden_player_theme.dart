@@ -93,18 +93,29 @@ String goldenFormatTime(Duration duration) {
 ///
 /// Used for every control in the top and bottom bars: the dark disc keeps
 /// the icon legible over any frame, and the accent is the active state.
+///
+/// A [label] renders short text in the same disc instead of an icon — the
+/// speed button's "1x" — so a text control reads as one of the row's
+/// buttons rather than a pill of its own (2026-11-26).
 class GoldenIconButton extends StatelessWidget {
   const GoldenIconButton({
-    required this.icon,
+    this.icon,
+    this.label,
     required this.onPressed,
     this.active = false,
     this.tooltip,
     this.size = 40,
     this.iconSize = 22,
     super.key,
-  });
+  }) : assert(
+         (icon == null) != (label == null),
+         'GoldenIconButton takes exactly one of icon and label',
+       );
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// Short text shown in the disc instead of [icon], e.g. "1x".
+  final String? label;
   final VoidCallback? onPressed;
   final bool active;
   final String? tooltip;
@@ -113,6 +124,7 @@ class GoldenIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = this.label;
     final button = SizedBox(
       width: size,
       height: size,
@@ -123,13 +135,24 @@ class GoldenIconButton extends StatelessWidget {
         child: InkWell(
           onTap: onPressed,
           child: Center(
-            child: Icon(
-              icon,
-              size: iconSize,
-              color: active
-                  ? GoldenPlayerColors.accentHighlight(context)
-                  : GoldenPlayerColors.textPrimary,
-            ),
+            child: label != null
+                ? Text(
+                    label,
+                    style: TextStyle(
+                      color: active
+                          ? GoldenPlayerColors.accentHighlight(context)
+                          : GoldenPlayerColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : Icon(
+                    icon!,
+                    size: iconSize,
+                    color: active
+                        ? GoldenPlayerColors.accentHighlight(context)
+                        : GoldenPlayerColors.textPrimary,
+                  ),
           ),
         ),
       ),
@@ -140,7 +163,8 @@ class GoldenIconButton extends StatelessWidget {
   }
 }
 
-/// A small accent pill, for the speed chip and the "Playing" badge.
+/// A small accent pill, for the speed sheet's presets, the skip/unlock
+/// chips and the "Playing" badge.
 class GoldenPill extends StatelessWidget {
   const GoldenPill({
     required this.child,
