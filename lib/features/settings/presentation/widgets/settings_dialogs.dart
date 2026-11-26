@@ -2211,7 +2211,7 @@ void showDeveloperDialog(BuildContext context) {
               ),
               child: ClipOval(
                 child: Image.network(
-                  'https://github.com/sezkc16.png',
+                  'https://github.com/techforfriend.png',
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(child: AppLoadingIndicator());
@@ -2244,7 +2244,7 @@ void showDeveloperDialog(BuildContext context) {
                     0xFF909692,
                   ), // GitHub Official Black/Dark Grey
                   onTap: () => launchUrl(
-                    Uri.parse('https://github.com/sezkc16'),
+                    Uri.parse('https://github.com/techforfriend'),
                     mode: LaunchMode.externalApplication,
                   ),
                 ),
