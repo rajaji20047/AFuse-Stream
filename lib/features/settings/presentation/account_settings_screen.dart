@@ -774,7 +774,12 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                     title: 'Download location',
                     value:
                         generalSettings.downloadDirectory ??
-                        'On My iPhone › Raja',
+                        // The default folder: on Android the public
+                        // Downloads folder's Raja subfolder — not the iOS
+                        // Files label that used to sit here.
+                        (Theme.of(context).platform == TargetPlatform.iOS
+                            ? 'On My iPhone › Raja'
+                            : 'Downloads › Raja'),
                     onTap: () => showDownloadLocationDialog(
                       context,
                       ref,
