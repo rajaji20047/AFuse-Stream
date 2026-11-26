@@ -1292,8 +1292,10 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
                     vertical: 10,
                   ),
                   // Boxy like the bookmark: the same 12 px corners,
-                  // not a stadium pill (user 2026-11-26).
-                  shape: const RoundedRectangleBorder(
+                  // not a stadium pill (user 2026-11-26). No `const`:
+                  // BorderRadius.circular is not a const constructor,
+                  // so a const shape does not compile (build 45739628212).
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   tapTargetSize: MaterialTapTargetSize.padded,

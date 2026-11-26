@@ -318,10 +318,11 @@ void main() {
       // so the minimum must be 48, not 40 (user 2026-11-26).
       expect(style.minimumSize!.resolve({})?.height, 48);
       // And boxy like the bookmark: the same 12 px corners, not a
-      // stadium pill (user 2026-11-26).
+      // stadium pill (user 2026-11-26). No `const` here either:
+      // BorderRadius.circular is not a const constructor.
       expect(
         style.shape!.resolve({}),
-        const RoundedRectangleBorder(
+        RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       );
