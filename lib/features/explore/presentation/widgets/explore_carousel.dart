@@ -1282,7 +1282,11 @@ class _ExploreCarouselState extends ConsumerState<ExploreCarousel>
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   elevation: 0,
-                  minimumSize: const Size(0, 40),
+                  // 48, like the 48 bookmark beside it: the white only
+                  // fills minimumSize (the padded tap target around it
+                  // is invisible), so at 40 the pill read as shorter
+                  // than its neighbour (user 2026-11-26, screenshot).
+                  minimumSize: const Size(0, 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 26,
                     vertical: 10,
