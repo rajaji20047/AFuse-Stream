@@ -1656,7 +1656,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         episode: _currentEpisode,
         preloadedStreams: _streams.isEmpty ? null : _streams,
       ),
-    ).pushReplacement<void>(context);
+    ).pushReplacement(context);
   }
 
   /// Enters the Android PiP window.

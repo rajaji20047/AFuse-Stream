@@ -5647,7 +5647,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         episode: _currentEpisode,
         preloadedStreams: _candidates.isEmpty ? null : _candidates,
       ),
-    ).pushReplacement<void>(context);
+    ).pushReplacement(context);
   }
 
   /// Back, from the remote, the gesture or the on-screen button alike.
