@@ -496,6 +496,9 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   /// chain. The side follows the offset's sign — forward on the right,
   /// back on the left.
   void _showStepSeekBadge(Duration offset) {
+    // A fully-clamped step moved nothing: no badge at all, rather than
+    // a "+0s" pill on the forward side for a rewind tap at 0:00.
+    if (offset == Duration.zero) return;
     final seconds = offset.inSeconds;
     final label = seconds < 0 ? '${seconds}s' : '+${seconds}s';
     _stepSeekLabelTimer?.cancel();
@@ -1011,10 +1014,11 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   ///
   /// The outer thirds follow the Left/Right Gesture setting, as the VLC
   /// controls do: a side set to Seek slides the playhead instead of its
-  /// level, and a side set to None starts no rail at all — a viewer who
-  /// switched a gesture off must not find it still firing underneath them.
-  /// The centre third is always the subtitle slide: no gesture setting
-  /// covers it.
+  /// level, a side set to the other level swaps it (left Volume, right
+  /// Brightness), and a side set to None starts no rail at all — a viewer
+  /// who switched a gesture off must not find it still firing underneath
+  /// them. The centre third is always the subtitle slide: no gesture
+  /// setting covers it.
   Future<void> _beginRail(double localX) async {
     if (!_isTouch) {
       _dragRail = null;
@@ -1023,19 +1027,20 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
     final width = context.size?.width ?? 0;
     if (width <= 0) return;
     final settings = widget.settings.value;
-    _GoldenRailKind? kindFor(PlayerGesture gesture, _GoldenRailKind level) {
+    _GoldenRailKind? kindFor(PlayerGesture gesture) {
       return switch (gesture) {
         PlayerGesture.seek => _GoldenRailKind.seek,
         PlayerGesture.none => null,
-        _ => level,
+        PlayerGesture.volume => _GoldenRailKind.volume,
+        PlayerGesture.brightness => _GoldenRailKind.brightness,
       };
     }
 
     final _GoldenRailKind? kind;
     if (localX < width / 3) {
-      kind = kindFor(settings.leftGesture, _GoldenRailKind.brightness);
+      kind = kindFor(settings.leftGesture);
     } else if (localX > 2 * width / 3) {
-      kind = kindFor(settings.rightGesture, _GoldenRailKind.volume);
+      kind = kindFor(settings.rightGesture);
     } else {
       kind = _GoldenRailKind.subtitle;
     }
@@ -1248,7 +1253,14 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
       builder: (context) => _SpeedSheet(current: current),
     );
     if (picked == null) return;
-    await widget.controller.setPlaybackSpeed(picked);
+    if (_speedBeforeBoost != null) {
+      // A pick made mid-hold is the speed the release restores to, not
+      // one the hold throws away: the boost keeps 2.0 until the finger
+      // lifts, then lands on the pick.
+      _speedBeforeBoost = picked;
+    } else {
+      await widget.controller.setPlaybackSpeed(picked);
+    }
     widget.chrome.poke();
   }
 
@@ -1669,6 +1681,8 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
                                   fit: widget.fit,
                                   onCycleFit: _cycleFit,
                                   onRotate: widget.onRotate,
+                                  showRotate:
+                                      widget.settings.value.showRotate,
                                 ),
                               ),
                             ),
@@ -1688,7 +1702,15 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
                     );
                     if (segment == null) return const SizedBox.shrink();
                     final isOutro = segment.type == SkipType.outro;
-                    final label = isOutro ? 'Next Episode' : 'Skip Intro';
+                    // "Next Episode" only when tapping it opens one: on
+                    // the last episode (or a film with an outro segment)
+                    // onSkipOutro is null and the tap only seeks to the
+                    // end, so the chip must not promise a next episode.
+                    final label = isOutro
+                        ? (widget.onSkipOutro != null
+                              ? 'Next Episode'
+                              : 'Skip Outro')
+                        : 'Skip Intro';
                     return Positioned(
                       right: 16,
                       bottom: 108,
@@ -2217,6 +2239,7 @@ class _BottomBar extends StatelessWidget {
     required this.fit,
     required this.onCycleFit,
     required this.onRotate,
+    required this.showRotate,
     this.onOpenVideo,
     this.onOpenQuality,
     this.sleepTimer,
@@ -2262,6 +2285,11 @@ class _BottomBar extends StatelessWidget {
   final VlcVideoFit fit;
   final VoidCallback onCycleFit;
   final VoidCallback? onRotate;
+
+  /// Whether the rotate button renders (Settings → Player → Rotate),
+  /// as the VLC chrome does. The button itself only exists when
+  /// [onRotate] is non-null.
+  final bool showRotate;
 
   @override
   Widget build(BuildContext context) {
@@ -2421,6 +2449,14 @@ class _BottomBar extends StatelessWidget {
               tooltip: 'Aspect ratio',
               size: 38,
             ),
+            if (onRotate != null && showRotate) const SizedBox(width: 6),
+            if (onRotate != null && showRotate)
+              GoldenIconButton(
+                icon: Icons.screen_rotation_rounded,
+                onPressed: onRotate,
+                tooltip: 'Rotate',
+                size: 38,
+              ),
           ],
         ),
       ],

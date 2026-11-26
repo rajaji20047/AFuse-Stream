@@ -5419,7 +5419,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// Whether the subtitles button shows at all: only when this media has a
   /// subtitle to pick — an embedded track, or a file the source shipped.
   void _updateHasSubtitles() {
-    final embedded = _player.state.tracks.subtitle;
+    // As in [_applySubtitleAutoSelect]: the engine's list leads with the
+    // `auto` and `no` sentinels, which are not tracks - without this the
+    // list is never empty once tracks load and the button shows on every
+    // title.
+    final embedded = _player.state.tracks.subtitle.where(
+      (t) => t.id != 'auto' && t.id != 'no',
+    );
     final external = _selected?.subtitles ?? const [];
     _hasSubtitles.value = embedded.isNotEmpty || external.isNotEmpty;
   }
@@ -5691,6 +5697,16 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _pickedIndex = null;
     _resolveDone = false;
     _startedPlaying = false;
+    // Recovery budgets are per-episode, not per-session: a new episode
+    // opens on the same stream index as the last one's first source, so
+    // the _openStream reset (which fires only on a different index)
+    // would never run and the last episode's exhausted budget would
+    // carry over.
+    _falseEndRecoveries = 0;
+    _stallRecoveries = 0;
+    _stallStreamIndex = -1;
+    _stallLastAction = StallAction.none;
+    _stallClock.reset();
     _subtitleAppliedFor = -1;
     _rememberedAudioId = null;
     _rememberedSubtitleId = null;
@@ -5986,6 +6002,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       // is instant (the engine seeks in a local file natively); a seek
       // past the frontier waits for its bytes.
       if (temp.isDownloaded(target)) return false;
+      // A dead download never earns a wait: its bytes are never coming,
+      // and the failure's final progress event already fired before this
+      // seek was parked, so nothing would ever clear it. The seek goes
+      // to the engine, as the failed branch of [_onTempDownloadProgress]
+      // does when the failure lands while a seek is parked.
+      if (temp.status == TempDownloadStatus.failed ||
+          temp.status == TempDownloadStatus.stopped) {
+        return false;
+      }
       _setPendingTempSeek(target);
       return true;
     }
@@ -6131,8 +6156,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   void _onSleepTimerFired() {
     if (_disposed || !mounted) return;
     if (_nextEpisodeOffer != null) {
-      setState(() => _nextEpisodeOffer = null);
-      _showEnded(EndedKind.declinedNext);
+      // As the countdown's own cancel does: an offer raised before the
+      // end is just withdrawn - the episode still has time left, so the
+      // ended card (which has no resume) must not come up mid-episode.
+      final wasBeforeEnd = _offerBeforeEnd;
+      setState(() {
+        _nextEpisodeOffer = null;
+        _offerBeforeEnd = false;
+      });
+      if (!wasBeforeEnd) _showEnded(EndedKind.declinedNext);
     }
     if (_stage == _Stage.playing) {
       unawaited(_player.pause());
@@ -6183,6 +6215,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _nextEpisodeOffer = null;
     _offerBeforeEnd = false;
     _outroOffered = false;
+    // A restart is a fresh attempt at this film: the false-end and stall
+    // budgets start over, or the next false end would fail over instead
+    // of reopening.
+    _falseEndRecoveries = 0;
+    _stallRecoveries = 0;
     setState(() => _ended = null);
     unawaited(_player.seek(Duration.zero));
     unawaited(_player.play());
@@ -6261,14 +6298,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// Flips the handset the other way for the rest of this video (rotate
   /// button). Only where the player turns the device at all.
   void _flipOrientation() {
-    final orientation = MediaQuery.orientationOf(context);
-    unawaited(
-      SystemChrome.setPreferredOrientations([
-        orientation == Orientation.landscape
-            ? DeviceOrientation.landscapeRight
-            : DeviceOrientation.landscapeLeft,
-      ]),
-    );
+    // As the VLC player does: the platform service owns the flip, so it
+    // reads the real orientation and toggles landscape <-> portrait.
+    // MediaQuery only says portrait/landscape and cannot tell
+    // landscapeLeft from landscapeRight, so the old code always pinned
+    // landscapeRight when already in landscape - a no-op half the time.
+    final profile = ref.read(deviceProfileProvider).asData?.value;
+    _platform.flipOrientation(playerFormFactorOf(profile));
   }
 
   BoxFit _boxFitFor(VlcVideoFit fit) {
