@@ -110,12 +110,16 @@ jobs:
       # certificate, so the log shows who signed it; the SHA-256
       # fingerprint below is the Fuse release key's (a public identifier
       # of the key, printed in every APK signed with it).
+      # Key rotated 2026-11-26: the 2026-11-25 key's password was lost, so a
+      # new keystore was issued; the old keystore is preserved locally as
+      # fuse-release-keystore-OLD-2026-11-26.jks. APKs signed with the new
+      # key do NOT update over build #18 — uninstall first.
       - name: Verify release signature
         run: |
           APKSIGNER=$(ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
           if [ -z "$APKSIGNER" ]; then echo "::error::apksigner not found in the Android SDK"; exit 1; fi
           "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee /tmp/apksigner-certs.txt
-          grep -q "d7b07563e0c600d80b3619e33024cbc039e2e9145ff45fbe89e7b491cdbb4b54" /tmp/apksigner-certs.txt && echo "APK signed with the Fuse release key" || { echo "::error::APK is not signed with the Fuse release key"; exit 1; }
+          grep -q "b22e7a906d83bd06cd52f86393887ee35bc6f0896af76122c3be1726c0519e63" /tmp/apksigner-certs.txt && echo "APK signed with the Fuse release key" || { echo "::error::APK is not signed with the Fuse release key"; exit 1; }
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
