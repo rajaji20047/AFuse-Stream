@@ -246,6 +246,7 @@ class PlaybackLauncher {
           item,
           episodeDataUrl,
           playerId,
+          preloadedStreams: streams,
         );
       } else {
         if (item.url.isNotEmpty) {
@@ -422,6 +423,7 @@ class PlaybackLauncher {
                           item,
                           episodeDataUrl,
                           playerId,
+                          preloadedStreams: streams,
                         );
                       },
                     );
