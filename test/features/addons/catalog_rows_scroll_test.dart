@@ -13,6 +13,8 @@
 /// error rows have real height, never did. So empty catalogs leave the list.
 library;
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -89,7 +91,120 @@ class _Client extends AddonClient {
   }
 }
 
+/// One bridge add-on publishing three catalogs: the first feeds the hero
+/// (empty, so there is no hero carousel), the other two are rows.
+class _ThreeCatalogRepo extends AddonRepository {
+  @override
+  AddonsState build() => AddonsState(
+    isLoading: false,
+    addons: [
+      ManagedAddon(
+        manifestUrl: 'https://bridge.test/manifest.json',
+        addedAt: DateTime(2026),
+        manifest: AddonManifest(
+          id: 'bridge',
+          name: 'Bridge',
+          version: '1',
+          resources: const [
+            AddonResource(name: 'catalog'),
+            AddonResource(name: 'stream'),
+          ],
+          types: const ['other'],
+          catalogs: [
+            for (var i = 0; i < 3; i++)
+              AddonCatalog(type: 'other', id: 'c$i', name: 'Provider $i'),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+/// The hero catalog answers empty at once; the first row answers only when
+/// the test completes [rowCompleter]; the second row never answers, so it
+/// stays a shimmer and its height cannot move the measurement.
+class _GatedClient extends AddonClient {
+  _GatedClient() : super(Dio());
+
+  final rowCompleter = Completer<List<AddonMetaPreview>>();
+
+  @override
+  Future<List<AddonMetaPreview>> catalog(
+    ManagedAddon addon, {
+    required String type,
+    required String id,
+    Map<String, String>? extra,
+    bool forceRefresh = false,
+    CancelToken? cancelToken,
+  }) async {
+    if (id == 'c0') return const <AddonMetaPreview>[];
+    if (id == 'c1') return rowCompleter.future;
+    return Completer<List<AddonMetaPreview>>().future;
+  }
+}
+
 void main() {
+  testWidgets('a row keeps its height when its items arrive', (tester) async {
+    // A short viewport, so the rows overflow it and the scroll extent
+    // measures their height.
+    tester.view.physicalSize = const Size(1080, 800);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    final client = _GatedClient();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          addonRepositoryProvider.overrideWith(_ThreeCatalogRepo.new),
+          addonClientProvider.overrideWithValue(client),
+          generalSettingsProvider.overrideWithValue(const GeneralSettings()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.createDarkTheme(null),
+          home: Scaffold(
+            body: AddonCatalogsTabView(scrollController: controller),
+          ),
+        ),
+      ),
+    );
+    // The hero catalog answers empty, so its shimmer collapses; both rows
+    // stay shimmer until their futures complete.
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final before = controller.position.maxScrollExtent;
+
+    client.rowCompleter.complete([
+      for (var i = 0; i < 10; i++)
+        AddonMetaPreview(
+          id: 'tt1$i',
+          type: 'movie',
+          name: 'Title 1.$i',
+          poster: 'https://img.test/1/$i.jpg',
+        ),
+    ]);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The shimmer used the 2:3 poster height (195) while the loaded row
+    // paints the 130x150 card, plus a 16 pt gap the loaded row has not —
+    // every row shrank ~57 pt on load and the list jumped under the thumb
+    // (the All-catalogues scroll glitch, user 2026-11-26, video). The
+    // title block is font-driven, so a couple of points of settle remain.
+    expect(
+      (controller.position.maxScrollExtent - before).abs(),
+      lessThanOrEqualTo(8),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(minutes: 1));
+  });
+
   testWidgets('dragging back up through the catalogs scrolls them', (
     tester,
   ) async {

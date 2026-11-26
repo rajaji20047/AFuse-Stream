@@ -534,7 +534,15 @@ Widget _buildCarouselShimmer(BuildContext context) {
 Widget _buildListShimmer(BuildContext context) {
   final isDesktop = context.isDesktop;
   final cardWidth = isDesktop ? 200.0 : 130.0;
-  final imageHeight = cardWidth / (2 / 3);
+  // Same image height the loaded row paints (MediaHorizontalList): phones
+  // paint the 130x150 card, not the 2:3 ratio — the shimmer used 195, so
+  // every row shrank 45 pt when its items arrived and the list jumped under
+  // the user's thumb, worst with All catalogues (dozens of rows loading as
+  // they scroll in). The 16 pt gap between the title and the list is gone
+  // too — the loaded row has none. (User 2026-11-26, video.)
+  final imageHeight = isDesktop
+      ? cardWidth / (2 / 3)
+      : LayoutConstants.homePosterImageHeight;
   final listHeight = imageHeight + 40.0;
 
   return Column(
@@ -557,7 +565,6 @@ Widget _buildListShimmer(BuildContext context) {
           borderRadius: 4,
         ),
       ),
-      const SizedBox(height: LayoutConstants.spacingMd),
       SizedBox(
         height: listHeight,
         child: ListView.separated(
