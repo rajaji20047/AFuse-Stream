@@ -53,6 +53,7 @@ import '../../domain/media_options.dart';
 import '../../domain/playback_progress.dart';
 import '../../domain/buffered_ahead.dart';
 import '../mpv/mpv_stream_proxy.dart';
+import '../widgets/engine_picker_sheet.dart';
 import '../../../../core/logger/app_logger.dart';
 import '../../domain/network_buffer.dart';
 import '../../domain/smoothness.dart';
@@ -5629,16 +5630,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     );
   }
 
-  /// Moves this video to the other engine (MPV from here): persists the
-  /// choice, so the next play uses it too, and replaces this player route
-  /// with a fresh one, which reads the new setting and builds the other
-  /// engine's screen. The new engine resumes from the recorded progress
-  /// like any fresh open, and the current source list rides along so it
-  /// does not re-resolve. (User 2026-11-26: switch option in the top row.)
-  Future<void> _switchEngine() async {
+  /// Moves this video to the picked engine: persists the choice, so the
+  /// next play uses it too, and replaces this player route with a fresh
+  /// one, which reads the new setting and builds that engine's screen.
+  /// The new engine resumes from the recorded progress like any fresh
+  /// open, and the current source list rides along so it does not
+  /// re-resolve. (User 2026-11-26: switch option in the top row; the
+  /// picker in the top row, 2026-11-26.)
+  Future<void> _switchEngine(PlayerEngine target) async {
     await ref
         .read(playerSettingsProvider.notifier)
-        .setPlayerEngine(PlayerEngine.mpv);
+        .setPlayerEngine(target);
     if (!mounted) return;
     PlayerRoute(
       $extra: PlayerRouteExtra(
@@ -5648,6 +5650,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         preloadedStreams: _candidates.isEmpty ? null : _candidates,
       ),
     ).pushReplacement(context);
+  }
+
+  /// The top-row switch button opens the engine picker; picking the engine
+  /// already playing is a no-op, so the video is never reopened for
+  /// nothing.
+  Future<void> _showEnginePicker() async {
+    final current =
+        ref.read(playerSettingsProvider).value?.playerEngine ??
+        PlayerEngine.mpv;
+    final picked = await showEnginePickerSheet(context, current);
+    if (!mounted || picked == null || picked == current) return;
+    await _switchEngine(picked);
   }
 
   /// Back, from the remote, the gesture or the on-screen button alike.
@@ -6476,10 +6490,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
                   onEnterPip: _pipAvailable
                       ? () => _enterPip(fromButton: true)
                       : null,
-                  // The engine switch in the top row: the other player
-                  // opens this same video, resuming from the recorded
-                  // progress like any fresh open.
-                  onSwitchEngine: _switchEngine,
+                  // The engine switch in the top row: the picker opens,
+                  // and the picked player opens this same video, resuming
+                  // from the recorded progress like any fresh open.
+                  onSwitchEngine: _showEnginePicker,
                   onToggleFullscreen: _fullscreenAvailable
                       ? _toggleFullscreen
                       : null,

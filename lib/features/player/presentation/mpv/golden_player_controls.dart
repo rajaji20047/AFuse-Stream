@@ -2088,13 +2088,13 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // The engine switch, right after the title: the viewer can move
-        // this video to the other player without leaving it.
+        // The engine switch, right after the title: the viewer can pick
+        // which player plays this video without leaving it.
         if (onSwitchEngine != null)
           GoldenIconButton(
             icon: Icons.swap_horiz_rounded,
             onPressed: onSwitchEngine,
-            tooltip: 'Switch to VLC',
+            tooltip: 'Switch player',
           ),
         if (onSwitchEngine != null) const SizedBox(width: 8),
         if (isSeries)

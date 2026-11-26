@@ -2851,13 +2851,13 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
                       onBack: widget.onBack,
                       isTv: isTv,
                       // The engine switch, at the bar's far end: only there
-                      // when the screen offers it, so the viewer can move
-                      // this video to the other player without leaving it.
+                      // when the screen offers it, so the viewer can pick
+                      // which player plays this video without leaving it.
                       trailing: widget.onSwitchEngine == null
                           ? null
                           : PlayerIconButton(
                               icon: Icons.swap_horiz_rounded,
-                              tooltip: 'Switch to MPV',
+                              tooltip: 'Switch player',
                               onPressed: widget.onSwitchEngine,
                               isTv: isTv,
                               iconSize: isTv ? 34 : 30,

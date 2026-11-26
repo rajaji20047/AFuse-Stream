@@ -1030,7 +1030,7 @@ void main() {
       var switched = false;
       await _pumpControls(tester, onSwitchEngine: () => switched = true);
 
-      final button = find.byTooltip('Switch to MPV');
+      final button = find.byTooltip('Switch player');
       expect(button, findsOneWidget);
       await tester.tap(button);
       await tester.pump();
@@ -1041,7 +1041,7 @@ void main() {
       tester,
     ) async {
       await _pumpControls(tester);
-      expect(find.byTooltip('Switch to MPV'), findsNothing);
+      expect(find.byTooltip('Switch player'), findsNothing);
     });
 
     testWidgets('the skip chip joins that column without displacing Back', (
