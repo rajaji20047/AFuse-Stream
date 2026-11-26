@@ -908,8 +908,8 @@ Future<void> showProviderSelectorDialog(
 /// installed plugin's name for a JS provider (it carries the plugin's
 /// package name) and for a sub-provider (its package is '<parent>::<name>').
 /// Falls back to the owning package name when the plugin is not installed
-/// any more — the row then still names something, and the grouping chip
-/// still filters it.
+/// any more — the row then still names something (its subtitle falls back
+/// to this name too; see [providerRepoName]).
 String providerAddonName(
   SkyStreamProvider provider,
   List<ExtensionPlugin> installed,
@@ -1020,15 +1020,7 @@ class _ProviderSelectorDialog extends StatefulWidget {
 class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
   final ScrollController _scrollController = ScrollController();
   final ScrollController _chipsScrollController = ScrollController();
-  final ScrollController _addonChipsScrollController = ScrollController();
   bool _didInitialScroll = false;
-
-  /// Grouping (user 2026-11-26, like the quality grouping in the source
-  /// sheets): the add-on the list is filtered to, or null for all. Tapping
-  /// the selected add-on chip again clears it. The effective filter is
-  /// null when the selected add-on has no provider in the type-filtered
-  /// list any more, so a stale selection never empties the list.
-  String? _addonFilter;
 
   /// v2 pins: after a pin tap, how many rows each provider moved (old
   /// index − new index), so its row slides from where it was. Cleared
@@ -1044,19 +1036,14 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
     final before = _shownOrder;
     final filter = ref.read(homeFilterProvider);
     final pins = togglePin(ref.read(providerPinsProvider), packageName);
-    final installed = ref.read(extensionsControllerProvider).installedPlugins;
     final typeFiltered = filter == null
         ? widget.providers
         : widget.providers
               .where((p) => p.supportedTypes.contains(filter))
               .toList();
-    final filtered = _addonFilter == null
-        ? typeFiltered
-        : typeFiltered
-              .where((p) => providerAddonName(p, installed) == _addonFilter)
-              .toList();
+    final filtered = typeFiltered;
     final after = <String?>[
-      if (filter == null && _addonFilter == null) null,
+      if (filter == null) null,
       for (final p in orderProvidersWithPins(filtered, pins)) p.packageName,
     ];
     final shift = <String, int>{};
@@ -1086,7 +1073,6 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
     _reorderTimer?.cancel();
     _scrollController.dispose();
     _chipsScrollController.dispose();
-    _addonChipsScrollController.dispose();
     super.dispose();
   }
 
@@ -1124,111 +1110,51 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
             Consumer(
               builder: (context, ref, _) {
                 final currentFilter = ref.watch(homeFilterProvider);
-                final installed = ref
-                    .watch(extensionsControllerProvider)
-                    .installedPlugins;
-                // Grouping (user 2026-11-26, like the quality grouping in
-                // the source sheets): one chip per add-on that has a
-                // provider in the type-filtered list. The row shows only
-                // when there is something to group (two or more add-ons).
-                final typeFiltered = currentFilter == null
-                    ? widget.providers
-                    : widget.providers
-                          .where(
-                            (p) => p.supportedTypes.contains(currentFilter),
-                          )
-                          .toList();
-                final addonNames = {
-                  for (final p in typeFiltered)
-                    providerAddonName(p, installed),
-                }.toList()..sort();
-                final effectiveAddon = addonNames.contains(_addonFilter)
-                    ? _addonFilter
-                    : null;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DesktopScrollWrapper(
-                      controller: _chipsScrollController,
-                      isCompact: true,
-                      child: SingleChildScrollView(
-                        controller: _chipsScrollController,
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            FilterChip(
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              label: Text(l10n.all),
-                              selected: currentFilter == null,
-                              onSelected: (_) => ref
-                                  .read(homeFilterProvider.notifier)
-                                  .setFilter(null),
-                            ),
-                            const SizedBox(width: 8),
-                            ...ProviderType.values
-                                .where((t) => t != ProviderType.other)
-                                .map((type) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: FilterChip(
-                                      visualDensity: VisualDensity.compact,
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      label: Text(
-                                        _getLocalizedType(type, l10n),
-                                      ),
-                                      selected: currentFilter == type,
-                                      onSelected: (_) => ref
-                                          .read(homeFilterProvider.notifier)
-                                          .setFilter(type),
-                                    ),
-                                  );
-                                }),
-                          ],
-                        ),
-                      ),
+                return DesktopScrollWrapper(
+                  controller: _chipsScrollController,
+                  isCompact: true,
+                  child: SingleChildScrollView(
+                    controller: _chipsScrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    if (addonNames.length >= 2)
-                      DesktopScrollWrapper(
-                        controller: _addonChipsScrollController,
-                        isCompact: true,
-                        child: SingleChildScrollView(
-                          controller: _addonChipsScrollController,
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Row(
-                            children: [
-                              for (final addon in addonNames)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: FilterChip(
-                                    visualDensity: VisualDensity.compact,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    label: Text(addon),
-                                    selected: effectiveAddon == addon,
-                                    // Tapping the selected add-on again
-                                    // clears the grouping, like the quality
-                                    // chips in the source sheets.
-                                    onSelected: (_) => setState(
-                                      () => _addonFilter =
-                                          effectiveAddon == addon
-                                          ? null
-                                          : addon,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                    child: Row(
+                      children: [
+                        FilterChip(
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          label: Text(l10n.all),
+                          selected: currentFilter == null,
+                          onSelected: (_) => ref
+                              .read(homeFilterProvider.notifier)
+                              .setFilter(null),
                         ),
-                      ),
-                  ],
+                        const SizedBox(width: 8),
+                        ...ProviderType.values
+                            .where((t) => t != ProviderType.other)
+                            .map((type) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: FilterChip(
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  label: Text(
+                                    _getLocalizedType(type, l10n),
+                                  ),
+                                  selected: currentFilter == type,
+                                  onSelected: (_) => ref
+                                      .read(homeFilterProvider.notifier)
+                                      .setFilter(type),
+                                ),
+                              );
+                            }),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -1256,32 +1182,13 @@ class _ProviderSelectorDialogState extends State<_ProviderSelectorDialog> {
                       : providers
                             .where((p) => p.supportedTypes.contains(filter))
                             .toList();
-                  // The grouping filter: only providers of the selected
-                  // add-on. A selection whose add-on has no provider in
-                  // the type-filtered list any more reads as no filter.
-                  final addonNames = {
-                    for (final p in typeFiltered)
-                      providerAddonName(p, installedPlugins),
-                  };
-                  final effectiveAddon = addonNames.contains(_addonFilter)
-                      ? _addonFilter
-                      : null;
                   final filteredProviders = orderProvidersWithPins(
-                    effectiveAddon == null
-                        ? typeFiltered
-                        : typeFiltered
-                              .where(
-                                (p) =>
-                                    providerAddonName(p, installedPlugins) ==
-                                    effectiveAddon,
-                              )
-                              .toList(),
+                    typeFiltered,
                     pins,
                   );
                   // The None row belongs to no add-on, so it shows only
-                  // when neither filter is active.
-                  final hasNoneRow =
-                      filter == null && effectiveAddon == null;
+                  // when no type filter is active.
+                  final hasNoneRow = filter == null;
                   _shownOrder = <String?>[
                     if (hasNoneRow) null,
                     for (final p in filteredProviders) p.packageName,

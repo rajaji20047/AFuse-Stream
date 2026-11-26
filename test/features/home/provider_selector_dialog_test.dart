@@ -221,9 +221,7 @@ void main() {
     expect(Focus.of(tester.element(find.text('None'))).hasFocus, isTrue);
 
     await tester.fling(
-      // The type chips' own row: the dialog now has a second horizontal
-      // row (the add-on grouping chips), so the bare SingleChildScrollView
-      // finder matches two.
+      // The type chips' own row.
       find.ancestor(
         of: find.text('Movies'),
         matching: find.byType(SingleChildScrollView),
@@ -260,8 +258,7 @@ void main() {
 
       // No plugins are installed in the test, so no fake provider has a
       // repository recorded — each falls back to its package name as its
-      // add-on, shown as the row subtitle, not in the grouping chip row
-      // above the list.
+      // add-on, shown as the row subtitle.
       expect(
         find.descendant(
           of: find.byType(ListView),
@@ -316,24 +313,19 @@ void main() {
     );
   });
 
-  testWidgets('grouping by add-on filters the list, re-tap clears it', (
-    tester,
-  ) async {
+  testWidgets('no add-on grouping chips: the provider chips live in the '
+      'link box, not here', (tester) async {
     await _pumpHost(tester, onClosed: () {});
 
-    final chip = find.widgetWithText(FilterChip, 'fake.provider.2');
-    await tester.ensureVisible(chip);
-    await tester.pumpAndSettle();
-    await tester.tap(chip);
-    await tester.pumpAndSettle();
-    expect(find.text('Provider 2'), findsOneWidget);
-    expect(find.text('Provider 3'), findsNothing);
-    // The None row belongs to no add-on, so it hides with a grouping on.
-    expect(find.text('None'), findsNothing);
-
-    await tester.tap(chip);
-    await tester.pumpAndSettle();
+    // The add-on grouping row was removed (user 2026-11-26): the provider
+    // filter chips belong in the link box, above the quality chips row —
+    // not in this dialog. The type chips stay.
+    expect(find.widgetWithText(FilterChip, 'All'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, 'fake.provider.2'), findsNothing);
+    expect(find.widgetWithText(FilterChip, 'fake.provider.3'), findsNothing);
+    // And the full list still shows: nothing is filtered away.
     expect(find.text('None'), findsOneWidget);
+    expect(find.text('Provider 2'), findsOneWidget);
     expect(find.text('Provider 3'), findsOneWidget);
   });
 }
