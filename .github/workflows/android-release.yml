@@ -15,8 +15,8 @@
 # must never ship as a release.
 #
 # Dart-defines: TMDB_API_KEY + WETRAKR_CLIENT_ID come from repo secrets
-# (same as the iOS workflow). The build succeeds without them, with a
-# warning — Browse just has no TMDB rows and the WeTrakr row hides.
+# (same as the iOS workflow). Both are optional — the same values are
+# entered in the app (Settings), which is how they are actually used.
 #
 # Flutter version: 3.47.7, the version upstream's iOS workflow pins for
 # this exact codebase.
@@ -97,8 +97,6 @@ jobs:
           WETRAKR_CLIENT_ID: ${{ secrets.WETRAKR_CLIENT_ID }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
-          if [ -z "$WETRAKR_CLIENT_ID" ]; then echo "::warning::WETRAKR_CLIENT_ID is not set: the WeTrakr row will be hidden"; fi
-          if [ -z "$TMDB_API_KEY" ]; then echo "::warning::TMDB_API_KEY is not set: Browse will have no TMDB Movies & Shows"; fi
           flutter build apk --release --target-platform android-arm64 --dart-define=WETRAKR_CLIENT_ID="$WETRAKR_CLIENT_ID" --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
           ls -lh build/app/outputs/flutter-apk/app-release.apk
 
