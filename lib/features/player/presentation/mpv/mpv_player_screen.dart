@@ -1552,9 +1552,19 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // screen, and DeviceOrientation.values (all) does NOT rotate the
     // device — it just lifts the pin, so the app stays sideways in
     // landscape after Back. portraitUp rotates it back upright.
-    unawaited(
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
-    );
+    // Android phone only, as the VLC player does: a tablet, TV, desktop
+    // or iPhone keeps the hand-back to the system, so leaving the player
+    // does not force a tablet app into portrait.
+    final profile = ref.read(deviceProfileProvider).asData?.value;
+    final form = playerFormFactorOf(profile);
+    if (defaultTargetPlatform == TargetPlatform.android &&
+        form == PlayerFormFactor.phone) {
+      unawaited(
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+      );
+      return;
+    }
+    unawaited(SystemChrome.setPreferredOrientations(const []));
   }
 
   /// Leaves the player: stop the audio first, then portrait (so the rotation
