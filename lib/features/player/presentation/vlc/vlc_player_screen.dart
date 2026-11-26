@@ -5640,7 +5640,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         .read(playerSettingsProvider.notifier)
         .setPlayerEngine(PlayerEngine.mpv);
     if (!mounted) return;
-    await PlayerRoute(
+    PlayerRoute(
       $extra: PlayerRouteExtra(
         item: widget.item,
         videoUrl: _videoUrl,

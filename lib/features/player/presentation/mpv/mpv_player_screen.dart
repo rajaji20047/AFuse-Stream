@@ -1649,7 +1649,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         .read(playerSettingsProvider.notifier)
         .setPlayerEngine(PlayerEngine.vlc);
     if (!mounted) return;
-    await PlayerRoute(
+    PlayerRoute(
       $extra: PlayerRouteExtra(
         item: widget.item,
         videoUrl: _currentVideoUrl,
@@ -3855,7 +3855,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
           (looksLikeHls(mediaUri) || stream.quality == 0)) {
         _qualityMedia = (
           uri: mediaUri,
-          headers: stream.headers,
+          headers: stream.headers ?? const <String, String>{},
           source: stream.url,
         );
       }
