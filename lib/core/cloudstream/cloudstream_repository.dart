@@ -548,7 +548,19 @@ class CloudStreamRepository extends _$CloudStreamRepository {
       plugins..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
   Future<Object?> _getJson(String url) async {
-    final response = await _dio.get<String>(_secure(url), options: Options(responseType: ResponseType.plain));
+    final response = await _dio.get<String>(
+      _secure(url),
+      options: Options(
+        responseType: ResponseType.plain,
+        // A repository check is a background refresh, not an interactive
+        // fetch: on a slow connection the shared 15 s connect budget aborts
+        // it before DNS + TLS finish (TojiX Repo, 2026-11-26 — "last check
+        // failed" on a ~1 KB/s connection). 30 s to connect, 60 s to receive
+        // the manifest and its lists. The shared 15 s budget is untouched.
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
+    );
     final body = response.data ?? '';
     try {
       return jsonDecode(body);
