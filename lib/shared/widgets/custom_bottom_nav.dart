@@ -81,6 +81,12 @@ class CustomBottomNavBar extends StatelessWidget {
   /// (Nuvio's non-glass fallback).
   final bool glassEnabled;
 
+  /// Nuvio's compactSize (COMPACT style): 24 pt icons and a pill 8
+  /// shorter at every fraction (55 expanded, 39 collapsed). The shell
+  /// passes this from the nav-bar style; the pill's labels are already
+  /// pinned off by [labelFraction] 0 for this style.
+  final bool compactSize;
+
   /// Unselected-icon colour override (null = default: white 65% on dark
   /// glass, onSurfaceVariant on light). Nuvio's navBarDefaultIconColor.
   final Color? inactiveColorOverride;
