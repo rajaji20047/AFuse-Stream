@@ -723,10 +723,6 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     final listedStreams =
         _result.streams.where((s) => !s.isExternal).toList(growable: false);
     final listedCount = listedStreams.length;
-    final hasAutoChip = listedStreams.any(
-      (s) => SourceQualityFilter.auto.matchesScore(s.qualityScore),
-    );
-    final hasDirectChip = listedStreams.any((s) => s.isDirect);
     final subtitleText = episode != null
         ? 'S${episode.season} · E${episode.episode} ${episode.name}'
         : (_result.isLoading
@@ -895,53 +891,57 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
 
                 if (_showDetails) _details(theme, cs),
 
-                // Filter Chips Rail (user 2026-11-26): only Direct and
-                // Auto stay — the other quality chips and the All /
-                // Torrent / 'Opens app' kind chips are gone, and external
-                // links never list (see _filtered). A chip shows only when
-                // a listed stream falls in it; tapping the selected chip
-                // again clears it. The rail hides entirely when neither
-                // chip has a stream behind it, instead of a blank strip.
-                if (hasAutoChip || hasDirectChip)
-                  SizedBox(
-                    height: 34,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: kSourceSheetGutter,
-                      ),
-                      children: [
-                        if (hasAutoChip)
+                // Filter Chips Rail (user 2026-11-26): the quality
+                // groups and the All / Torrent kind chips stay — only
+                // Direct, Auto and 'Opens app' are gone (Direct and Auto
+                // were asked about, then asked off; external links never
+                // list, see _filtered). A chip shows only when a listed
+                // stream falls in it; tapping the selected quality group
+                // again clears it back to All.
+                SizedBox(
+                  height: 34,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: kSourceSheetGutter,
+                    ),
+                    children: [
+                      for (final filter in SourceQualityFilter.values)
+                        if (filter != SourceQualityFilter.all &&
+                            filter != SourceQualityFilter.auto &&
+                            listedStreams.any(
+                              (s) => filter.matchesScore(s.qualityScore),
+                            ))
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(
-                              text: SourceQualityFilter.auto.label,
-                              selected: _quality == SourceQualityFilter.auto,
+                              text: filter.label,
+                              selected: _quality == filter,
                               outline: glass.tint(0.15),
                               onSelected: (selected) => setState(
                                 () => _quality = selected
-                                    ? SourceQualityFilter.auto
+                                    ? filter
                                     : SourceQualityFilter.all,
                               ),
                             ),
                           ),
-                        if (hasDirectChip)
+                      for (final filter in _KindFilter.values)
+                        if (filter != _KindFilter.direct &&
+                            filter != _KindFilter.external &&
+                            (filter == _KindFilter.all ||
+                                listedStreams.any(filter.matches)))
                           Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: SourceFilterChip(
-                              text: _KindFilter.direct.label,
-                              selected: _kind == _KindFilter.direct,
+                              text: filter.label,
+                              selected: _kind == filter,
                               outline: glass.tint(0.15),
-                              onSelected: (selected) => setState(
-                                () => _kind = selected
-                                    ? _KindFilter.direct
-                                    : _KindFilter.all,
-                              ),
+                              onSelected: (_) => setState(() => _kind = filter),
                             ),
                           ),
-                      ],
-                    ),
+                    ],
                   ),
+                ),
 
                 if (_searchOpen) ...[
                   Padding(
