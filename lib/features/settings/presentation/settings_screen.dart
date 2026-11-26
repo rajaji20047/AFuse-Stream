@@ -111,9 +111,11 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  /// The Olympus Noir page header: back to Home, "Settings", and a
-  /// gold bolt. Simple (user 2026-11-26): the old "Personalize Fuse"
-  /// title and its "Your cinema, your rules" line are gone.
+  /// The Olympus Noir page header: back to Home and "Settings".
+  /// Simple (user 2026-11-26): the old "Personalize Fuse" title and
+  /// its "Your cinema, your rules" line are gone, and the gold bolt
+  /// moved to the Appearance screen (user 2026-11-26) — it was
+  /// decoration only there too, no tap.
   Widget _buildOlympusHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
@@ -135,29 +137,6 @@ class SettingsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w800,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // The mockup's gold lightning over the mountain — the closest
-          // the app has is a gold bolt with a soft glow.
-          Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: kOlympusGold.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: kOlympusGold.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.bolt_rounded,
-              color: kOlympusGold,
-              size: 28,
             ),
           ),
         ],

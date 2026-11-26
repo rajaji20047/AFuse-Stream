@@ -5,6 +5,7 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/accent_color.dart';
+import '../../../core/theme/olympus.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/utils/layout_constants.dart';
 import '../../../../shared/widgets/olympus_section_header.dart';
@@ -45,6 +46,35 @@ class AppearanceSettingsScreen extends ConsumerWidget {
           },
         ),
         title: Text(l10n.appearance),
+        // The gold bolt from the old Settings header (user 2026-11-26):
+        // moved here as-is — the mockup's gold lightning over the
+        // mountain, a gold bolt with a soft glow. Decoration only, no
+        // tap, exactly as it was in the header.
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: kOlympusGold.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: kOlympusGold.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.bolt_rounded,
+                color: kOlympusGold,
+                size: 28,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(

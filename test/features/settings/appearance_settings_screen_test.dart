@@ -164,6 +164,9 @@ void main() {
     expect(find.text('APP THEME'), findsOneWidget);
     expect(find.text('ACCENT COLOR'), findsOneWidget);
     expect(find.text('Dark Mode'), findsOneWidget);
+    // The gold bolt from the old Settings header lives here now
+    // (user 2026-11-26), same gold glow, top-right of the AppBar.
+    expect(find.byIcon(Icons.bolt_rounded), findsOneWidget);
   });
 
   testWidgets('Settings shows the Appearance row, not the theme sections', (
@@ -191,5 +194,7 @@ void main() {
     expect(find.text('APP THEME'), findsNothing);
     expect(find.text('ACCENT COLOR'), findsNothing);
     expect(find.text('Dark Mode'), findsNothing);
+    // The gold bolt moved with them — no bolt left in this header.
+    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
   });
 }
