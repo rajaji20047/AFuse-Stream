@@ -64,6 +64,14 @@ class MultimediaCard extends ConsumerWidget {
               imageUrl: imageUrl ?? '',
               fit: BoxFit.cover,
               width: double.infinity,
+              // No fade: the default 500 ms fade-in replays every time a
+              // row rebuilds while scrolling (the SliverList drops
+              // off-screen rows), so posters flash dark and then brighten
+              // — the catalog-scroll glitch in the Stremio section (user
+              // 2026-11-26, video). The shimmer placeholder already covers
+              // the load, so the image just appears when it is ready.
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
               // Without this the source decodes whole: a `w780` TV/desktop
               // poster is 780x1170 = 3.65 MB of bitmap for a card painted
               // 400 px wide, and a plugin that serves a 2000x3000 poster is

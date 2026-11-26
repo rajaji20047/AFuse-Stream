@@ -151,4 +151,18 @@ void main() {
       );
     });
   });
+
+  group('MultimediaCard shows its poster with no fade', () {
+    testWidgets('so scrolling never replays a dark flash on rebuilt rows', (
+      tester,
+    ) async {
+      // The catalog-scroll glitch (user 2026-11-26, video): posters went
+      // dark for ~half a second whenever a row rebuilt while scrolling —
+      // the default 500 ms fade-in replaying on every rebuild.
+      await _pumpCard(tester, titlePosition: 'inside');
+
+      expect(_poster(tester).fadeInDuration, Duration.zero);
+      expect(_poster(tester).fadeOutDuration, Duration.zero);
+    });
+  });
 }
