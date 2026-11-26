@@ -626,6 +626,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                             glowEnabled: navSettings.navBarGlowEnabled,
                             glassEnabled: navSettings.navBarGlassEnabled,
                             classic: navClassic,
+                            compactSize:
+                                navStyle == NavBarStyle.compact,
                             inactiveColorOverride:
                                 navSettings.navBarIconColorArgb == null
                                 ? null

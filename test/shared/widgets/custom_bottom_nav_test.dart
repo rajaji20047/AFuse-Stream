@@ -22,6 +22,7 @@ void main() {
     bool glowEnabled = true,
     bool glassEnabled = true,
     bool classic = false,
+    bool compactSize = false,
   }) => tester.pumpWidget(
     MaterialApp(
       theme: ThemeData(brightness: brightness),
@@ -38,6 +39,7 @@ void main() {
               glowEnabled: glowEnabled,
               glassEnabled: glassEnabled,
               classic: classic,
+              compactSize: compactSize,
             ),
           ],
         ),
@@ -247,6 +249,33 @@ void main() {
         .toList();
     expect(positioned, hasLength(1));
     expect(positioned.single.bottom, CustomBottomNavBar.targetBottomGap);
+  });
+
+  // Nuvio COMPACT (compactSize): 24 pt icons (vs 28) and a pill 8
+  // shorter at every fraction — 55 expanded, 39 collapsed (Nuvio
+  // 56 / 40). The shell pins COMPACT at labelFraction 0, so the
+  // on-screen compact pill is 39.
+  testWidgets('compact style uses Nuvio compact sizing', (tester) async {
+    await pump(
+      tester,
+      Brightness.dark,
+      labelFraction: 1.0,
+      compactSize: true,
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 55.0);
+    await pump(
+      tester,
+      Brightness.dark,
+      labelFraction: 0.0,
+      compactSize: true,
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byType(LiquidGlassNavBar)).height, 39.0);
+    expect(
+      tester.widget<Icon>(find.byIcon(ReiconFilledIcons.home)).size,
+      24.0,
+    );
   });
 
   testWidgets('expanded labels are fully shown', (tester) async {

@@ -85,6 +85,12 @@ class CustomBottomNavBar extends StatelessWidget {
   /// Flat docked bar instead of the floating pill (Nuvio CLASSIC).
   final bool classic;
 
+  /// Nuvio's compactSize (COMPACT style): 24 pt icons and a pill 8
+  /// shorter at every fraction (55 expanded, 39 collapsed). The shell
+  /// passes this from the nav-bar style; the pill's labels are already
+  /// pinned off by [labelFraction] 0 for this style.
+  final bool compactSize;
+
   /// Unselected-icon colour override (null = default: white 65% on dark
   /// glass, onSurfaceVariant on light). Nuvio's navBarDefaultIconColor.
   final Color? inactiveColorOverride;
@@ -98,6 +104,7 @@ class CustomBottomNavBar extends StatelessWidget {
     this.glowEnabled = true,
     this.glassEnabled = true,
     this.classic = false,
+    this.compactSize = false,
     this.inactiveColorOverride,
   });
 
@@ -264,6 +271,7 @@ class CustomBottomNavBar extends StatelessWidget {
       glowEnabled: glowEnabled,
       glassEnabled: glassEnabled,
       classic: classic,
+      compactSize: compactSize,
       // The package insets (Zenith-style: 19 — the side margin, so the
       // screen shows beside the corners).
       insets: _kBottomMargin,
@@ -300,7 +308,7 @@ class CustomBottomNavBar extends StatelessWidget {
       ),
     );
     if (!clearGlass) {
-      return _rimTreatment(bar, fraction);
+      return _rimTreatment(bar, fraction, compactSize);
     }
     return _rimTreatment(
       Theme(
@@ -308,6 +316,7 @@ class CustomBottomNavBar extends StatelessWidget {
         child: bar,
       ),
       fraction,
+      compactSize,
     );
   }
 
@@ -317,9 +326,17 @@ class CustomBottomNavBar extends StatelessWidget {
   /// is not a floating pill, so it keeps its plain return path. Classic
   /// has no pill at all (its own top divider), so it keeps its plain
   /// return path too.
-  Widget _rimTreatment(Widget bar, double labelFraction) {
+  Widget _rimTreatment(
+    Widget bar,
+    double labelFraction,
+    bool compactSize,
+  ) {
     if (!impellerSupported || classic) return bar;
-    return _NavPillRim(bar: bar, labelFraction: labelFraction);
+    return _NavPillRim(
+      bar: bar,
+      labelFraction: labelFraction,
+      compactSize: compactSize,
+    );
   }
 }
 
@@ -341,13 +358,20 @@ class CustomBottomNavBar extends StatelessWidget {
 /// the icons or labels inside). IgnorePointer, so taps still land on
 /// the bar.
 class _NavPillRim extends StatelessWidget {
-  const _NavPillRim({required this.bar, required this.labelFraction});
+  const _NavPillRim({
+    required this.bar,
+    required this.labelFraction,
+    required this.compactSize,
+  });
 
   final Widget bar;
 
   /// The label fraction the pill is drawn at — the rim narrows with the
   /// pill as the labels collapse (same +30 pt as the package).
   final double labelFraction;
+
+  /// Nuvio's compactSize — the rim is 8 shorter with it, like the pill.
+  final bool compactSize;
 
   @override
   Widget build(BuildContext context) {
@@ -378,9 +402,13 @@ class _NavPillRim extends StatelessWidget {
             left: horizontalMargin,
             right: horizontalMargin,
             bottom: edgePadding + CustomBottomNavBar._kBottomMargin,
-            // The live pill height (63 expanded, 47 collapsed) — a fixed
-            // 63 here would outline a taller box than the shrunken pill.
-            height: LiquidGlassNavBar.pillHeightFor(labelFraction),
+            // The live pill height (63 expanded, 47 collapsed; 55 / 39
+            // compact) — a fixed 63 here would outline a taller box than
+            // the shrunken pill.
+            height: LiquidGlassNavBar.pillHeightFor(
+              labelFraction,
+              compactSize: compactSize,
+            ),
             child: IgnorePointer(
               child: Container(
                 decoration: BoxDecoration(

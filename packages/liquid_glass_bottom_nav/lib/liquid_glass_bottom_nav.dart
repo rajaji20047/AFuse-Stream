@@ -193,14 +193,25 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// (gap) = 16, so the pill loses 16. At every fraction the height is
   /// the content + a constant 19 pt of edge padding (9.5 top/bottom),
   /// exactly like Nuvio's constant 10 pt (4 row + 6 item) padding.
+  /// COMPACT ([compactSize]) is 8 shorter at every fraction — 55
+  /// expanded, 39 collapsed (Nuvio 56 / 40) — from its 24 pt icons
+  /// (vs 28) and 4 pt item padding (vs 6).
   static const double expandedPillHeight = 63.0;
   static const double collapsedPillHeight = 47.0;
+  static const double compactExpandedPillHeight = 55.0;
+  static const double compactCollapsedPillHeight = 39.0;
 
   /// Pill height for a label fraction: 63 at 1 (labels shown), 47 at 0
-  /// (icons only), linear in between. The shell's rim uses the same
-  /// number so it stays on the pill's edge while the pill shrinks.
-  static double pillHeightFor(double labelFraction) =>
-      collapsedPillHeight +
+  /// (icons only), linear in between; with [compactSize] it is 55 at 1
+  /// and 39 at 0. The shell's rim uses the same number so it stays on
+  /// the pill's edge while the pill shrinks.
+  static double pillHeightFor(
+    double labelFraction, {
+    bool compactSize = false,
+  }) =>
+      (compactSize
+              ? compactCollapsedPillHeight
+              : collapsedPillHeight) +
       (expandedPillHeight - collapsedPillHeight) *
           labelFraction.clamp(0.0, 1.0);
 
@@ -233,6 +244,12 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// no scroll behaviour.
   final bool classic;
 
+  /// Nuvio's compactSize: the COMPACT style renders smaller — 24 pt
+  /// icons (vs 28) and 4 pt item vertical padding (vs 6) — so the pill
+  /// is 8 shorter at every fraction (55 expanded, 39 collapsed).
+  /// Defaults to `false` (the normal 28 pt icons, 63 / 47 pill).
+  final bool compactSize;
+
   const LiquidGlassNavBar({
     super.key,
     required this.items,
@@ -251,6 +268,7 @@ class LiquidGlassNavBar extends StatefulWidget {
     this.glowEnabled = true,
     this.glassEnabled = true,
     this.classic = false,
+    this.compactSize = false,
   });
 
   @override
@@ -401,8 +419,14 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
     // Nuvio: the pill also shrinks vertically as the labels collapse
     // (65 → 48 there, 63 → 47 here — see [pillHeightFor]). Bottom-anchored
     // (see the Positioned below), so it shrinks upward and the bottom
-    // edge never moves.
-    final pillHeight = LiquidGlassNavBar.pillHeightFor(labelFraction);
+    // edge never moves. COMPACT ([compactSize]) is 8 shorter still
+    // (55 / 39).
+    final pillHeight = LiquidGlassNavBar.pillHeightFor(
+      labelFraction,
+      compactSize: widget.compactSize,
+    );
+    // Nuvio's compactSize: 24 pt icons (vs 28).
+    final iconSize = widget.compactSize ? 24.0 : widget.iconSize;
     final activeColor = widget.activeColor ?? Theme.of(context).colorScheme.primary;
     final inactiveColor = widget.inactiveColor ?? Theme.of(context).colorScheme.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -737,12 +761,12 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
                                       child: IconTheme(
                                         data: IconThemeData(
                                           color: color,
-                                          size: widget.iconSize,
+                                          size: iconSize,
                                         ),
                                         child: item.iconWidget ??
                                             Icon(
                                               item.icon,
-                                              size: widget.iconSize,
+                                              size: iconSize,
                                               color: color,
                                             ),
                                       ),
