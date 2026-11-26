@@ -275,6 +275,26 @@ class _AppRootState extends State<AppRoot> {
       }
       BootTrace.mark('INIT getDevQoeLog done');
 
+      // The user's own TMDB key, saved in Settings: mirror it into
+      // TmdbConfig's static cache so the first TMDB request after launch
+      // already has it. The tile reads the same value from storage, so
+      // without this the row says 'Custom key' while every TMDB call sees
+      // an empty key and silently returns nothing. The mirror used to live
+      // in the Bootstrap provider, which nothing watches anymore, so the
+      // key only worked until the next restart, when only the save path had
+      // set the static (user 2026-11-26: the key dies on every restart).
+      // Guarded like the QoE read above: a storage timeout must not turn a
+      // recovered launch into an error.
+      try {
+        final savedTmdbKey = _storageService.getString('tmdb_api_key');
+        if (savedTmdbKey != null && savedTmdbKey.trim().isNotEmpty) {
+          TmdbConfig.setUserApiKey(savedTmdbKey);
+        }
+      } catch (e) {
+        debugPrint('[AppRoot] TMDB key mirror failed (storage may have timed out): $e');
+      }
+      BootTrace.mark('INIT TMDB key mirrored');
+
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
         final alwaysOnTop = _storageService.isAlwaysOnTop();
         await windowManager.setAlwaysOnTop(alwaysOnTop);
