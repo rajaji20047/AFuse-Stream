@@ -221,7 +221,7 @@ void showTitlePositionDialog(
   );
 }
 
-/// Labels for the nav-bar style/position pickers. Plain English, no l10n
+/// Labels for the nav-bar style picker. Plain English, no l10n
 /// key — the Plugins/Browse tab names do the same (no l10n key for them).
 String getNavBarStyleLabel(NavBarStyle style) {
   switch (style) {
@@ -250,18 +250,9 @@ String getNavBarStyleHint(NavBarStyle style) {
   }
 }
 
-String getNavBarPositionLabel(NavBarPosition position) {
-  switch (position) {
-    case NavBarPosition.bottom:
-      return 'Bottom';
-    case NavBarPosition.top:
-      return 'Top';
-  }
-}
-
 /// The nav-bar settings dialog (Settings → Navigation bar): Nuvio's
-/// NavigationBarSettingsSheet as one dialog — style, position, glow,
-/// glass and the icon-colour override. Unlike the other pickers here it
+/// NavigationBarSettingsSheet as one dialog — style, glow, glass and
+/// the icon-colour override. Unlike the other pickers here it
 /// does NOT pop on a radio change: the user may want to change the style
 /// AND the glow in one visit, so it stays open until Done. The content
 /// is a [Consumer], so the switches and swatches update live as the
@@ -299,29 +290,6 @@ void showNavBarSettingsDialog(BuildContext context, WidgetRef ref) {
                           value: style,
                           title: Text(getNavBarStyleLabel(style)),
                           subtitle: Text(getNavBarStyleHint(style)),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
-                    ],
-                  ),
-                ),
-                Text(
-                  'Position',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                RadioGroup<NavBarPosition>(
-                  groupValue: settings.navBarPosition,
-                  onChanged: (val) {
-                    if (val == null) return;
-                    notifier.setNavBarPosition(val);
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final position in NavBarPosition.values)
-                        RadioListTile<NavBarPosition>(
-                          value: position,
-                          title: Text(getNavBarPositionLabel(position)),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),

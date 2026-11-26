@@ -6,10 +6,9 @@ import 'package:raja/features/settings/presentation/widgets/settings_dialogs.dar
 /// round-trip (including clearing the icon-colour override), and the
 /// dialog labels.
 void main() {
-  test('fresh install: Adaptive, Bottom, glow and glass on, no override', () {
+  test('fresh install: Adaptive, glow and glass on, no override', () {
     const settings = GeneralSettings();
     expect(settings.navBarStyle, NavBarStyle.adaptive);
-    expect(settings.navBarPosition, NavBarPosition.bottom);
     expect(settings.navBarGlowEnabled, isTrue);
     expect(settings.navBarGlassEnabled, isTrue);
     expect(settings.navBarIconColorArgb, isNull);
@@ -19,7 +18,6 @@ void main() {
     const settings = GeneralSettings();
     final changed = settings.copyWith(navBarStyle: NavBarStyle.classic);
     expect(changed.navBarStyle, NavBarStyle.classic);
-    expect(changed.navBarPosition, NavBarPosition.bottom);
     expect(changed.navBarGlowEnabled, isTrue);
     expect(changed.navBarGlassEnabled, isTrue);
     expect(changed.navBarIconColorArgb, isNull);
@@ -52,10 +50,5 @@ void main() {
     expect(getNavBarStyleHint(NavBarStyle.expanded), contains('always'));
     expect(getNavBarStyleHint(NavBarStyle.compact), 'Icons only');
     expect(getNavBarStyleHint(NavBarStyle.classic), contains('Flat bar'));
-  });
-
-  test('position labels', () {
-    expect(getNavBarPositionLabel(NavBarPosition.bottom), 'Bottom');
-    expect(getNavBarPositionLabel(NavBarPosition.top), 'Top');
   });
 }

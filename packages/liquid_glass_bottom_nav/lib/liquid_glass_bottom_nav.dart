@@ -11,13 +11,6 @@ import 'src/liquid_glass_renderer/src/liquid_glass_render_scope.dart'
 export 'src/liquid_glass_renderer/liquid_glass_renderer.dart'
     show LiquidGlassLayer, LiquidGlassSettings;
 
-/// Where the floating pill sits. Nuvio's NavBarPosition: the pill floats
-/// at the bottom by default, or under the status bar at the top.
-enum LiquidGlassNavBarPosition {
-  bottom,
-  top,
-}
-
 class LiquidGlassNavItem {
   final String id;
   final String label;
@@ -199,10 +192,6 @@ class LiquidGlassNavBar extends StatefulWidget {
   /// pill), this widget only draws the fraction it is given.
   final double labelFraction;
 
-  /// Where the pill sits: floating above the bottom edge (default) or
-  /// under the status bar at the top. Nuvio's NavBarPosition.
-  final LiquidGlassNavBarPosition position;
-
   /// Accent glow under the resting selection bubble. Nuvio's nav-bar
   /// glow, on by default there; switch it off in Settings to go back to
   /// the plain tinted bubble.
@@ -236,7 +225,6 @@ class LiquidGlassNavBar extends StatefulWidget {
     this.dragRainbowBorder = false,
     this.liquidActiveBubble = true,
     this.labelFraction = 1.0,
-    this.position = LiquidGlassNavBarPosition.bottom,
     this.glowEnabled = true,
     this.glassEnabled = true,
     this.classic = false,
@@ -360,7 +348,6 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
         activeColor: widget.activeColor,
         inactiveColor: widget.inactiveColor,
         iconSize: widget.iconSize,
-        position: widget.position,
       );
     }
 
@@ -379,7 +366,6 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
 
     final mediaQuery = MediaQuery.of(context);
     final bottomPadding = mediaQuery.padding.bottom;
-    final topPadding = mediaQuery.padding.top;
     final screenWidth = mediaQuery.size.width;
     // Clamped once here: the label heights and opacity below take it raw.
     final labelFraction = widget.labelFraction.clamp(0.0, 1.0);
@@ -392,13 +378,11 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar>
     final activeColor = widget.activeColor ?? Theme.of(context).colorScheme.primary;
     final inactiveColor = widget.inactiveColor ?? Theme.of(context).colorScheme.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isTop = widget.position == LiquidGlassNavBarPosition.top;
 
     return Positioned(
       left: horizontalMargin,
       right: horizontalMargin,
-      bottom: isTop ? null : bottomPadding + widget.insets,
-      top: isTop ? topPadding + widget.insets : null,
+      bottom: bottomPadding + widget.insets,
       child: Container(
         decoration: ShapeDecoration(
           shape: LiquidRoundedSuperellipse(borderRadius: widget.borderRadius),
@@ -803,7 +787,6 @@ class _ClassicNavBar extends StatelessWidget {
   final Color? activeColor;
   final Color? inactiveColor;
   final double iconSize;
-  final LiquidGlassNavBarPosition position;
 
   const _ClassicNavBar({
     required this.items,
@@ -812,7 +795,6 @@ class _ClassicNavBar extends StatelessWidget {
     this.activeColor,
     this.inactiveColor,
     required this.iconSize,
-    required this.position,
   });
 
   @override
@@ -823,21 +805,13 @@ class _ClassicNavBar extends StatelessWidget {
         inactiveColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
     // Docked at the real safe-area edge (viewPadding, which the shell
     // never overrides), sinking below it by the park tween (padding).
-    final double offset;
-    if (position == LiquidGlassNavBarPosition.top) {
-      offset =
-          mediaQuery.viewPadding.top +
-          (mediaQuery.padding.top - _kNavPaddingShown);
-    } else {
-      offset =
-          mediaQuery.viewPadding.bottom +
-          (mediaQuery.padding.bottom - _kNavPaddingShown);
-    }
+    final offset =
+        mediaQuery.viewPadding.bottom +
+        (mediaQuery.padding.bottom - _kNavPaddingShown);
     return Positioned(
       left: 0,
       right: 0,
-      bottom: position == LiquidGlassNavBarPosition.bottom ? offset : null,
-      top: position == LiquidGlassNavBarPosition.top ? offset : null,
+      bottom: offset,
       child: Container(
         height: _kClassicBarHeight,
         decoration: BoxDecoration(

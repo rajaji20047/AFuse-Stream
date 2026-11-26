@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_bottom_nav/liquid_glass_bottom_nav.dart';
 import 'package:raja/core/providers/device_info_provider.dart';
 import 'package:raja/core/utils/boot_trace.dart';
 import 'package:raja/core/utils/layout_constants.dart';
@@ -308,7 +307,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
       generalSettingsProvider.select((s) => s.defaultHomeScreen),
     );
     // Nuvio's nav-bar settings (Settings → Navigation bar): style,
-    // position, glow, glass and the icon-colour override. Watched whole
+    // glow, glass and the icon-colour override. Watched whole
     // — a style change restyles the bar without an app restart.
     final navSettings = ref.watch(generalSettingsProvider);
     final defaultIndex = _getRouteIndex(defaultHome);
@@ -455,23 +454,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         final pillIndex = currentIndex < 5 ? currentIndex : _lastTabIndex;
         // Nuvio's nav-bar settings for this frame.
         final navStyle = navSettings.navBarStyle;
-        final navOnTop =
-            navSettings.navBarPosition == NavBarPosition.top;
         final navClassic = navStyle == NavBarStyle.classic;
         // Content must clear the pill top (see
         // [CustomBottomNavBar.contentClearance]); the real safe-area
         // padding is already in mq.padding.bottom, so only the remainder
         // is added. On Settings the pill is parked off-screen, so the
         // content keeps just the real safe area (pre-87 behaviour) and
-        // the Settings screens take their small-value path. The Top
-        // position floats over the content (Nuvio's bottom overlay is 0
-        // there), so nothing is reserved at the bottom for it.
+        // the Settings screens take their small-value path.
         final navBarTotalHeight = onSettings
             ? 0.0
             : math.max(
                 CustomBottomNavBar.contentClearanceFor(
                       classic: navClassic,
-                      top: navOnTop,
                     ) -
                     mq.padding.bottom,
                 0.0,
@@ -607,26 +601,21 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                                 ? CustomBottomNavBar.hiddenNavPaddingBottom(
                                     context,
                                   )
-                                : navOnTop
-                                    ? CustomBottomNavBar.navPaddingTop(context)
-                                    : CustomBottomNavBar.navPaddingBottom(
-                                        context,
-                                      ),
+                                : CustomBottomNavBar.navPaddingBottom(
+                                    context,
+                                  ),
                           ),
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : kMotionPage,
                           curve: kMotionPageCurve,
-                          // The Top position parks by driving the TOP
-                          // edge (the pill glides up out of view); the
-                          // bottom position drives the bottom edge as
-                          // before. The package reads the driven edge
-                          // for its anchor.
+                          // The park drives the bottom edge: the pill
+                          // sinks below the screen on Settings and rises
+                          // back up on the return (build 90). The package
+                          // reads padding.bottom for its anchor.
                           builder: (context, navPadding, child) => MediaQuery(
                             data: mq.copyWith(
-                              padding: navOnTop
-                                  ? mq.padding.copyWith(top: navPadding)
-                                  : mq.padding.copyWith(bottom: navPadding),
+                              padding: mq.padding.copyWith(bottom: navPadding),
                             ),
                             child: child!,
                           ),
@@ -634,9 +623,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                             currentIndex: pillIndex,
                             onTap: (index) => _onItemTapped(index, context),
                             labelFraction: labelFraction,
-                            position: navOnTop
-                                ? LiquidGlassNavBarPosition.top
-                                : LiquidGlassNavBarPosition.bottom,
                             glowEnabled: navSettings.navBarGlowEnabled,
                             glassEnabled: navSettings.navBarGlassEnabled,
                             classic: navClassic,

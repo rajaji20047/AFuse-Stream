@@ -339,7 +339,7 @@ class SettingsScreen extends ConsumerWidget {
         SettingsTile(
           reicon: Reicon.menu,
           title: 'Navigation bar',
-          subtitle: 'Style, position, glow & glass',
+          subtitle: 'Style, glow & glass',
           value: getNavBarStyleLabel(generalSettings.navBarStyle),
           onTap: () => showNavBarSettingsDialog(context, ref),
         ),

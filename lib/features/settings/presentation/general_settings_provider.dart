@@ -39,23 +39,12 @@ enum NavBarStyle {
   classic,
 }
 
-/// Nuvio's nav-bar position: the floating pill above the bottom edge
-/// (default) or under the status bar at the top. CLASSIC ignores it in
-/// Nuvio; here Classic honours it too (docked at the top edge).
-enum NavBarPosition {
-  bottom,
-  top,
-}
-
 class GeneralSettings {
   final bool watchHistoryEnabled;
   final String defaultHomeScreen;
 
   /// The nav-bar style (Nuvio parity — see [NavBarStyle]).
   final NavBarStyle navBarStyle;
-
-  /// The nav-bar position (Nuvio parity — see [NavBarPosition]).
-  final NavBarPosition navBarPosition;
 
   /// The accent halo under the selection bubble. On by default
   /// (Nuvio's default).
@@ -103,7 +92,6 @@ class GeneralSettings {
     this.downloadChunks = 8,
     this.tmdbApiKey = '',
     this.navBarStyle = NavBarStyle.adaptive,
-    this.navBarPosition = NavBarPosition.bottom,
     this.navBarGlowEnabled = true,
     this.navBarGlassEnabled = true,
     this.navBarIconColorArgb,
@@ -122,7 +110,6 @@ class GeneralSettings {
     int? downloadChunks,
     String? tmdbApiKey,
     NavBarStyle? navBarStyle,
-    NavBarPosition? navBarPosition,
     bool? navBarGlowEnabled,
     bool? navBarGlassEnabled,
     int? navBarIconColorArgb,
@@ -147,7 +134,6 @@ class GeneralSettings {
       downloadChunks: downloadChunks ?? this.downloadChunks,
       tmdbApiKey: tmdbApiKey ?? this.tmdbApiKey,
       navBarStyle: navBarStyle ?? this.navBarStyle,
-      navBarPosition: navBarPosition ?? this.navBarPosition,
       navBarGlowEnabled: navBarGlowEnabled ?? this.navBarGlowEnabled,
       navBarGlassEnabled: navBarGlassEnabled ?? this.navBarGlassEnabled,
       // Same "null means keep" shape as the download directory: clearing
@@ -194,10 +180,6 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       navBarStyle: NavBarStyle.values.firstWhere(
         (e) => e.name == repository.getNavBarStyle(),
         orElse: () => NavBarStyle.adaptive,
-      ),
-      navBarPosition: NavBarPosition.values.firstWhere(
-        (e) => e.name == repository.getNavBarPosition(),
-        orElse: () => NavBarPosition.bottom,
       ),
       navBarGlowEnabled: repository.getNavBarGlow(),
       navBarGlassEnabled: repository.getNavBarGlass(),
@@ -262,12 +244,6 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
     final repository = ref.read(settingsRepositoryProvider);
     await repository.setNavBarStyle(style.name);
     state = state.copyWith(navBarStyle: style);
-  }
-
-  Future<void> setNavBarPosition(NavBarPosition position) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setNavBarPosition(position.name);
-    state = state.copyWith(navBarPosition: position);
   }
 
   Future<void> setNavBarGlowEnabled(bool enabled) async {

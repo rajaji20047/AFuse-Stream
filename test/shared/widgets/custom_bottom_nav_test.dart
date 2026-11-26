@@ -19,7 +19,6 @@ void main() {
     int currentIndex = 0,
     void Function(int)? onTap,
     double labelFraction = 1.0,
-    LiquidGlassNavBarPosition position = LiquidGlassNavBarPosition.bottom,
     bool glowEnabled = true,
     bool glassEnabled = true,
     bool classic = false,
@@ -36,7 +35,6 @@ void main() {
               currentIndex: currentIndex,
               onTap: onTap ?? (_) {},
               labelFraction: labelFraction,
-              position: position,
               glowEnabled: glowEnabled,
               glassEnabled: glassEnabled,
               classic: classic,
@@ -277,59 +275,6 @@ void main() {
     await tester.tap(find.byIcon(ReiconFilledIcons.library));
     await tester.pumpAndSettle();
     expect(tapped, 3);
-  });
-
-  // Nuvio's NavBarPosition.TOP: the pill anchors under the status bar
-  // at the same 21 pt gap it keeps above the bottom edge.
-  testWidgets('top position anchors the pill under the status bar', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(brightness: Brightness.dark),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: MediaQuery(
-          data: const MediaQueryData(
-            size: Size(390, 844),
-            padding: EdgeInsets.only(top: 44),
-          ),
-          child: Scaffold(
-            body: Stack(
-              children: [
-                const SizedBox.expand(),
-                Builder(
-                  builder: (context) {
-                    final mq = MediaQuery.of(context);
-                    return MediaQuery(
-                      data: mq.copyWith(
-                        padding: mq.padding.copyWith(
-                          top: CustomBottomNavBar.navPaddingTop(context),
-                        ),
-                      ),
-                      child: CustomBottomNavBar(
-                        currentIndex: 0,
-                        onTap: (_) {},
-                        position: LiquidGlassNavBarPosition.top,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    // The neutral rim is a second Positioned with the same margins but
-    // a fixed height, so it is filtered out here.
-    final positioned = tester
-        .widgetList<Positioned>(find.byType(Positioned))
-        .where((p) => p.left == 19.0 && p.right == 19.0 && p.height == null)
-        .toList();
-    expect(positioned, hasLength(1));
-    expect(positioned.single.top, CustomBottomNavBar.targetBottomGap);
   });
 
   // Nuvio's nav-bar glow: the resting selection bubble wears a soft

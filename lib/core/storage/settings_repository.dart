@@ -134,14 +134,6 @@ class SettingsRepository {
     return _storageService.getNavBarStyle();
   }
 
-  Future<void> setNavBarPosition(String position) async {
-    await _storageService.setNavBarPosition(position);
-  }
-
-  String getNavBarPosition() {
-    return _storageService.getNavBarPosition();
-  }
-
   Future<void> setNavBarGlow(bool enabled) async {
     await _storageService.setNavBarGlow(enabled);
   }

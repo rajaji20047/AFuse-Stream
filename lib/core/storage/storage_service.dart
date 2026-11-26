@@ -399,20 +399,6 @@ class StorageService {
         'adaptive';
   }
 
-  /// Nav bar position: 'bottom' (default — the pill floats above the
-  /// bottom edge) or 'top' (the pill sits under the status bar).
-  /// Nuvio's NavBarPosition. CLASSIC ignores it in Nuvio; here Classic
-  /// honours it too (docked at the top edge).
-  Future<void> setNavBarPosition(String position) async {
-    await _settingsBox.put('nav_bar_position', position);
-  }
-
-  String getNavBarPosition() {
-    return (_settingsBox.get('nav_bar_position', defaultValue: 'bottom')
-            as String?) ??
-        'bottom';
-  }
-
   /// Nav bar glow: the accent halo under the selection bubble. On by
   /// default (Nuvio's default).
   Future<void> setNavBarGlow(bool enabled) async {
