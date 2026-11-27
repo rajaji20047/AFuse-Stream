@@ -2224,7 +2224,7 @@ void showDeveloperDialog(BuildContext context) {
             const SizedBox(height: 20),
             // Name and Title
             Text(
-              'Rajaji',
+              'RAJA JI',
               style: Theme.of(context).textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.5),
             ),
