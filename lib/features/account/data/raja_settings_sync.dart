@@ -21,14 +21,23 @@ const Set<String> kSyncedSettingKeys = <String>{
   'theme_variant',
   'last_dark_theme_variant',
   'accent_color',
+  // The app language and the navigation bar's look.
+  'language',
+  'nav_bar_style',
+  'nav_bar_glow',
+  'nav_bar_glass',
+  'nav_bar_icon_color',
   // Home and navigation.
   'default_home_screen',
   'title_position',
   'home_row_prefs',
   'search_disabled_sources',
   'episode_sort_ascending',
+  'watch_history_enabled',
+  'explore_language',
   // Player.
   'player_engine',
+  'player_preferred',
   'player_ios_mpv_pip',
   'player_pip_mode',
   'player_gesture_left',
@@ -56,6 +65,8 @@ const Set<String> kSyncedSettingKeys = <String>{
   'player_show_volume',
   // Video panel: the HDR choice and the PICTURE sliders.
   'player_video_output_preset',
+  'player_video_custom_target_peak',
+  'player_video_custom_tone_mapping',
   'player_picture_brightness',
   'player_picture_contrast',
   'player_picture_saturation',

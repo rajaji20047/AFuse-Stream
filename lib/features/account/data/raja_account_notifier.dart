@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/addons/data/addon_repository.dart';
 import '../../../core/cloudstream/cloudstream_models.dart';
 import '../../../core/cloudstream/cloudstream_repository.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/extensions/models/extension_plugin.dart';
 import '../../../core/logger/app_logger.dart';
 import '../../../core/nuvio/data/nuvio_repository.dart';
@@ -28,6 +29,7 @@ import '../../library/presentation/library_provider.dart';
 import '../../profiles/data/fuse_profile.dart';
 import '../../profiles/data/fuse_profiles_notifier.dart';
 import '../../search/domain/search_plugin_filter.dart';
+import '../../explore/data/explore_language_provider.dart';
 import '../../settings/presentation/general_settings_provider.dart';
 import '../../settings/presentation/player_settings_provider.dart';
 import 'raja_backup.dart';
@@ -1390,6 +1392,8 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     refresh(() => ref.invalidate(generalSettingsProvider));
     refresh(() => ref.invalidate(homeRowPrefsProvider));
     refresh(() => ref.invalidate(searchDisabledSourcesProvider));
+    refresh(() => ref.invalidate(languageProvider));
+    refresh(() => ref.invalidate(localeNotifierProvider));
   }
 
   static ExtensionPlugin? _findRajaPlugin(
