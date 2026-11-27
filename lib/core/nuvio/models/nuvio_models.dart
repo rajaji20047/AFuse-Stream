@@ -665,6 +665,11 @@ class NuvioStreamResult {
     providerName: provider?.trim().isNotEmpty ?? false
         ? '$scraperName · ${provider!.trim()}'
         : scraperName,
+    // Numeric height for the player's Quality tab and source sorting:
+    // '1080p' -> 1080, '4K' -> 2160, 'Auto' -> 0 (adaptive HLS master,
+    // which is what opens MPV's ladder read). Null when the scraper's
+    // quality text does not parse unambiguously; the label is untouched.
+    quality: parseStreamQuality(quality),
     headers: headers,
     subtitles: subtitles.isEmpty ? null : subtitles,
   );

@@ -40,6 +40,12 @@ class AddonStreamConverter {
           // provider (MovieBox, VegaMovies…) when a multi-provider add-on
           // names one; fall back to the add-on itself.
           providerName: source.providerName ?? source.addonName,
+          // Numeric height for the player's Quality tab and source
+          // sorting: '1080p' -> 1080, '4K' -> 2160, 'Auto' -> 0
+          // (adaptive HLS master, which is what opens MPV's ladder
+          // read). Null when the label states none ('CAM', 'Torrent')
+          // or does not parse; the label text itself is untouched.
+          quality: parseStreamQuality(source.qualityLabel),
           headers: source.proxyHeaders,
           subtitles: source.subtitles.isEmpty
               ? null
