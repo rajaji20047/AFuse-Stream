@@ -500,7 +500,9 @@ class MergedSourceService {
     );
     if (dataUrl == null || dataUrl.isEmpty) return const [];
 
-    final streams = await plugin.loadStreams(dataUrl).timeout(streamsTimeout);
+    final streams = await plugin
+        .loadStreams(dataUrl, isDownload: false)
+        .timeout(streamsTimeout);
     return [
       for (var i = 0; i < streams.length; i++)
         if (streams[i].url.trim().isNotEmpty)

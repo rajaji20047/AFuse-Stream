@@ -66,7 +66,10 @@ class _Plugin extends SkyStreamProvider {
   Future<MultimediaItem> getDetails(String url) async => details!;
 
   @override
-  Future<List<StreamResult>> loadStreams(String url) async {
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    bool isDownload = false,
+  }) async {
     loaded.add(url);
     return streams[url] ?? const [];
   }

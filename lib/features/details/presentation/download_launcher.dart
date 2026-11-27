@@ -55,7 +55,10 @@ class DownloadLauncher {
       final provider = providerFor(item);
       if (provider == null) throw Exception('No active provider');
 
-      final streams = await provider.loadStreams(resolveUrl);
+      final streams = await provider.loadStreams(
+        resolveUrl,
+        isDownload: true,
+      );
       if (isCanceled || !context.mounted) return;
 
       LoadingDialog.close(dialog);

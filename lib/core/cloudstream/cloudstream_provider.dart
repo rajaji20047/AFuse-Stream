@@ -304,7 +304,11 @@ class CloudStreamProvider extends SkyStreamProvider {
   }
 
   @override
-  Future<List<StreamResult>> loadStreams(String url) async {
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    // CloudStream's loadLinks does not distinguish download from play.
+    bool isDownload = false,
+  }) async {
     final (:data, :torrent) = _decodeToken(url);
     if (torrent) return [StreamResult(url: data, source: 'Torrent', providerName: name)];
 

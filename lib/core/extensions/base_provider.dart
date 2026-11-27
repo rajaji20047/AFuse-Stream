@@ -32,8 +32,18 @@ abstract class SkyStreamProvider {
   Future<Map<String, List<MultimediaItem>>> getHome();
   Future<MultimediaItem> getDetails(String url);
 
-  // Returns list of video streams (urls)
-  Future<List<StreamResult>> loadStreams(String url);
+  // Returns list of video streams (urls).
+  //
+  // [isDownload] tells the provider the links are for a download, not for
+  // playing: a Vega provider sorts download servers first and omits DRM
+  // when it is true, and streaming servers first when it is false. Every
+  // streaming caller passes false; every download caller passes true.
+  // Providers that do not distinguish (CloudStream, .sky, search-only)
+  // ignore it.
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    bool isDownload = false,
+  });
 }
 
 /// A provider's own full-screen screen (a game an extension opens on Play) took the person's Play and left nothing to

@@ -741,7 +741,12 @@ class JsBasedProvider extends SkyStreamProvider {
   }
 
   @override
-  Future<List<StreamResult>> loadStreams(String url) async {
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    // A .sky plugin's JS loadStreams takes only the URL and does not
+    // distinguish download from play, so the flag is accepted and ignored.
+    bool isDownload = false,
+  }) async {
     await _ensureReady();
     if (_error != null) throw JsPluginException("INIT_ERROR", _error!);
     await LocalProxyService.instance.startServer();

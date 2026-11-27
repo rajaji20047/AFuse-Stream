@@ -148,7 +148,7 @@ class SeasonDownloadController extends Notifier<SeasonDownloadBatch?> {
         resolve: (episode) async {
           final provider = launcher.providerFor(item);
           if (provider == null) throw StateError('No active provider');
-          return provider.loadStreams(episode.url);
+          return provider.loadStreams(episode.url, isDownload: true);
         },
         askPick:
             askPick ??

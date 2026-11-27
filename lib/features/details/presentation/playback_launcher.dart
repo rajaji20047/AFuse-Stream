@@ -214,7 +214,10 @@ class PlaybackLauncher {
       provider ??= _ref.read(activeProviderProvider);
       if (provider == null) throw Exception('No active provider');
 
-      final streams = await provider.loadStreams(episodeDataUrl);
+      final streams = await provider.loadStreams(
+        episodeDataUrl,
+        isDownload: false,
+      );
       if (isCanceled || !context.mounted) return;
 
       if (!dialogDismissed) {

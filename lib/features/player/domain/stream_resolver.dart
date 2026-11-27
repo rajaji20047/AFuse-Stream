@@ -358,7 +358,7 @@ Future<ResolvedPlayback> resolvePlayback({
     raw = await _addonStreams(read, addon, item, videoUrl);
   } else {
     try {
-      raw = await provider!.loadStreams(videoUrl);
+      raw = await provider!.loadStreams(videoUrl, isDownload: false);
     } on ExtensionScreenEnded {
       throw const StreamResolutionException(StreamResolutionFailure.extensionScreen);
     } catch (e) {

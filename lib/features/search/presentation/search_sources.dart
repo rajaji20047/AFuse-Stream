@@ -173,7 +173,11 @@ class StremioSearcher extends SkyStreamProvider implements SearchSource {
       throw UnsupportedError('A search source opens its own page');
 
   @override
-  Future<List<StreamResult>> loadStreams(String url) =>
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    // A search source never loads streams; the flag is accepted and ignored.
+    bool isDownload = false,
+  }) =>
       throw UnsupportedError('A search source opens its own page');
 }
 
@@ -260,6 +264,10 @@ class NuvioSearcher extends SkyStreamProvider implements SearchSource {
       throw UnsupportedError('A search source opens its own page');
 
   @override
-  Future<List<StreamResult>> loadStreams(String url) =>
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    // A search source never loads streams; the flag is accepted and ignored.
+    bool isDownload = false,
+  }) =>
       throw UnsupportedError('A search source opens its own page');
 }

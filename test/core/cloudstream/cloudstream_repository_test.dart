@@ -212,7 +212,11 @@ class _OtherProvider extends SkyStreamProvider {
   @override
   Future<MultimediaItem> getDetails(String url) => throw UnimplementedError();
   @override
-  Future<List<StreamResult>> loadStreams(String url) => throw UnimplementedError();
+  Future<List<StreamResult>> loadStreams(
+    String url, {
+    bool isDownload = false,
+  }) =>
+      throw UnimplementedError();
 }
 
 void main() {
