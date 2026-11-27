@@ -104,7 +104,29 @@ class VegaBasedProvider extends SkyStreamProvider {
   /// the `.qbc` fast path (Phase 2 loads from in-memory sources).
   final String? _bytecodeDir;
 
-  String get _namespace => 'vega_${_sanitize(_value)}';
+  String get _namespace => namespaceFor(_value);
+
+  /// The JS-engine namespace for a provider value. The settings dialog
+  /// uses it to build the kvStore key a setting lives under — see
+  /// [kvKeyFor].
+  static String namespaceFor(String value) => 'vega_${_sanitize(value)}';
+
+  /// The storage key a provider setting lives under in the extensions
+  /// box: `<namespace>::<key>`, the same key the Vega context bundle's
+  /// kvStore reads and writes through the engine's `get_storage` /
+  /// `set_storage` bridge (key `<storageNamespace>::<key>`).
+  static String kvKeyFor(String value, String settingKey) =>
+      '${namespaceFor(value)}::$settingKey';
+
+  /// The reserved kvStore key holding the provider's key index (the
+  /// context bundle's `KV_INDEX_KEY`): a JSON array of the setting keys
+  /// the provider has stored. Dart-side writers (the settings dialog)
+  /// maintain it alongside the values they write, so `kvStore.keys()`
+  /// lists dialog-written settings too.
+  static const String kvIndexKey = '__vega_kv_keys';
+
+  static String kvIndexKeyFor(String value) =>
+      '${namespaceFor(value)}::$kvIndexKey';
 
   @override
   String get packageName => 'vega.$_value';

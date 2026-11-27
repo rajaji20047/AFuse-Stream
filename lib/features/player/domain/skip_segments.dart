@@ -9,6 +9,8 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../../../core/domain/entity/multimedia_item.dart';
+import '../../../core/extensions/extension_manager.dart';
+import '../../../core/extensions/providers/vega_based_provider.dart';
 import '../../../core/storage/settings_repository.dart';
 import '../../skip/data/anime_skip_service.dart';
 import '../../skip/data/intro_db_service.dart';
@@ -81,6 +83,40 @@ int? _anilistId(MultimediaItem item) {
   if (sync == null) return null;
   final raw = sync['anilist'] ?? sync['anilistId'] ?? sync['anilist_id'];
   return raw == null ? null : int.tryParse(raw.toString());
+}
+
+/// Skip intervals a Vega provider returned for [streamUrl], as
+/// [SkipSegment]s, sanitized the same way as the crowdsourced ones.
+///
+/// The intervals come straight from the provider's own stream response, so
+/// they are title-specific — like AnimeSkip, they replace the crowdsourced
+/// answer rather than appending to it. The first Vega provider with a
+/// non-empty answer wins (one stream has one provider). An empty list
+/// means no Vega provider reported intervals for this stream; the caller
+/// then keeps the crowd answer.
+List<SkipSegment> vegaSkipSegments({
+  required ProviderReader read,
+  required String streamUrl,
+  double? durationSeconds,
+}) {
+  final providers = read(extensionManagerProvider);
+  for (final provider in providers) {
+    if (provider is! VegaBasedProvider) continue;
+    final intervals = provider.skipIntervalsFor(streamUrl);
+    if (intervals.isEmpty) continue;
+    final segments = intervals
+        .map(
+          (interval) => SkipSegment(
+            startTime: interval.fromSec,
+            endTime: interval.toSec,
+            type: SkipType.fromString(interval.title ?? ''),
+          ),
+        )
+        .toList(growable: false);
+    final clean = SkipSegment.sanitize(segments, durationSec: durationSeconds);
+    if (clean.isNotEmpty) return clean;
+  }
+  return const [];
 }
 
 /// The segment covering [position], if any.

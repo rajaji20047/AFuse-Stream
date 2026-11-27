@@ -10,9 +10,11 @@ import '../../../core/cloudstream/cloudstream_repository.dart';
 import '../../../core/extensions/models/extension_plugin.dart';
 import '../../../core/extensions/models/extension_repository.dart';
 import '../../../core/extensions/extension_manager.dart';
+import '../../../core/extensions/vega_repository.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../providers/extensions_controller.dart';
 import '../widgets/cloudstream_plugin_section.dart';
+import '../widgets/vega_plugin_section.dart';
 import '../widgets/plugin_check_bar.dart';
 import '../widgets/installed_other_sources.dart';
 import '../widgets/plugin_updates_bar.dart';
@@ -225,6 +227,7 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
       _didEnsureInit = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(extensionsControllerProvider.notifier).ensureInitialized();
+        ref.read(vegaRepositoryProvider.notifier).ensureInitialized();
         unawaited(_checkPluginUpdates());
       });
     }
@@ -401,10 +404,16 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
     // Installed Stremio add-ons and Nuvio repositories count as installed
     // too (v5) — they are listed at the end of this segment.
     final hasOtherSources = InstalledOtherSources.hasAny(ref);
+    // Installed Vega providers count as installed too — they are listed
+    // at the end of this segment, in their own group.
+    final hasVegaInstalled = ref.watch(
+      vegaRepositoryProvider.select((s) => s.installed.isNotEmpty),
+    );
     if (state is ExtensionsLoading &&
         state.installedPlugins.isEmpty &&
         csInstalled.isEmpty &&
-        !hasOtherSources) {
+        !hasOtherSources &&
+        !hasVegaInstalled) {
       return [const Center(child: AppLoadingIndicator())];
     }
 
@@ -439,7 +448,8 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
 
     if (state.installedPlugins.isEmpty &&
         csInstalled.isEmpty &&
-        !hasOtherSources) {
+        !hasOtherSources &&
+        !hasVegaInstalled) {
       // Nothing installed: say so, and offer the way to the other
       // segment, where the Add Repository card and the repositories are.
       return [
@@ -503,6 +513,7 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
           hasRepos: state.repositories.isNotEmpty,
         ),
       if (csInstalled.isNotEmpty) const CloudStreamInstalledSection(),
+      if (hasVegaInstalled) const VegaInstalledSection(),
       if (hasOtherSources) const InstalledOtherSources(),
     ];
   }
@@ -581,6 +592,9 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
         title: l10n.addRepository,
         onTap: () => _showAddRepoDialog(context, ref),
       ),
+      // Vega's store (manifest.json + dist/ bundles): its own header and
+      // cards live in [VegaRepositoriesSection].
+      const VegaRepositoriesSection(),
       // CloudStream's store (repo.json): its own header and cards live
       // in [CloudStreamRepositoriesSection]; its add row is hidden
       // there (showAddRow: false) because the inline Add Repository

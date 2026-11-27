@@ -525,6 +525,80 @@
   "@noRajaReposYet": {
     "description": "Empty state of the Extensions > Repositories section: no repository added yet."
   },
+  "vegaSection": "Vega",
+  "@vegaSection": {
+    "description": "Extensions screen: the section header for Vega providers (JavaScript providers from the Vega app's provider system)."
+  },
+  "vegaNoReposYet": "No Vega sources yet",
+  "@vegaNoReposYet": {
+    "description": "Empty state of the Extensions > Vega section: no Vega source added yet."
+  },
+  "vegaAddSource": "Add Vega source",
+  "@vegaAddSource": {
+    "description": "Extensions screen: the add row in the Vega section, opening the dialog that adds a Vega source by GitHub username or repository URL."
+  },
+  "vegaSourceHint": "GitHub username or repository URL",
+  "@vegaSourceHint": {
+    "description": "Hint in the Add Vega source dialog's text field."
+  },
+  "vegaSourceAdded": "Vega source added: {count} providers",
+  "@vegaSourceAdded": {
+    "description": "Snackbar after a Vega source was added: how many providers it lists.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vegaRepositorySummary": "{count, plural, =1{1 provider} other{{count} providers}} · {installed} installed",
+  "@vegaRepositorySummary": {
+    "description": "Under a Vega source's name: how many providers it offers, and how many of them are installed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "installed": {
+        "type": "int"
+      }
+    }
+  },
+  "vegaRemoveRepoWarning": "This will remove the Vega source and uninstall ALL its providers.",
+  "@vegaRemoveRepoWarning": {
+    "description": "Warning in the dialog that confirms removing a Vega source."
+  },
+  "vegaEmptyRepo": "No providers in this source",
+  "@vegaEmptyRepo": {
+    "description": "A Vega source card with an empty provider list."
+  },
+  "vegaNoSettings": "This provider does not define configurable settings.",
+  "@vegaNoSettings": {
+    "description": "Vega provider settings dialog: the provider defines no settings."
+  },
+  "vegaSettingsSaved": "Vega provider settings saved",
+  "@vegaSettingsSaved": {
+    "description": "Snackbar title after a Vega provider's settings were saved."
+  },
+  "vegaCouldNotAdd": "Could not add Vega source: {error}",
+  "@vegaCouldNotAdd": {
+    "description": "Snackbar when a Vega source could not be added; error is the reason, in English.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "vegaCouldNotInstall": "Could not install {name}: {error}",
+  "@vegaCouldNotInstall": {
+    "description": "Snackbar when a Vega provider could not be installed or updated; error is the reason, in English.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "pasteRepoUrlHint": "Paste a CloudStream repository URL — its .cs3 extensions install from here using the repo.json + .cs3 flow.",
   "@pasteRepoUrlHint": {
     "description": "Helper text under the Add Repository URL field on the Extensions screen."

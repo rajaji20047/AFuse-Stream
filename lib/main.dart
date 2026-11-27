@@ -41,6 +41,7 @@ import 'core/cloudstream/cloudstream_repository.dart';
 import 'core/cloudstream/cloudstream_provider.dart';
 import 'core/cloudstream/plugin_warm_up.dart';
 import 'core/extensions/extension_manager.dart';
+import 'core/extensions/vega_repository.dart';
 import 'core/cloudstream/extension_notices.dart';
 import 'core/cloudstream/extension_ui/extension_pages.dart';
 import 'core/models/extension_update_report.dart';
@@ -568,6 +569,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       await ref
           .read(extensionsControllerProvider.notifier)
           .loadInstalledPlugins();
+      await ref.read(vegaRepositoryProvider.notifier).ensureInitialized();
     } catch (e) {
       if (kDebugMode) debugPrint('Installed extension load failed: $e');
     }
@@ -617,10 +619,10 @@ class _MyAppState extends ConsumerState<MyApp> {
   static const Duration _extensionsCheckDelay = Duration(seconds: 15);
 
   /// Brings every extension system up to date in the background - Raja
-  /// plugins, Nuvio scrapers, Stremio add-ons and CloudStream extensions - and
-  /// says what changed: what was updated, which repositories a followed
-  /// collection (or a CloudStream plugin like MegaRepo's) brought in, and
-  /// which plugins appeared in a repository.
+  /// plugins, Nuvio scrapers, Stremio add-ons, CloudStream extensions and
+  /// Vega providers - and says what changed: what was updated, which
+  /// repositories a followed collection (or a CloudStream plugin like
+  /// MegaRepo's) brought in, and which plugins appeared in a repository.
   ///
   /// Every launch, on any connection. Extensions scrape sites that change
   /// under them, and the app's core job - finding something to play - runs on
@@ -643,6 +645,10 @@ class _MyAppState extends ConsumerState<MyApp> {
       _updating(
         'CloudStream extensions',
         () => ref.read(cloudStreamRepositoryProvider.notifier).autoUpdate(),
+      ),
+      _updating(
+        'Vega providers',
+        () => ref.read(vegaRepositoryProvider.notifier).autoUpdate(),
       ),
       _updating(
         'Stremio add-ons',

@@ -471,6 +471,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   StreamResult? get _selected =>
       _streams.isEmpty ? null : _streams[_streamIndex];
 
+  /// The URL of the stream currently playing (or about to), for the
+  /// provider-interval lookup. Falls back to the route's URL before the
+  /// resolve lands.
+  String get _currentStreamUrl => _selected?.url ?? widget.videoUrl;
+
   /// Where to resume, resolved once before the first open.
   Duration _resumePosition = Duration.zero;
 
@@ -813,6 +818,22 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// default) and AniSkip (anime, +55) fill them in the background;
   /// a title with no data in either simply has no Skip button.
   List<SkipSegment> _skipSegments = const <SkipSegment>[];
+
+  /// The crowdsourced bands for the current episode, kept apart from
+  /// [_skipSegments] so a source switch can fall back to them when the new
+  /// source's provider reports no intervals of its own.
+  List<SkipSegment> _crowdSkipSegments = const <SkipSegment>[];
+
+  /// The stream URL [_skipSegments] was read for. A source switch re-reads
+  /// the provider's intervals for the new URL; the same URL is never
+  /// re-read.
+  String? _skipSegmentsStreamUrl;
+
+  /// Whether the bands in [_skipSegments] came from the playing source's
+  /// own provider (a Vega provider) rather than the crowd. AniSkip never
+  /// overrides those: a provider's own intervals are the most specific
+  /// answer there is.
+  bool _skipSegmentsFromVega = false;
 
   /// The episode the AniSkip lookup already ran for (see
   /// [_maybeLoadAniSkip]): the duration listener fires on every
@@ -3810,6 +3831,16 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _audioAutoSelectSetFor = -1;
     _adapter.clearError();
     final stream = _streams[index];
+    // A new source may carry its own skip intervals (a Vega provider's
+    // stream response); the crowd bands stay as the fallback when it does
+    // not. The same URL is never re-read.
+    if (stream.url != _skipSegmentsStreamUrl) {
+      setState(() {
+        if (!_applyVegaSkipSegments(stream.url)) {
+          _skipSegments = _crowdSkipSegments;
+        }
+      });
+    }
     // The Quality drawer's ladder is one source's. Another source's open
     // takes it down and reads its own; the pick holds for the session and
     // follows the new ladder (see [_pickQuality]).
@@ -5696,14 +5727,43 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       episode: episode,
     );
     if (_disposed) return;
-    if (segments.isNotEmpty) {
-      setState(() => _skipSegments = segments);
-    }
+    _crowdSkipSegments = segments;
+    setState(() {
+      // The playing source's own intervals outrank the crowd; a source
+      // that reports none keeps the crowd answer — and an empty crowd
+      // answer leaves whatever is already showing (a Vega apply from the
+      // open) alone.
+      if (!_applyVegaSkipSegments(_currentStreamUrl)) {
+        if (segments.isNotEmpty) _skipSegments = segments;
+      }
+    });
     // Anime: AniSkip needs the episode length, which mpv only learns
     // once the stream opens — the duration listener below calls
     // [_maybeLoadAniSkip] when it arrives; this call covers the case
     // where it is already known.
     _maybeLoadAniSkip();
+  }
+
+  /// Applies the playing source's own skip intervals, when its provider
+  /// reports any, in place of the crowdsourced bands. Vega intervals come
+  /// straight from the provider's stream response, so they are
+  /// title-specific — they outrank the crowd the way AniSkip outranks
+  /// IntroDB. Returns whether they were applied; the caller keeps the
+  /// crowd bands when they were not.
+  bool _applyVegaSkipSegments(String? streamUrl) {
+    if (streamUrl == null || streamUrl.isEmpty) {
+      _skipSegmentsFromVega = false;
+      return false;
+    }
+    final vega = vegaSkipSegments(read: _read, streamUrl: streamUrl);
+    if (vega.isEmpty) {
+      _skipSegmentsFromVega = false;
+      return false;
+    }
+    _skipSegmentsStreamUrl = streamUrl;
+    _skipSegmentsFromVega = true;
+    _skipSegments = vega;
+    return true;
   }
 
   /// Fetches AniSkip (aniskip.com) OP/ED segments for the current anime
@@ -5715,6 +5775,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (_disposed || episode == null) return;
     if (widget.item.contentType != MultimediaContentType.anime) return;
     if (_duration <= Duration.zero) return;
+    // A Vega provider's own intervals are already the most specific
+    // answer there is; AniSkip must not replace them.
+    if (_skipSegmentsFromVega) return;
     // +56: the plugin filed no MAL/AniList id and the enrichment has
     // not finished yet — do NOT consume the attempt. The trailing call
     // in [_loadSkipSegments] runs the full chain once the ids are in;
@@ -5762,6 +5825,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       duration: duration.inSeconds,
     );
     if (_disposed || segments.isEmpty) return;
+    // A Vega provider's own intervals arrived while this lookup was in
+    // flight: they outrank AniSkip too, so this answer is dropped.
+    if (_skipSegmentsFromVega) return;
     // Title-specific AniSkip data beats the crowd-averaged IntroDB
     // answer, the same rule `fetchSkipSegments` applies to AnimeSkip.
     setState(() => _skipSegments = segments);
@@ -5954,6 +6020,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _resumePosition = Duration.zero;
     _recorder = null;
     _skipSegments = const <SkipSegment>[];
+    _crowdSkipSegments = const <SkipSegment>[];
+    _skipSegmentsStreamUrl = null;
+    _skipSegmentsFromVega = false;
     _aniskipAttemptedKey = null;
     _enrichedItem = null;
     _skipEnrichmentDone = false;

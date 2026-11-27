@@ -1056,6 +1056,22 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// are opt-in and off by default.
   List<SkipSegment> _skipSegments = const <SkipSegment>[];
 
+  /// The crowdsourced bands for the current episode, kept apart from
+  /// [_skipSegments] so a source switch can fall back to them when the new
+  /// source's provider reports no intervals of its own.
+  List<SkipSegment> _crowdSkipSegments = const <SkipSegment>[];
+
+  /// The stream URL [_skipSegments] was read for. A source switch re-reads
+  /// the provider's intervals for the new URL; the same URL is never
+  /// re-read.
+  String? _skipSegmentsStreamUrl;
+
+  /// Whether the bands in [_skipSegments] came from the playing source's
+  /// own provider (a Vega provider) rather than the crowd. AnimeSkip never
+  /// overrides those: a provider's own intervals are the most specific
+  /// answer there is.
+  bool _skipSegmentsFromVega = false;
+
   final PlayerPlatformService _platform = PlayerPlatformService();
 
   /// The orientation policy this device wants. Derived in [build] from the
@@ -1939,6 +1955,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // longer describes it; the row reads as opening from here.
       _failedRows.remove(index);
     });
+    // A new source may carry its own skip intervals (a Vega provider's
+    // stream response); the crowd bands stay as the fallback when it does
+    // not. The same URL is never re-read.
+    final streamUrl = resolved.streams[index].url;
+    if (streamUrl != _skipSegmentsStreamUrl) {
+      setState(() {
+        if (!_applyVegaSkipSegments(streamUrl)) {
+          _skipSegments = _crowdSkipSegments;
+        }
+      });
+    }
     // Published here, not only at open: this is the write the panel's
     // 'Now playing' tick follows through a failover or a trial revert.
     _publishPanelData();
@@ -4255,8 +4282,37 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       item: widget.item,
       episode: episode,
     );
-    if (_disposed || token != _token || segments.isEmpty) return;
-    setState(() => _skipSegments = segments);
+    if (_disposed || token != _token) return;
+    _crowdSkipSegments = segments;
+    setState(() {
+      // The playing source's own intervals outrank the crowd; a source
+      // that reports none keeps the crowd answer.
+      if (!_applyVegaSkipSegments(_attemptStreamUrl ?? _videoUrl)) {
+        _skipSegments = segments;
+      }
+    });
+  }
+
+  /// Applies the playing source's own skip intervals, when its provider
+  /// reports any, in place of the crowdsourced bands. Vega intervals come
+  /// straight from the provider's stream response, so they are
+  /// title-specific — they outrank the crowd the way AnimeSkip outranks
+  /// IntroDB. Returns whether they were applied; the caller keeps the
+  /// crowd bands when they were not.
+  bool _applyVegaSkipSegments(String? streamUrl) {
+    if (streamUrl == null || streamUrl.isEmpty) {
+      _skipSegmentsFromVega = false;
+      return false;
+    }
+    final vega = vegaSkipSegments(read: _read, streamUrl: streamUrl);
+    if (vega.isEmpty) {
+      _skipSegmentsFromVega = false;
+      return false;
+    }
+    _skipSegmentsStreamUrl = streamUrl;
+    _skipSegmentsFromVega = true;
+    _skipSegments = vega;
+    return true;
   }
 
   /// Whether an episode follows this one. Recomputed rather than cached so it
@@ -5178,6 +5234,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _sideCars.clear();
     _preloaded = null; // route sources belong to the first episode only
     _skipSegments = const <SkipSegment>[]; // previous episode's intro/outro
+    _crowdSkipSegments = const <SkipSegment>[];
+    _skipSegmentsStreamUrl = null;
+    _skipSegmentsFromVega = false;
     // Both offers belong to the episode that just ended. The refusal
     // especially: "not this time" must not silence the next episode's card.
     _nextEpisodeOffer = null;

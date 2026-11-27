@@ -1,6 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'services/plugin_storage_service.dart';
 import 'services/repository_service.dart';
+import 'services/vega_repository_service.dart';
 
 import '../network/dio_client_provider.dart';
 import '../services/torrent_service.dart';
@@ -18,6 +20,21 @@ RepositoryService repositoryService(Ref ref) {
     githubProxyCustomUrl: generalSettings.githubProxyCustomUrl,
   );
 }
+
+// Vega Repository Service Provider
+//
+// Hand-written (not `@Riverpod`): a plain Provider needs no generated part
+// file, so this compiles exactly as written. The service is constructed
+// the same way as [repositoryService] — same Dio, same GitHub-proxy
+// settings.
+final vegaRepositoryServiceProvider = Provider<VegaRepositoryService>((ref) {
+  final generalSettings = ref.watch(generalSettingsProvider);
+  return VegaRepositoryService(
+    ref.watch(dioClientProvider),
+    githubProxy: generalSettings.githubProxy,
+    githubProxyCustomUrl: generalSettings.githubProxyCustomUrl,
+  );
+});
 
 // Plugin Storage Service Provider
 @Riverpod(keepAlive: true)
