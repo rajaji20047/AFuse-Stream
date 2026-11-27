@@ -368,7 +368,7 @@ class SettingsScreen extends ConsumerWidget {
         SettingsTile(
           reicon: Reicon.code,
           title: l10n.developer,
-          subtitle: 'Legion',
+          subtitle: 'Raja',
           trailing: const SizedBox.shrink(),
           onTap: () => showDeveloperDialog(context),
         ),

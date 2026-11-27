@@ -106,7 +106,7 @@ void main() {
     expect(tile.showChevron, isTrue);
     expect(tile.onTap, isNotNull);
 
-    final developer = tester.getTopLeft(find.text('Legion')).dy;
+    final developer = tester.getTopLeft(find.text('Raja')).dy;
     final credit = tester.getTopLeft(find.text('Based on SkyStream')).dy;
     final telegram = tester.getTopLeft(find.text('Telegram')).dy;
     final version = tester.getTopLeft(find.text('Fuse for Android')).dy;
