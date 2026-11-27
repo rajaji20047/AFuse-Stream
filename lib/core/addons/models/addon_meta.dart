@@ -51,6 +51,13 @@ class AddonMetaPreview {
   final String addonId;
   final String addonName;
 
+  /// Whether the add-on's JSON actually declared a `type` for this title.
+  /// A missing or blank `type` reads as `movie` (see [fromJson]) but is NOT
+  /// an explicit movie declaration — [AddonMeta.isShow] must still be able
+  /// to infer a show from numbered videos in that case. Direct
+  /// constructions always pass an explicit `type`, so this defaults true.
+  final bool hasDeclaredType;
+
   const AddonMetaPreview({
     required this.id,
     required this.type,
@@ -66,6 +73,7 @@ class AddonMetaPreview {
     this.genres = const [],
     this.addonId = '',
     this.addonName = '',
+    this.hasDeclaredType = true,
   });
 
   factory AddonMetaPreview.fromJson(
@@ -88,9 +96,14 @@ class AddonMetaPreview {
         _asString(json['imdbId']) ??
         _asString(json['imdb']);
 
+    // The raw declared type, kept separate from the `movie` fallback below:
+    // a missing/blank `type` is untyped, not an explicit movie.
+    final rawType = _asString(json['type']);
+
     return AddonMetaPreview(
       id: _asString(json['id']) ?? '',
-      type: _asString(json['type']) ?? 'movie',
+      type: rawType ?? 'movie',
+      hasDeclaredType: rawType != null && rawType.trim().isNotEmpty,
       name: _asString(json['name']) ?? '',
       poster: _asString(json['poster']),
       background: _asString(json['background']),
@@ -107,6 +120,15 @@ class AddonMetaPreview {
   }
 
   bool get isSeries => type == 'series' || type == 'tv' || type == 'show';
+
+  /// Whether the add-on explicitly declared this title a movie (`movie` /
+  /// `film`). A missing or blank `type` reads as `movie` but is not an
+  /// explicit declaration, so it must not block the episode inference.
+  bool get isExplicitMovie {
+    if (!hasDeclaredType) return false;
+    final t = type.trim().toLowerCase();
+    return t == 'movie' || t == 'film';
+  }
 
   /// Type string handed to `/stream/{type}/{id}` requests.
   ///
@@ -245,6 +267,7 @@ class AddonMeta extends AddonMetaPreview {
     super.genres,
     super.addonId,
     super.addonName,
+    super.hasDeclaredType,
     this.videos = const [],
     this.cast = const [],
     this.castMembers = const [],
@@ -487,6 +510,7 @@ class AddonMeta extends AddonMetaPreview {
     return AddonMeta(
       id: preview.id,
       type: preview.type,
+      hasDeclaredType: preview.hasDeclaredType,
       name: preview.name,
       poster: preview.poster,
       background: preview.background,
@@ -519,7 +543,13 @@ class AddonMeta extends AddonMetaPreview {
       videos.any((v) => (v.season ?? 0) > 0 && (v.episode ?? 0) > 0);
 
   /// A show, by its type or by its episodes.
-  bool get isShow => isSeries || hasEpisodes;
+  ///
+  /// The episode inference only applies when the meta did NOT explicitly
+  /// declare itself a movie: a bridge that numbers a movie's parts/extras
+  /// as season/episode videos must not turn it into a series. Untyped
+  /// listings (`other`, blank, or missing type) with numbered videos still
+  /// infer a show, as do declared `series` / `tv` / `show`.
+  bool get isShow => isSeries || (hasEpisodes && !isExplicitMovie);
 
   @override
   MultimediaItem toMultimediaItem({String? addonUrl}) {
