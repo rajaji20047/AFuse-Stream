@@ -148,7 +148,7 @@
     "description": "Label of the iOS PiP-mode segment in Player settings."
   },
   "playerEngineMpvDetail": "Golden player · PiP on Android",
-  "playerEngineVlcDetail": "PiP on Android & iOS",
+  "playerEngineVlcDetail": "PiP on Android",
   "playerEngineNextVideo": "Takes effect on the next video",
   "leftGesture": "Left Gesture",
   "rightGesture": "Right Gesture",
