@@ -1265,6 +1265,121 @@ const _kEntitiesJs = r"""
       this.hostname=hp[0]; this.port=hp[1]||"";
       this.origin=this.protocol+"//"+this.host;
     }
+    // Live query params, bound to this URL instance.
+    //
+    // ADDITIVE ONLY (Vega bridge): the pre-existing URL class had no
+    // searchParams, so `new URL(x).searchParams.get/set/append()` threw
+    // TypeError in providers that build request URLs through it
+    // (durbinLive, gokuHD, kartoons, mod, ...). The constructor and every
+    // other method are untouched.
+    //
+    // The global URLSearchParams is referenced LAZILY at call time, not
+    // at class-definition time: it is defined by the Vega context bundle
+    // (tool/vega-context/context-fuse.mjs), which loads after this worker
+    // class is defined but before any provider runs. If it is somehow
+    // absent (or its constructor throws), a minimal inline parser below
+    // still supports get/getAll/has/set/append/delete/sort/toString over
+    // the URL's current .search — never throws.
+    //
+    // Each access returns a FRESH params object parsed from the current
+    // .search, so a direct assignment to url.search is always reflected.
+    // Mutations through the returned object (.set/.append/.delete/.sort)
+    // write back to this URL's .search and .href immediately — providers
+    // build the URL with .set/.append and then fetch it.
+    get searchParams() {
+      var self = this;
+      var sync = function(serialized) {
+        self.search = serialized ? '?' + serialized : '';
+        var before = self.href.split('#')[0];
+        var q = before.indexOf('?');
+        if (q >= 0) before = before.substring(0, q);
+        self.href = before + self.search + self.hash;
+      };
+      var query = self.search.charAt(0) === '?' ? self.search.substring(1) : self.search;
+      var Ctor = globalThis.URLSearchParams;
+      if (typeof Ctor === 'function') {
+        try {
+          var params = new Ctor(query);
+          var origSet = params.set.bind(params);
+          var origAppend = params.append.bind(params);
+          var origDelete = params.delete.bind(params);
+          var origSort = typeof params.sort === 'function' ? params.sort.bind(params) : null;
+          params.set = function(k, v) { origSet(k, v); sync(params.toString()); };
+          params.append = function(k, v) { origAppend(k, v); sync(params.toString()); };
+          params.delete = function(k) { origDelete(k); sync(params.toString()); };
+          if (origSort) params.sort = function() { origSort(); sync(params.toString()); };
+          return params;
+        } catch (e) {
+          // Fall through to the inline parser below.
+        }
+      }
+      var decode = function(s) {
+        try { return decodeURIComponent(String(s).replace(/\+/g, ' ')); }
+        catch (e) { return String(s); }
+      };
+      var encode = function(s) { return encodeURIComponent(String(s)); };
+      var pairs = [];
+      if (query) {
+        query.split('&').forEach(function(part) {
+          if (part === '') return;
+          var eq = part.indexOf('=');
+          if (eq >= 0) pairs.push([decode(part.substring(0, eq)), decode(part.substring(eq + 1))]);
+          else pairs.push([decode(part), '']);
+        });
+      }
+      var serialize = function() {
+        var out = [];
+        for (var i = 0; i < pairs.length; i++) out.push(encode(pairs[i][0]) + '=' + encode(pairs[i][1]));
+        return out.join('&');
+      };
+      return {
+        get: function(k) {
+          k = String(k);
+          for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === k) return pairs[i][1];
+          return null;
+        },
+        getAll: function(k) {
+          k = String(k);
+          var out = [];
+          for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === k) out.push(pairs[i][1]);
+          return out;
+        },
+        has: function(k) {
+          k = String(k);
+          for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === k) return true;
+          return false;
+        },
+        set: function(k, v) {
+          k = String(k); v = String(v);
+          var found = false;
+          var next = [];
+          for (var i = 0; i < pairs.length; i++) {
+            if (pairs[i][0] === k) {
+              if (!found) { next.push([k, v]); found = true; }
+            } else next.push(pairs[i]);
+          }
+          if (!found) next.push([k, v]);
+          pairs = next;
+          sync(serialize());
+        },
+        append: function(k, v) {
+          pairs.push([String(k), String(v)]);
+          sync(serialize());
+        },
+        delete: function(k) {
+          k = String(k);
+          var next = [];
+          for (var i = 0; i < pairs.length; i++) if (pairs[i][0] !== k) next.push(pairs[i]);
+          pairs = next;
+          sync(serialize());
+        },
+        sort: function() {
+          pairs.sort(function(a, b) { return a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0); });
+          sync(serialize());
+        },
+        toString: function() { return serialize(); }
+      };
+    }
     toString() { return this.href; }
   };
 
