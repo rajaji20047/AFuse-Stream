@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/nuvio_models.dart';
+import '../../storage/settings_repository.dart';
 import 'nuvio_repository.dart';
 import 'nuvio_runtime.dart';
 import 'nuvio_tmdb.dart';
@@ -121,7 +122,12 @@ class NuvioStreamService {
   /// isolates, so eight in flight is real parallelism rather than eight jobs
   /// fighting over the UI thread — a 60-scraper repository finishes in about
   /// the time the slowest handful take, without stuttering the app.
-  static const int maxConcurrent = 8;
+  ///
+  /// The worker cap is a user setting now (`nuvio_concurrency`, Settings →
+  /// Nuvio → Parallel providers, default 8): [resolve] reads it fresh on
+  /// every call, so a change applies to the next title without a restart.
+  /// The 3-isolate worker pool is separate and stays fixed — this only
+  /// bounds the fan-out queue.
 
   /// Repeat visits to the same episode shouldn't re-run 60 scrapers.
   static const Duration cacheTtl = Duration(minutes: 10);
@@ -318,8 +324,13 @@ class NuvioStreamService {
 
     unawaited(() async {
       final queue = List.of(targets);
+      // Read per call, not cached: the user can change the setting between
+      // titles and the next resolve picks it up without a restart.
+      final concurrency = _ref
+          .read(settingsRepositoryProvider)
+          .getNuvioConcurrency();
       final workers = List.generate(
-        targets.length < maxConcurrent ? targets.length : maxConcurrent,
+        targets.length < concurrency ? targets.length : concurrency,
         (_) => Future(() async {
           while (queue.isNotEmpty && !cancelled) {
             await runOne(queue.removeAt(0));

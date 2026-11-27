@@ -812,6 +812,24 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: LayoutConstants.spacingLg),
+              SettingsGroup(
+                title: 'Nuvio',
+                children: [
+                  SettingsTile(
+                    reicon: Reicon.puzzlePiece,
+                    title: 'Parallel providers',
+                    subtitle: 'How many providers resolve at once',
+                    value: '${generalSettings.nuvioConcurrency}',
+                    isLast: true,
+                    onTap: () => showNuvioConcurrencyDialog(
+                      context,
+                      ref,
+                      generalSettings,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

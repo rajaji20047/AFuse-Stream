@@ -398,6 +398,19 @@ class StorageService {
     return (value is num ? value.toInt() : 3).clamp(1, 10);
   }
 
+  /// How many Nuvio providers run in parallel when resolving links
+  /// (Settings → Nuvio → Parallel providers). Default 8, the old fixed
+  /// cap in `NuvioStreamService`. The 3-isolate worker pool is separate
+  /// and stays fixed — this only bounds the fan-out queue.
+  Future<void> setNuvioConcurrency(int value) async {
+    await _settingsBox.put('nuvio_concurrency', value.clamp(1, 16));
+  }
+
+  int getNuvioConcurrency() {
+    final value = _settingsBox.get('nuvio_concurrency', defaultValue: 8);
+    return (value is num ? value.toInt() : 8).clamp(1, 16);
+  }
+
   Future<void> setDownloadChunks(int value) async {
     await _settingsBox.put('download_chunks', value.clamp(1, 16));
   }

@@ -83,6 +83,11 @@ class SettingsRepository {
 
   int getDownloadConcurrency() => _storageService.getDownloadConcurrency();
 
+  Future<void> setNuvioConcurrency(int value) =>
+      _storageService.setNuvioConcurrency(value);
+
+  int getNuvioConcurrency() => _storageService.getNuvioConcurrency();
+
   Future<void> setDownloadChunks(int value) =>
       _storageService.setDownloadChunks(value);
 

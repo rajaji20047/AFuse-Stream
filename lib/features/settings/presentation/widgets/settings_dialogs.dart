@@ -751,6 +751,67 @@ void showDownloadConcurrencyDialog(
   );
 }
 
+void showNuvioConcurrencyDialog(
+  BuildContext context,
+  WidgetRef ref,
+  GeneralSettings settings,
+) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      var concurrency = settings.nuvioConcurrency.clamp(1, 16);
+      return StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          surfaceTintColor: Colors.transparent,
+          title: const Text('Parallel Providers'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$concurrency provider${concurrency > 1 ? 's' : ''} at once',
+                style: Theme.of(ctx).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              CustomSlider(
+                value: concurrency.toDouble(),
+                min: 1,
+                max: 16,
+                divisions: 15,
+                step: 1.0,
+                onChanged: (v) => setState(() => concurrency = v.round()),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Controls how many Nuvio providers run in parallel when resolving links. Applies to the next title — no restart needed. The 3-isolate worker pool is unchanged.',
+                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await ref
+                    .read(generalSettingsProvider.notifier)
+                    .setNuvioConcurrency(concurrency);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 void showDownloadChunksDialog(
   BuildContext context,
   WidgetRef ref,

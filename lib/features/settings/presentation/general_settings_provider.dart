@@ -74,6 +74,10 @@ class GeneralSettings {
   final int downloadConcurrency;
   final int downloadChunks;
 
+  /// How many Nuvio providers run in parallel when resolving links.
+  /// Default 8, the old fixed cap in `NuvioStreamService`.
+  final int nuvioConcurrency;
+
   /// User-supplied TMDB API key. Empty means "fall back to the build-time
   /// `--dart-define=TMDB_API_KEY` value" (which may itself be empty).
   final String tmdbApiKey;
@@ -93,6 +97,7 @@ class GeneralSettings {
     this.downloadDirectory,
     this.downloadConcurrency = 3,
     this.downloadChunks = 8,
+    this.nuvioConcurrency = 8,
     this.tmdbApiKey = '',
     this.wetrakrClientId = '',
     this.navBarStyle = NavBarStyle.adaptive,
@@ -112,6 +117,7 @@ class GeneralSettings {
     bool clearDownloadDirectory = false,
     int? downloadConcurrency,
     int? downloadChunks,
+    int? nuvioConcurrency,
     String? tmdbApiKey,
     String? wetrakrClientId,
     NavBarStyle? navBarStyle,
@@ -137,6 +143,7 @@ class GeneralSettings {
           : (downloadDirectory ?? this.downloadDirectory),
       downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
       downloadChunks: downloadChunks ?? this.downloadChunks,
+      nuvioConcurrency: nuvioConcurrency ?? this.nuvioConcurrency,
       tmdbApiKey: tmdbApiKey ?? this.tmdbApiKey,
       wetrakrClientId: wetrakrClientId ?? this.wetrakrClientId,
       navBarStyle: navBarStyle ?? this.navBarStyle,
@@ -193,6 +200,7 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       downloadDirectory: repository.getDownloadDirectory(),
       downloadConcurrency: repository.getDownloadConcurrency(),
       downloadChunks: repository.getDownloadChunks(),
+      nuvioConcurrency: repository.getNuvioConcurrency(),
       tmdbApiKey: repository.getTmdbApiKey(),
       wetrakrClientId: repository.getWetrakrClientId(),
       // An unrecognised stored name — written by a newer build, or a
@@ -326,6 +334,14 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       final repository = ref.read(settingsRepositoryProvider);
       await repository.setDownloadConcurrency(value);
       state = state.copyWith(downloadConcurrency: value);
+    });
+  }
+
+  Future<void> setNuvioConcurrency(int value) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setNuvioConcurrency(value);
+      state = state.copyWith(nuvioConcurrency: value);
     });
   }
 
