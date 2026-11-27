@@ -310,28 +310,7 @@ class DetailsActionButtons extends HookConsumerWidget {
       isPrimary: true,
       focusNode: playFocusNode,
       autofocus: true,
-      // Tapping Play opens the links box instead of playing directly: the
-      // same sheet the Stremio section opens, every installed source asked
-      // at once — the Stremio/Nuvio-style source picker before playback.
       onPressed: playable
-          ? () async {
-              await ref
-                  .read(detailsControllerProvider(item.url).notifier)
-                  .openLinksSheet(
-                    context,
-                    details!,
-                    specificEpisode: targetEpisode,
-                  );
-
-              // Phase 10 Fix: TV Focus restoration on return from the sheet
-              if (context.mounted && isTv) {
-                playFocusNode.requestFocus();
-              }
-            }
-          : null,
-      // Holding Play plays directly, as a tap used to: the first answer
-      // without the picker.
-      onLongPress: playable
           ? () async {
               await ref
                   .read(detailsControllerProvider(item.url).notifier)
@@ -342,6 +321,17 @@ class DetailsActionButtons extends HookConsumerWidget {
                 playFocusNode.requestFocus();
               }
             }
+          : null,
+      // Holding Play opens the links box instead of playing: the same sheet
+      // the Stremio section opens, every installed source asked at once.
+      onLongPress: playable
+          ? () => ref
+                .read(detailsControllerProvider(item.url).notifier)
+                .openLinksSheet(
+                  context,
+                  details!,
+                  specificEpisode: targetEpisode,
+                )
           : null,
       child: Padding(
         padding: btnPadding,
