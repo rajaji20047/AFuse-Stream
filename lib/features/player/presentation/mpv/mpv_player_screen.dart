@@ -3204,6 +3204,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
             if (_stage == _Stage.resolving) {
               _stage = _Stage.playing;
             }
+            // The open was asked to start at [_openStart]. If the engine
+            // landed at 0 instead, correct it once here — a dropped
+            // start must not play the film from the top.
+            if (_openStart > const Duration(seconds: 5) &&
+                _player.state.position < const Duration(seconds: 2)) {
+              unawaited(_player.seek(_openStart));
+            }
             // mpv has settled its pick by now, so re-read the aid the
             // drawer shows — the tracks-event read can land while mpv is
             // still on 'auto' — and give the audio auto-select a second
@@ -3262,6 +3269,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         // Build 72: during a renderer move the new engine reads 00:00
         // until its open lands; the held position stands until then.
         if (rendererSwitching(_rendererPhase)) return;
+        // Same for any open asked to start past zero (a quality pick, a
+        // failover): the new engine reads 00:00 until its open lands,
+        // and the held position stands until it starts playing.
+        if (!_startedPlaying &&
+            _openStart > Duration.zero &&
+            position == Duration.zero) {
+          return;
+        }
         _position = position;
         // Feed the tracker and the Continue Watching recorder from the
         // same sample: only samples taken while playing count toward
@@ -3701,6 +3716,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // playing listener): a source that was opened and failed is not the
     // one "last played", and the next episode should not start on it.
     _startedPlaying = false;
+    // The new stream's cushion starts at zero: the old stream's buffer
+    // mark would read as a full pre-buffer (see [_waitForPrebuffer]).
+    _buffered = Duration.zero;
     _subtitleAppliedFor = -1;
     // The audio-language setting is captured per open (a change in
     // Settings reaches the next media, not the one on screen), and the
@@ -3723,6 +3741,16 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _qualityLadder = const <int>[];
       _qualityVariants = const <HlsVariant>[];
       _qualityMedia = null;
+    }
+    // A local temp file has no playlist behind it: the remote ladder
+    // must not survive the takeover, or the Quality button offers a
+    // pick that reopens the remote stream.
+    if (localFileUrl != null) {
+      _qualityLadderOf = null;
+      _qualityLadder = const <int>[];
+      _qualityVariants = const <HlsVariant>[];
+      _qualityMedia = null;
+      _publishPanelData();
     }
     // Build 119: a different film's temp download is STOPPED when a
     // new film opens, but its file is KEPT (see [_stopTempDownload]) —
@@ -3754,6 +3782,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _falseEndRecoveries = 0;
     }
     _stallBufferedAt = Duration.zero;
+    // The clock measures this attempt's frozen time, so it restarts on
+    // every open: a same-index reopen's own load must not count as
+    // stall time. (The recovery COUNT above is what a same-index reopen
+    // keeps, so a source that cannot play is still abandoned.)
+    _stallClock.reset();
     // Build 72: a renderer move is the same play of the same film — it
     // keeps the tracker and the recorder, so nothing is scrobbled or
     // recorded twice.
@@ -5036,7 +5069,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // Fail over near where the viewer was, rather than from the top.
     final resumeAt = _position > const Duration(seconds: 5)
         ? _position
-        : Duration.zero;
+        : _openStart;
     unawaited(_openStream(next, start: resumeAt));
   }
 
@@ -5081,10 +5114,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
 
   /// A quality picked in the Quality drawer: a height, or null for Auto.
   ///
-  /// Holds for the rest of this player session, like VLC's pick. Reopens
-  /// this source where it is when it changes the cap the media plays
-  /// under; a pick of what already plays changes only the tick. The cap
-  /// itself is set before the reopen (see [_applyQualityCap]).
+  /// Holds for the rest of this player session, like VLC's pick. The cap
+  /// applies to the running HLS session (mpv re-picks the rendition at
+  /// the next segment), so a pick needs no reopen — no black gap, no
+  /// rebuffer, no restart from the top. If the live set fails, the pick
+  /// falls back to the reopen, which sets the cap before the open (and
+  /// keeps the viewer's pause and the local temp file).
   void _pickQuality(int? height) {
     if (_disposed || _stage != _Stage.playing) return;
     if (height == _qualityPick) return;
@@ -5093,7 +5128,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _qualityPick = height;
     _publishPanelData();
     if (cap == null || cap == currentCap) return;
-    unawaited(_openStream(_streamIndex, start: _position, autoPlay: true));
+    unawaited(_applyQualityCap().then((applied) {
+      if (_disposed || applied) return;
+      unawaited(_openStream(
+        _streamIndex,
+        start: _position,
+        autoPlay: _player.state.playing,
+        localFileUrl: _playingLocalTemp ? _tempLocalUrl : null,
+      ));
+    }));
   }
 
   /// Sets mpv's `hls-bitrate` cap for this open from the viewer's Quality
@@ -5101,25 +5144,28 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// 0 for Auto (no limit — mpv's default). Only when the cap moved, so
   /// an ordinary open costs no extra property set; a pick of nothing to
   /// cap on (no ladder, no bandwidth) leaves the property alone.
-  /// Best-effort: a failed set never breaks the open.
-  Future<void> _applyQualityCap() async {
+  /// Best-effort: a failed set never breaks the open. Returns whether
+  /// the cap is now in force, so a live pick can fall back to a reopen.
+  Future<bool> _applyQualityCap() async {
     final cap = bitrateCapForPick(
       _qualityPick,
       _qualityLadder,
       _qualityVariants,
     );
-    if (cap == null) return;
-    if (cap == _appliedQualityCap) return;
+    if (cap == null) return false;
+    if (cap == _appliedQualityCap) return true;
     // Auto before any pick: the engine already runs uncapped, so there
     // is nothing to set.
-    if (_appliedQualityCap == null && cap == 0) return;
+    if (_appliedQualityCap == null && cap == 0) return true;
     final platform = _player.platform;
-    if (platform is! NativePlayer) return;
+    if (platform is! NativePlayer) return false;
     try {
       await platform.setProperty('hls-bitrate', cap.toString());
       _appliedQualityCap = cap;
+      return true;
     } catch (_) {
       // Best-effort: the open goes on uncapped.
+      return false;
     }
   }
 
