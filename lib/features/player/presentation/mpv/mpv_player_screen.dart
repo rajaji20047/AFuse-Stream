@@ -1083,6 +1083,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // channel; attach early so a window opened before the first play is
     // still routed.
     _attachPip();
+    // The rotation sensor flips the player between the two landscape
+    // sides when the phone is turned, even with auto-rotate off (the
+    // pair pin does not override the lock). It only acts while the
+    // display is landscape, so a portrait clip is never fought.
+    _platform.startRotationSensor();
     _init();
   }
 
@@ -1127,6 +1132,10 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // The channel handler closes over this screen; without the detach it
     // would keep routing PiP buttons into a disposed player.
     _platform.detachPipListener();
+    // Stop the rotation sensor: the accelerometer subscription closes
+    // over this screen, and a dead screen must not keep pinning an
+    // orientation.
+    _platform.stopRotationSensor();
     // iOS mpv PiP (+28): release the native session and put mpv's
     // subtitle rendering back the way it was, while the player still
     // exists to answer the property write.

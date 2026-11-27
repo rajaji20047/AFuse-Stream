@@ -53,6 +53,10 @@ dependencies:
   path_provider: ^2.1.5
   wakelock_plus: ^1.4.0
   wakelock_plus_platform_interface: ^1.7.0
+  # The player rotation sensor reads the accelerometer so the player
+  # flips between the two landscape sides even when the phone's
+  # auto-rotate is off (the pair pin does not override the lock).
+  sensors_plus: ^6.0.0
   hive_flutter: ^1.1.0
   flutter_js_ng:
     path: packages/flutter_js_ng

@@ -1419,6 +1419,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _memory = readDeviceMemory();
     _listenForConnectivity(network);
     _attachPip();
+    // The rotation sensor flips the player between the two landscape
+    // sides when the phone is turned, even with auto-rotate off (the
+    // pair pin does not override the lock). It only acts while the
+    // display is landscape, so a portrait clip is never fought.
+    _platform.startRotationSensor();
     unawaited(_start());
   }
 
@@ -6662,6 +6667,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // while it tears the PiP window down, and a handler left registered closes
     // over a screen that no longer exists.
     _platform.detachPipListener();
+    // Stop the rotation sensor: the accelerometer subscription closes
+    // over this screen, and a dead screen must not keep pinning an
+    // orientation.
+    _platform.stopRotationSensor();
     _handBack();
     _qoe.end(
       _stage == _Stage.failed

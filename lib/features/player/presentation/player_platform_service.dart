@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../core/providers/device_info_provider.dart';
@@ -472,6 +473,71 @@ class PlayerPlatformService {
   void followVideo() {
     _dropShapeCandidate();
     _chosenByViewer = null;
+  }
+
+  /// The device-rotation sensor (Android only): the pair pin the player
+  /// uses does NOT override the system rotation lock, so turning the
+  /// phone 180° mid-playback does nothing when auto-rotate is off. The
+  /// accelerometer reads the physical side directly and pins that ONE
+  /// side, which forces the display regardless of the lock.
+  ///
+  /// Only the landscape SIDE is driven — portrait vs landscape is still
+  /// the shape logic's say (see [applyVideoOrientation]): the sensor
+  /// acts only while the display is already landscape, so a portrait
+  /// clip (or the viewer's portrait choice) is never fought. In PiP the
+  /// sensor keeps running — pinning the activity behind the PiP window
+  /// is harmless, and the player is in the right orientation when the
+  /// viewer expands it back.
+  StreamSubscription<AccelerometerEvent>? _rotationSensor;
+  DeviceOrientation? _sensorSide;
+  DateTime? _sensorLastCheck;
+
+  /// Starts the rotation sensor. Android only; a no-op elsewhere and
+  /// when already running. Call once per player screen (initState) and
+  /// [stopRotationSensor] on dispose.
+  void startRotationSensor() {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (_rotationSensor != null) return;
+    _sensorSide = null;
+    _sensorLastCheck = null;
+    _rotationSensor = accelerometerEvents.listen(_onAccelerometer);
+  }
+
+  /// Stops the rotation sensor. Safe to call when it never started.
+  void stopRotationSensor() {
+    unawaited(_rotationSensor?.cancel());
+    _rotationSensor = null;
+    _sensorSide = null;
+  }
+
+  void _onAccelerometer(AccelerometerEvent event) {
+    // Throttle: the accelerometer fires ~50-100 Hz; a flip needs one
+    // decision, not fifty.
+    final now = DateTime.now();
+    if (_sensorLastCheck != null &&
+        now.difference(_sensorLastCheck!) <
+            const Duration(milliseconds: 300)) {
+      return;
+    }
+    _sensorLastCheck = now;
+    // Clearly in landscape: gravity mostly along x, and x dominates y.
+    // A flat phone (face up) or a diagonal hold reads nothing here.
+    final x = event.x;
+    final y = event.y;
+    if (x.abs() < 6.5 || x.abs() <= y.abs()) return;
+    // x is +9.8 when the device's +x axis points up — the top of the
+    // phone to the left (landscapeLeft); -9.8 is the other side. If a
+    // phone test shows the flip going the wrong way, this mapping is
+    // inverted and it is a one-line swap.
+    final side = x > 0
+        ? DeviceOrientation.landscapeLeft
+        : DeviceOrientation.landscapeRight;
+    if (side == _sensorSide) return;
+    // Only while the display is already landscape: a portrait clip (or
+    // the viewer's portrait choice) must not be fought.
+    if (_viewOrientation() != Orientation.landscape) return;
+    _sensorSide = side;
+    unawaited(SystemChrome.setPreferredOrientations([side]));
   }
 
   /// Forgets the shape being waited on and stops the clock waiting on it.
