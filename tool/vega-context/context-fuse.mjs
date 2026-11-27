@@ -34,9 +34,10 @@
 //    channel. Two concurrent `set` calls for different keys can race the
 //    index read-modify-write and drop one entry from the index; the values
 //    themselves are always intact and `get` still finds them.
-//  - `openWebView` is a stub returning success:false (the template's own
-//    test-stub shape). Real WAF handling via challenge_browser is a later
-//    decision, not Phase 1.
+//  - `openWebView` is the real WAF/challenge dialog: the Dart side
+//    (`open_webview` channel in js_engine.dart + presentVegaWebView) shows a
+//    visible WebView and answers with the completed page. Without a mounted
+//    presenter it answers success:false, as the old stub did.
 //  - Missing JS globals the Vega sandbox contract does not inject are
 //    defined here, on globalThis, as guarded additive shims (see the
 //    "Missing JS globals" section): fetch, URLSearchParams, Headers,
@@ -1013,17 +1014,67 @@ export function createVegaProviderContext(token) {
   };
 
   // -- openWebView ---------------------------------------------------------
-  // Stub: not available in Phase 1 (mirrors the template's own test stub,
-  // which returns success:false). Real WAF handling via challenge_browser
-  // is a later decision.
-  const openWebView = async () => ({
-    success: false,
-    data: '',
-    cookies: '',
-    cookieMap: {},
-    userAgent: '',
-    url: '',
-  });
+  // Real WAF/challenge dialog: the Dart side (`open_webview` channel in
+  // js_engine.dart + presentVegaWebView) shows a visible WebView, waits for
+  // the requested cookie (or an injected script's postMessage, or the person
+  // tapping Done), and answers with the completed page. The call carries the
+  // provider's token (unlike the global fetch, this one is per-provider).
+  // A channel failure answers as the old stub did (success:false), so the
+  // provider falls back to its own error. The result carries BOTH `cookies`
+  // and `cookie` (same header string): most providers read `cookies`,
+  // uhd/katmovies read the singular `cookie`.
+  const openWebView = async (url, options = {}) => {
+    const opts = options || {};
+    const fallback = {
+      success: false,
+      data: '',
+      cookies: '',
+      cookie: '',
+      cookieMap: {},
+      userAgent: '',
+      url: typeof url === 'string' ? url : '',
+    };
+    try {
+      const res = await _dartAsyncCall('open_webview', {
+        url: typeof url === 'string' ? url : String(url ?? ''),
+        title: opts.title,
+        description: opts.description,
+        headers: opts.headers || {},
+        waitForCookie: opts.waitForCookie,
+        force: opts.force === true,
+        timeoutMs: opts.timeoutMs,
+        injectedJavaScript: opts.injectedJavaScript,
+        __ssTok: token,
+      });
+      if (res && typeof res === 'object') {
+        const cookies =
+          typeof res.cookies === 'string' ? res.cookies : '';
+        return {
+          success: res.success === true,
+          data: typeof res.data === 'string' ? res.data : '',
+          cookies,
+          cookie:
+            typeof res.cookie === 'string' ? res.cookie : cookies,
+          cookieMap:
+            res.cookieMap && typeof res.cookieMap === 'object'
+              ? res.cookieMap
+              : {},
+          userAgent:
+            typeof res.userAgent === 'string' ? res.userAgent : '',
+          url:
+            typeof res.url === 'string'
+              ? res.url
+              : typeof url === 'string'
+                ? url
+                : '',
+        };
+      }
+    } catch (e) {
+      // The channel itself failed (no presenter, engine gone): answer as
+      // the old stub did, so the provider falls back to its own error.
+    }
+    return fallback;
+  };
 
   return {
     axios: instance,

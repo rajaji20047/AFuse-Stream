@@ -189,9 +189,58 @@ final jsEngineProvider = Provider.autoDispose<JsEngineService>((ref) {
 
 // ── Proxy class — lives on the main isolate ───────────────────────────────────
 
+/// A Vega provider's `openWebView(url, options)`: shows the page in a visible
+/// WebView dialog so the person can finish the site's check (or a device-code
+/// sign-in), and resolves with what the completed page holds — the Vega
+/// `OpenWebViewResult` shape: `success`, `data` (rendered HTML, or the data
+/// an injected script posted back), `cookies` (header string), `cookie` (the
+/// same header string — uhd/katmovies read the singular name), `cookieMap`,
+/// `userAgent`, `url`.
+///
+/// Set by the app's widget tree ([VegaWebViewBridge]); null while no
+/// presenter is mounted (tests, background work), in which case the
+/// `open_webview` channel answers success:false without opening anything —
+/// the same answer the old stub gave. A static field, not an instance one:
+/// the engine is an autoDispose provider that can be rebuilt, and the
+/// presenter belongs to the mounted widget tree, not to one engine instance.
+/// It is a function type, not an import of the dialog: the dialog needs the
+/// router's navigator key, and importing the router here would cycle the
+/// engine into it (app_router → extensions screens → Vega → js_engine).
+typedef VegaWebViewPresenter =
+    Future<Map<String, Object?>> Function({
+      required String url,
+      String? title,
+      String? description,
+      required Map<String, String> headers,
+      String? waitForCookie,
+      required bool force,
+      required Duration timeout,
+      String? injectedJavaScript,
+    });
+
+/// The `openWebView` answer when no dialog can open (no presenter, no URL,
+/// presenter failure): the Vega stub's shape. Mirrored by the dialog's own
+/// failure path in `presentVegaWebView`.
+Map<String, Object?> _openWebViewFailure({
+  required String url,
+  String userAgent = '',
+}) => <String, Object?>{
+  'success': false,
+  'data': '',
+  'cookies': '',
+  'cookie': '',
+  'cookieMap': <String, String>{},
+  'userAgent': userAgent,
+  'url': url,
+};
+
 class JsEngineService {
   final Dio _dio;
   final ExtensionRepository _storage;
+
+  /// The presenter for Vega `openWebView` calls (see [VegaWebViewPresenter]).
+  /// Set by [VegaWebViewBridge] while it is mounted; null otherwise.
+  static VegaWebViewPresenter? openWebViewPresenter;
 
   // Pending load/invoke operations keyed by the sequential ID sent to worker.
   final _pendingLoads = <int, Completer<void>>{};
@@ -499,6 +548,62 @@ class JsEngineService {
             if (jsId == null) return;
             final reason = e is CaptchaException ? e.reason : '$e';
             _reply(bid, jsId, reason, isError: true);
+          },
+        );
+
+      case 'open_webview':
+        // A Vega provider's openWebView(url, options): the site's check
+        // (Cloudflare and the like) shown to the person in a visible WebView
+        // dialog, so the provider can retry its request with the completed
+        // page's cookies. The dialog is user-gated and user-cancellable, so
+        // an unattributed call is tolerated like http_request's: the token,
+        // when the context factory attached one, is only for attribution.
+        // No timeout is enforced here — the dialog enforces the provider's
+        // timeoutMs itself, and the bridge promise has none (see
+        // _dartAsyncCall). A presenter failure must not hang the provider.
+        final webViewPresenter = JsEngineService.openWebViewPresenter;
+        final webViewUrl =
+            parsed['url'] is String ? parsed['url'] as String : '';
+        if (webViewPresenter == null || webViewUrl.isEmpty) {
+          if (jsId != null) {
+            _reply(bid, jsId, _openWebViewFailure(url: webViewUrl));
+          }
+          return;
+        }
+        // Safe casts, not `as`: a provider may pass headers as a string or
+        // a title as a number, and a throw here would take the whole bridge
+        // listener down with it.
+        final rawHeaders = parsed['headers'];
+        final webViewHeaders = rawHeaders is Map
+            ? rawHeaders.map(
+                (key, value) => MapEntry(key.toString(), value.toString()),
+              )
+            : const <String, String>{};
+        final timeoutMs = parsed['timeoutMs'];
+        String? webViewString(String key) =>
+            parsed[key] is String ? parsed[key] as String : null;
+        webViewPresenter(
+          url: webViewUrl,
+          title: webViewString('title'),
+          description: webViewString('description'),
+          headers: webViewHeaders,
+          waitForCookie: webViewString('waitForCookie'),
+          force: parsed['force'] == true,
+          timeout: Duration(
+            milliseconds: timeoutMs is num
+                ? timeoutMs.toInt().clamp(1000, 600000)
+                : 120000,
+          ),
+          injectedJavaScript: webViewString('injectedJavaScript'),
+        ).then(
+          (result) {
+            if (jsId != null) _reply(bid, jsId, result);
+          },
+          onError: (Object e) {
+            talker.error('[bridge] open_webview failed: $e');
+            if (jsId != null) {
+              _reply(bid, jsId, _openWebViewFailure(url: webViewUrl));
+            }
           },
         );
     }

@@ -19803,14 +19803,45 @@ function createVegaProviderContext(token) {
     "sec-ch-ua-platform": '"Windows"',
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
   };
-  const openWebView = async () => ({
-    success: false,
-    data: "",
-    cookies: "",
-    cookieMap: {},
-    userAgent: "",
-    url: ""
-  });
+  const openWebView = async (url, options = {}) => {
+    const opts = options || {};
+    const fallback = {
+      success: false,
+      data: "",
+      cookies: "",
+      cookie: "",
+      cookieMap: {},
+      userAgent: "",
+      url: typeof url === "string" ? url : ""
+    };
+    try {
+      const res = await _dartAsyncCall("open_webview", {
+        url: typeof url === "string" ? url : String(url != null ? url : ""),
+        title: opts.title,
+        description: opts.description,
+        headers: opts.headers || {},
+        waitForCookie: opts.waitForCookie,
+        force: opts.force === true,
+        timeoutMs: opts.timeoutMs,
+        injectedJavaScript: opts.injectedJavaScript,
+        __ssTok: token
+      });
+      if (res && typeof res === "object") {
+        const cookies = typeof res.cookies === "string" ? res.cookies : "";
+        return {
+          success: res.success === true,
+          data: typeof res.data === "string" ? res.data : "",
+          cookies,
+          cookie: typeof res.cookie === "string" ? res.cookie : cookies,
+          cookieMap: res.cookieMap && typeof res.cookieMap === "object" ? res.cookieMap : {},
+          userAgent: typeof res.userAgent === "string" ? res.userAgent : "",
+          url: typeof res.url === "string" ? res.url : typeof url === "string" ? url : ""
+        };
+      }
+    } catch (e) {
+    }
+    return fallback;
+  };
   return {
     axios: instance,
     cheerio: browser_exports,

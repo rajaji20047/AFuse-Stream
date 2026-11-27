@@ -63,6 +63,7 @@ import 'package:raja/l10n/generated/app_localizations.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/network/clearance/clearance.dart';
 import 'core/network/clearance/clearance_bridge.dart';
+import 'core/extensions/engine/vega_webview.dart';
 import 'core/network/clearance/clearance_images.dart';
 import 'core/config/tmdb_config.dart';
 import 'core/providers/device_info_provider.dart';
@@ -409,7 +410,7 @@ class _AppRootState extends State<AppRoot> {
       // ignore: riverpod_lint/scoped_providers_should_specify_dependencies
       overrides: [storageServiceProvider.overrideWithValue(_storageService)],
       child: const ExtensionsSyncBridge(
-        child: ClearanceBridge(child: MyApp()),
+        child: ClearanceBridge(child: VegaWebViewBridge(child: MyApp())),
       ),
     );
   }

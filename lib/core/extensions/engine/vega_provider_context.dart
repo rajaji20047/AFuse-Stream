@@ -9,7 +9,8 @@ import 'js_engine.dart';
 /// `globalThis.__vegaCreateProviderContext(token)`, that builds one
 /// `providerContext` per Vega provider: real axios (Dart-bridge transport),
 /// real cheerio, a kvStore backed by the bridge storage channels,
-/// `commonHeaders`, and an `openWebView` stub.
+/// `commonHeaders`, and a real `openWebView` (visible WebView dialog via
+/// the `open_webview` bridge channel).
 ///
 /// The bundle is loaded once per engine, not once per provider: the factory
 /// is shared, and each provider's installer calls it with its own bridge
