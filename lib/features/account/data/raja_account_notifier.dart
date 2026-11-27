@@ -1513,7 +1513,7 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     refresh(() => ref.invalidate(homeRowPrefsProvider));
     refresh(() => ref.invalidate(searchDisabledSourcesProvider));
     refresh(() => ref.invalidate(languageProvider));
-    refresh(() => ref.invalidate(localeNotifierProvider));
+    refresh(() => ref.invalidate(localeProvider));
   }
 
   static ExtensionPlugin? _findRajaPlugin(
