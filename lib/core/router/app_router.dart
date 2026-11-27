@@ -35,6 +35,7 @@ import '../../features/explore/presentation/view_all_screen.dart';
 import '../domain/entity/multimedia_item.dart';
 import 'package:raja/shared/widgets/app_scaffold.dart';
 import '../../core/storage/settings_repository.dart';
+import 'nav_tabs.dart';
 import 'route_transitions.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:flutter/foundation.dart';
@@ -197,10 +198,17 @@ class SettingsRoute extends GoRouteData with $SettingsRoute {
 void goDefaultHome(BuildContext context) {
   var home = '/home';
   try {
-    final saved = ProviderScope.containerOf(
+    final repository = ProviderScope.containerOf(
       context,
-    ).read(settingsRepositoryProvider).getDefaultHomeScreen();
-    if (kShellBranchRoutes.contains(saved)) home = saved;
+    ).read(settingsRepositoryProvider);
+    final saved = repository.getDefaultHomeScreen();
+    // A default home whose nav button is hidden falls back to the
+    // first visible tab instead of landing on a button-less tab.
+    final effective = effectiveDefaultHomeRoute(
+      saved,
+      repository.getHiddenNavTabs(),
+    );
+    if (kShellBranchRoutes.contains(effective)) home = effective;
   } catch (_) {
     // Unreadable setting: fall back to Home.
   }
@@ -781,8 +789,17 @@ const List<String> kShellBranchRoutes = [
 
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
-  final saved = ref.read(settingsRepositoryProvider).getDefaultHomeScreen();
-  final initial = kShellBranchRoutes.contains(saved) ? saved : '/home';
+  final repository = ref.read(settingsRepositoryProvider);
+  final saved = repository.getDefaultHomeScreen();
+  // A saved default home whose nav button is hidden starts on the
+  // first visible tab instead of a button-less tab.
+  final effective = effectiveDefaultHomeRoute(
+    saved,
+    repository.getHiddenNavTabs(),
+  );
+  final initial = kShellBranchRoutes.contains(effective)
+      ? effective
+      : '/home';
 
   return GoRouter(
     initialLocation: initial,

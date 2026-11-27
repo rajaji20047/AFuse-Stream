@@ -13,6 +13,7 @@ import '../../../../core/cloudstream/cloudstream_engine.dart';
 import '../../../../core/config/tmdb_config.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/network/doh_service.dart';
+import '../../../../core/router/nav_tabs.dart';
 import '../../../../core/storage/settings_repository.dart';
 import '../../../../core/services/download_service.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -221,6 +222,26 @@ void showTitlePositionDialog(
   );
 }
 
+/// Labels for the nav-bar buttons. Home / Search / Library are
+/// localised; Plugins and Stremio are plain literals like the pill
+/// itself (no l10n key for them).
+String navTabLabel(int branch, AppLocalizations l10n) {
+  switch (branch) {
+    case 0:
+      return l10n.home;
+    case 1:
+      return l10n.search;
+    case 2:
+      return 'Plugins';
+    case 3:
+      return l10n.library;
+    case 4:
+      return 'Stremio';
+    default:
+      return l10n.home;
+  }
+}
+
 /// Labels for the nav-bar style picker. Plain English, no l10n
 /// key — the Plugins/Browse tab names do the same (no l10n key for them).
 String getNavBarStyleLabel(NavBarStyle style) {
@@ -261,6 +282,7 @@ void showNavBarSettingsDialog(BuildContext context, WidgetRef ref) {
       title: const Text('Navigation bar'),
       content: Consumer(
         builder: (context, ref, _) {
+          final l10n = AppLocalizations.of(context)!;
           final settings = ref.watch(generalSettingsProvider);
           final notifier = ref.read(generalSettingsProvider.notifier);
           return SingleChildScrollView(
@@ -337,6 +359,48 @@ void showNavBarSettingsDialog(BuildContext context, WidgetRef ref) {
                       ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  'Show in navigation bar',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                Text(
+                  'A hidden button leaves the bottom bar and the side '
+                  'rail; its tab still opens from a deep link. At least '
+                  'one tab always stays on.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                for (var branch = 0;
+                    branch < kNavTabRoutes.length;
+                    branch++)
+                  Builder(
+                    builder: (context) {
+                      final route = kNavTabRoutes[branch];
+                      final isHidden = settings.hiddenNavTabs.contains(
+                        route,
+                      );
+                      // The last visible tab cannot be hidden — its
+                      // switch is off-limits, not a dead tap.
+                      final isOnlyVisible =
+                          !isHidden &&
+                          visibleNavBranches(
+                                settings.hiddenNavTabs,
+                              ).length ==
+                              1;
+                      return SwitchListTile(
+                        title: Text(navTabLabel(branch, l10n)),
+                        subtitle: isOnlyVisible
+                            ? const Text('At least one tab stays on')
+                            : null,
+                        value: !isHidden,
+                        onChanged: isOnlyVisible
+                            ? null
+                            : (val) =>
+                                  notifier.setNavTabVisible(branch, val),
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    },
+                  ),
               ],
             ),
           );

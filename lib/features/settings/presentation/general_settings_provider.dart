@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/config/tmdb_config.dart';
+import '../../../core/router/nav_tabs.dart';
 import '../../../core/storage/settings_repository.dart';
 
 part 'general_settings_provider.g.dart';
@@ -56,6 +57,13 @@ class GeneralSettings {
   /// (white 65% on dark glass, onSurfaceVariant on light).
   final int? navBarIconColorArgb;
 
+  /// Tab routes whose bottom-nav / sidebar button is hidden
+  /// (Settings → Navigation bar). Empty = all five shown. A route, not
+  /// a branch index, so a stored value survives any future reorder.
+  /// At least one tab always stays visible (see [GeneralSettingsNotifier
+  /// .setNavTabVisible]).
+  final Set<String> hiddenNavTabs;
+
   /// The GitHub proxy choice. Replaces the old on/off toggle: a stored
   /// choice of [GithubProxyOption.none] is off, anything else is on.
   final GithubProxyOption githubProxy;
@@ -104,6 +112,7 @@ class GeneralSettings {
     this.navBarGlowEnabled = true,
     this.navBarGlassEnabled = true,
     this.navBarIconColorArgb,
+    this.hiddenNavTabs = const {},
   });
 
   GeneralSettings copyWith({
@@ -125,6 +134,7 @@ class GeneralSettings {
     bool? navBarGlassEnabled,
     int? navBarIconColorArgb,
     bool clearNavBarIconColor = false,
+    Set<String>? hiddenNavTabs,
   }) {
     return GeneralSettings(
       watchHistoryEnabled: watchHistoryEnabled ?? this.watchHistoryEnabled,
@@ -154,6 +164,7 @@ class GeneralSettings {
       navBarIconColorArgb: clearNavBarIconColor
           ? null
           : (navBarIconColorArgb ?? this.navBarIconColorArgb),
+      hiddenNavTabs: hiddenNavTabs ?? this.hiddenNavTabs,
     );
   }
 }
@@ -213,6 +224,7 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       navBarGlowEnabled: repository.getNavBarGlow(),
       navBarGlassEnabled: repository.getNavBarGlass(),
       navBarIconColorArgb: repository.getNavBarIconColor(),
+      hiddenNavTabs: repository.getHiddenNavTabs(),
     );
   }
 
@@ -315,6 +327,34 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
         navBarIconColorArgb: argb,
         clearNavBarIconColor: argb == null,
       );
+    });
+  }
+
+  /// Shows or hides one nav button (Settings → Navigation bar).
+  /// [branch] is the branch index (0 Home … 4 Browse, see
+  /// [kNavTabRoutes]). Hiding the last visible tab is refused — the
+  /// shell always needs at least one button — so the call completes
+  /// with no change instead of stranding the user on a button-less
+  /// shell. The shell redirects off a tab hidden while it is active,
+  /// and the default-home route falls back to the first visible tab
+  /// (see `nav_tabs.dart`), so hiding needs no other bookkeeping here.
+  Future<void> setNavTabVisible(int branch, bool visible) {
+    return _enqueue(() async {
+      if (branch < 0 || branch >= kNavTabRoutes.length) return;
+      final route = kNavTabRoutes[branch];
+      final hidden = Set<String>.of(state.hiddenNavTabs);
+      if (visible) {
+        if (!hidden.remove(route)) return;
+      } else {
+        if (hidden.contains(route)) return;
+        hidden.add(route);
+        // Refuse to hide the last visible tab: with every route
+        // hidden there would be no button and no tab to land on.
+        if (hidden.length >= kNavTabRoutes.length) return;
+      }
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setHiddenNavTabs(hidden);
+      state = state.copyWith(hiddenNavTabs: hidden);
     });
   }
 

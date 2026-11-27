@@ -174,6 +174,16 @@ class SettingsRepository {
     return _storageService.getNavBarIconColor();
   }
 
+  /// Which nav buttons are hidden (Settings → Navigation bar).
+  /// Plain pass-through to [StorageService].
+  Future<void> setHiddenNavTabs(Set<String> hidden) async {
+    await _storageService.setHiddenNavTabs(hidden);
+  }
+
+  Set<String> getHiddenNavTabs() {
+    return _storageService.getHiddenNavTabs();
+  }
+
   Future<void> setDevLoadAssets(bool enabled) async {
     await _storageService.setDevLoadAssets(enabled);
   }

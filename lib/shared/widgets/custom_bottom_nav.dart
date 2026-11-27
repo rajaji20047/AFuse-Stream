@@ -68,6 +68,14 @@ class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final void Function(int) onTap;
 
+  /// The branch indices this pill shows, in display order — a subset
+  /// of 0–4 when the user hid a button (Settings → Navigation bar).
+  /// [currentIndex] and [onTap] are VISIBLE positions into this list,
+  /// not branch indices: with Library hidden, position 3 is Browse
+  /// (branch 4). The shell remaps both ways (see `nav_tabs.dart`).
+  /// Defaults to all five tabs.
+  final List<int> branchIndices;
+
   /// Forces the package's legacy Material fallback when false.
   final bool impellerSupported;
 
@@ -98,6 +106,7 @@ class CustomBottomNavBar extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.branchIndices = const [0, 1, 2, 3, 4],
     this.impellerSupported = true,
     this.labelFraction = 1.0,
     this.glowEnabled = true,
@@ -197,52 +206,46 @@ class CustomBottomNavBar extends StatelessWidget {
   static double hiddenNavPaddingBottom(BuildContext context) =>
       -contentClearance;
 
-  @override
-  Widget build(BuildContext context) {
-    // v20+20 diagnostic: boot-trace marker (once per launch).
-    BootTrace.markOnce('custombottomnav-build', 'CUSTOMBOTTOMNAV build start');
-    final localizations = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    // Light Liquid Glass: the package paints its light-mode pill with a
-    // 76% white fill, a 55% white border and full light intensity — a
-    // milky, frosted pill (user 2026-11-19, build 83: "white mode pe
-    // blurry hein crystal clear karo"). Its dark-mode pill is the clear
-    // one (4% fill). The package picks between them from the theme's
-    // brightness alone, so on light Liquid Glass it is handed a dark
-    // brightness and draws the same clear glass. Colours of the icons and
-    // labels are passed in below and do not come from this theme. Theme
-    // is not a layout widget: the bar's Positioned still talks to the
-    // Stack directly.
-    final clearGlass = clearNavGlassFor(theme);
-    final fraction = labelFraction.clamp(0.0, 1.0);
-    final bar = LiquidGlassNavBar(
-      items: [
-        LiquidGlassNavItem(
+  /// One pill item for [branch] (0 Home, 1 Search, 2 Plugins,
+  /// 3 Library, 4 Browse). The icons, labels and ids are exactly the
+  /// ones the hardcoded list used to carry — only the list itself is
+  /// now built from [branchIndices], so a hidden tab simply has no item.
+  static LiquidGlassNavItem _navItem(
+    int branch,
+    AppLocalizations localizations,
+  ) {
+    switch (branch) {
+      case 0:
+        return LiquidGlassNavItem(
           id: 'home',
           label: localizations.home,
           icon: ReiconFilledIcons.home,
-        ),
-        LiquidGlassNavItem(
+        );
+      case 1:
+        return LiquidGlassNavItem(
           id: 'search',
           label: localizations.search,
           // Outline, not Filled — M M asked for the outline search icon
           // (2026-11-14); the other four tabs stay Filled.
           icon: ReiconIcons.search,
-        ),
-        const LiquidGlassNavItem(
+        );
+      case 2:
+        return const LiquidGlassNavItem(
           id: 'plugins',
           // Preview tab name (no l10n key for it): the user approved
           // "Plugins" — the Extensions screen (TojiX Repo + providers).
           label: 'Plugins',
           icon: ReiconFilledIcons.puzzle,
-        ),
-        LiquidGlassNavItem(
+        );
+      case 3:
+        return LiquidGlassNavItem(
           id: 'library',
           label: localizations.library,
           icon: ReiconFilledIcons.library,
-        ),
-        LiquidGlassNavItem(
+        );
+      case 4:
+      default:
+        return LiquidGlassNavItem(
           id: 'browse',
           // Preview tab name (no l10n key for it): the user asked for a
           // "Stremio" tab here in place of the Detail tab (v4) — the
@@ -264,7 +267,32 @@ class CustomBottomNavBar extends StatelessWidget {
               );
             },
           ),
-        ),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // v20+20 diagnostic: boot-trace marker (once per launch).
+    BootTrace.markOnce('custombottomnav-build', 'CUSTOMBOTTOMNAV build start');
+    final localizations = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    // Light Liquid Glass: the package paints its light-mode pill with a
+    // 76% white fill, a 55% white border and full light intensity — a
+    // milky, frosted pill (user 2026-11-19, build 83: "white mode pe
+    // blurry hein crystal clear karo"). Its dark-mode pill is the clear
+    // one (4% fill). The package picks between them from the theme's
+    // brightness alone, so on light Liquid Glass it is handed a dark
+    // brightness and draws the same clear glass. Colours of the icons and
+    // labels are passed in below and do not come from this theme. Theme
+    // is not a layout widget: the bar's Positioned still talks to the
+    // Stack directly.
+    final clearGlass = clearNavGlassFor(theme);
+    final fraction = labelFraction.clamp(0.0, 1.0);
+    final bar = LiquidGlassNavBar(
+      items: [
+        for (final branch in branchIndices) _navItem(branch, localizations),
       ],
       selectedIndex: currentIndex,
       onTap: onTap,

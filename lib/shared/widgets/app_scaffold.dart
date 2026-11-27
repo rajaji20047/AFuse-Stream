@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:raja/core/providers/device_info_provider.dart';
+import 'package:raja/core/router/nav_tabs.dart';
 import 'package:raja/core/utils/boot_trace.dart';
 import 'package:raja/core/utils/layout_constants.dart';
 import 'package:raja/core/utils/motion.dart';
@@ -49,6 +50,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
   // on a tab branch (covers pill taps, the Settings gear and the
   // back button alike); a plain field, no setState, no rebuild loop.
   int _lastTabIndex = 0;
+
+  /// A hidden-tab redirect is already queued for this frame (see
+  /// [build]): without it every build while stranded would queue
+  /// another post-frame `goBranch` for the same destination.
+  bool _hiddenRedirectPending = false;
 
   // Owned here so the content-area LEFT key handler can focus them directly,
   // crossing the Branch Navigator's FocusScope boundary. Count comes from
@@ -310,8 +316,40 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
     // glow, glass and the icon-colour override. Watched whole
     // — a style change restyles the bar without an app restart.
     final navSettings = ref.watch(generalSettingsProvider);
-    final defaultIndex = _getRouteIndex(defaultHome);
+    // Which nav buttons are shown (Settings → Navigation bar), and
+    // the branch ↔ visible-position remap for this frame.
+    final hiddenNavTabs = navSettings.hiddenNavTabs;
+    final visibleBranches = visibleNavBranches(hiddenNavTabs);
+    final firstVisibleBranch = visibleBranches.first;
+    // A default home whose button is hidden falls back to the first
+    // visible tab instead of landing on a button-less tab.
+    final defaultIndex = _getRouteIndex(
+      effectiveDefaultHomeRoute(defaultHome, hiddenNavTabs),
+    );
     final isAtDefaultHome = widget.navigationShell.currentIndex == defaultIndex;
+    // The active tab was hidden while on it (toggled in Settings):
+    // redirect to the first visible tab — otherwise the user is
+    // stranded on a tab with no button. Post-frame, once per hide:
+    // goBranch rebuilds the shell and the condition clears itself.
+    final currentBranch = widget.navigationShell.currentIndex;
+    if (currentBranch < 5 &&
+        !visibleBranches.contains(currentBranch) &&
+        !_hiddenRedirectPending) {
+      _hiddenRedirectPending = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hiddenRedirectPending = false;
+        if (!mounted) return;
+        // Re-check at fire time: the user may have moved to a visible
+        // tab (or unhidden the tab) in the meantime.
+        final branch = widget.navigationShell.currentIndex;
+        if (branch < 5 &&
+            !visibleNavBranches(
+              ref.read(generalSettingsProvider).hiddenNavTabs,
+            ).contains(branch)) {
+          widget.navigationShell.goBranch(firstVisibleBranch);
+        }
+      });
+    }
 
     return deviceProfileAsync.when(
       data: (profile) {
@@ -413,7 +451,15 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                                     widget.navigationShell.currentIndex,
                                 onItemTapped: (int index) =>
                                     _onItemTapped(index, context),
-                                focusNodes: _sidebarNodes,
+                                visibleBranches: visibleBranches,
+                                // One node per VISIBLE branch, in display
+                                // order — the rail's own list is indexed
+                                // by visible position, while _sidebarNodes
+                                // stays indexed by branch.
+                                focusNodes: [
+                                  for (final branch in visibleBranches)
+                                    _sidebarNodes[branch],
+                                ],
                               ),
                             ),
                           ),
@@ -450,8 +496,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         // no "no selection" state.
         final currentIndex = widget.navigationShell.currentIndex;
         final onSettings = currentIndex == 5;
-        if (currentIndex < 5) _lastTabIndex = currentIndex;
-        final pillIndex = currentIndex < 5 ? currentIndex : _lastTabIndex;
+        if (currentIndex < 5 && visibleBranches.contains(currentIndex)) {
+          _lastTabIndex = currentIndex;
+        }
+        // Pill positions are visible positions, not branches: with a
+        // tab hidden, position 3 is Browse, not Library.
+        final pillBranch = currentIndex < 5 ? currentIndex : _lastTabIndex;
+        final pillIndex =
+            branchToVisiblePosition(pillBranch, hiddenNavTabs) ??
+            branchToVisiblePosition(_lastTabIndex, hiddenNavTabs) ??
+            0;
         // Nuvio's nav-bar settings for this frame.
         final navStyle = navSettings.navBarStyle;
         // Content must clear the pill top (see
@@ -613,8 +667,15 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                             child: child!,
                           ),
                           child: CustomBottomNavBar(
+                            branchIndices: visibleBranches,
                             currentIndex: pillIndex,
-                            onTap: (index) => _onItemTapped(index, context),
+                            onTap: (position) => _onItemTapped(
+                              visiblePositionToBranch(
+                                position,
+                                hiddenNavTabs,
+                              ),
+                              context,
+                            ),
                             labelFraction: labelFraction,
                             glowEnabled: navSettings.navBarGlowEnabled,
                             glassEnabled: navSettings.navBarGlassEnabled,

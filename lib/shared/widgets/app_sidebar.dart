@@ -49,11 +49,19 @@ class AppSidebar extends ConsumerStatefulWidget {
   final ValueChanged<int> onItemTapped;
   final List<FocusNode> focusNodes;
 
+  /// The branch indices this rail shows, in display order — a subset
+  /// of 0–4 when the user hid a button (Settings → Navigation bar).
+  /// [currentIndex] is a BRANCH index and [onItemTapped] reports a
+  /// branch index; [focusNodes] must hold exactly one node per visible
+  /// branch, in the same order. Defaults to all five tabs.
+  final List<int> visibleBranches;
+
   const AppSidebar({
     super.key,
     required this.currentIndex,
     required this.onItemTapped,
     required this.focusNodes,
+    this.visibleBranches = const [0, 1, 2, 3, 4],
   });
 
   @override
@@ -138,21 +146,28 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
     // Raja (approved design preview): the nav is exactly
     // Home / Search / Plugins / Library / Stremio. Settings is a 6th
     // shell branch (reachable from the Home AppBar gear), so it is
-    // not one of the 5 sidebar destinations.
-    final destinations = [
+    // not one of the 5 sidebar destinations. Only the visible
+    // branches get a rail item (Settings → Navigation bar): the list
+    // below is indexed by visible position, and each item maps back
+    // to its branch for selection and taps.
+    final allDestinations = [
       (Icons.home_outlined, Icons.home, l10n.home),
       (Icons.search, Icons.search, l10n.search),
       (Icons.extension_outlined, Icons.extension, 'Plugins'),
       (Icons.video_library_outlined, Icons.video_library, l10n.library),
       (Icons.explore_outlined, Icons.explore, 'Stremio'),
     ];
+    final destinations = [
+      for (final branch in widget.visibleBranches) allDestinations[branch],
+    ];
     assert(
-      destinations.length == kSidebarDestinationCount,
-      'kSidebarDestinationCount must match the destinations list length',
+      destinations.length == widget.focusNodes.length,
+      'Sidebar focusNodes count must match visible destinations count',
     );
     assert(
-      widget.focusNodes.length == destinations.length,
-      'Sidebar focusNodes count must match destinations count',
+      destinations.length <= kSidebarDestinationCount,
+      'kSidebarDestinationCount is the number of branches, not the '
+      'number of visible destinations',
     );
 
     // Fixed width container (w-16 -> 64px)
@@ -256,7 +271,10 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                   clipBehavior: Clip.none,
                   children: List.generate(destinations.length, (i) {
                     final (outlinedIcon, filledIcon, label) = destinations[i];
-                    final isSelected = widget.currentIndex == i;
+                    // `i` is a visible position; the branch it stands
+                    // for is what selection and taps use.
+                    final branch = widget.visibleBranches[i];
+                    final isSelected = widget.currentIndex == branch;
 
                     return AnimatedPositioned(
                       key: ValueKey('dock_item_$i'),
@@ -273,7 +291,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
                         label: label,
                         isSelected: isSelected,
                         iconSize: iconSizes[i],
-                        onTap: () => widget.onItemTapped(i),
+                        onTap: () => widget.onItemTapped(branch),
                         index: i,
                         focusNodes: widget.focusNodes,
                         isDpadMode: isDpadMode,

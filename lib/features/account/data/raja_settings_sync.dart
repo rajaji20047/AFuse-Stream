@@ -27,6 +27,7 @@ const Set<String> kSyncedSettingKeys = <String>{
   'nav_bar_glow',
   'nav_bar_glass',
   'nav_bar_icon_color',
+  'hidden_nav_tabs',
   // Home and navigation.
   'default_home_screen',
   'title_position',

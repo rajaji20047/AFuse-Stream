@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io';
 import '../domain/entity/multimedia_item.dart';
+import '../router/nav_tabs.dart';
 import 'app_temp_directory.dart';
 
 part 'storage_service.g.dart';
@@ -484,6 +485,26 @@ class StorageService {
 
   int? getNavBarIconColor() {
     return _settingsBox.get('nav_bar_icon_color') as int?;
+  }
+
+  /// Which bottom-nav / sidebar buttons are hidden (Settings →
+  /// Navigation bar). Stored as one comma-joined string of tab routes
+  /// under 'hidden_nav_tabs' — a plain string, so it travels in backups
+  /// like the other nav-bar keys. Unknown routes are dropped on read
+  /// (see `parseHiddenNavTabs`); an empty value means all five shown.
+  Future<void> setHiddenNavTabs(Set<String> hidden) async {
+    final encoded = encodeHiddenNavTabs(hidden);
+    if (encoded.isEmpty) {
+      await _settingsBox.delete('hidden_nav_tabs');
+    } else {
+      await _settingsBox.put('hidden_nav_tabs', encoded);
+    }
+  }
+
+  Set<String> getHiddenNavTabs() {
+    return parseHiddenNavTabs(
+      _settingsBox.get('hidden_nav_tabs') as String?,
+    );
   }
 
   Future<void> setDevLoadAssets(bool enabled) async {
