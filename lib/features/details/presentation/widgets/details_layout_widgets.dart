@@ -310,19 +310,11 @@ class DetailsActionButtons extends HookConsumerWidget {
       isPrimary: true,
       focusNode: playFocusNode,
       autofocus: true,
-      // Tapping Play opens the Stremio-style stream picker overlay: the
-      // same resolved streams as the links box, as provider chips, Play
-      // best and ranked rows over the title's backdrop.
       onPressed: playable
           ? () async {
               await ref
                   .read(detailsControllerProvider(item.url).notifier)
-                  .openStreamPickerOverlay(
-                    context,
-                    details!,
-                    specificEpisode: targetEpisode,
-                    resumePositionMs: pos,
-                  );
+                  .handlePlayPress(context, details!);
 
               // Phase 10 Fix: TV Focus restoration on return from player
               if (context.mounted && isTv) {
@@ -330,8 +322,8 @@ class DetailsActionButtons extends HookConsumerWidget {
               }
             }
           : null,
-      // Holding Play opens the links box instead: the same sheet the
-      // Stremio section opens, every installed source asked at once.
+      // Holding Play opens the links box instead of playing: the same sheet
+      // the Stremio section opens, every installed source asked at once.
       onLongPress: playable
           ? () => ref
                 .read(detailsControllerProvider(item.url).notifier)

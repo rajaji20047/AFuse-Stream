@@ -17,7 +17,6 @@ import 'package:raja/core/storage/storage_service.dart';
 import '../../library/presentation/library_provider.dart';
 import '../../library/presentation/history_provider.dart';
 import '../../addons/presentation/addon_sources_sheet.dart';
-import 'widgets/stream_picker_overlay.dart';
 import '../../../core/addons/data/addon_stream_service.dart';
 import 'playback_launcher.dart';
 import '../../../core/services/download_service.dart';
@@ -644,55 +643,10 @@ class DetailsController extends _$DetailsController {
     MultimediaItem details, {
     Episode? specificEpisode,
   }) async {
-    final (details: resolvedDetails, request: request) =
-        await _streamRequestFor(details, specificEpisode: specificEpisode);
-    await AddonSourcesSheet.open(
-      context,
-      item: resolvedDetails,
-      request: request,
-      episode: specificEpisode,
-      merged: true,
-    );
-  }
-
-  /// The Stremio-style stream picker overlay: the same resolved streams
-  /// as the links box, presented as a full-screen picker (provider chips,
-  /// Play best, ranked rows) instead of the sheet. Reached by tapping
-  /// Play on the details page. [details] is the resolved item;
-  /// [specificEpisode] narrows the ask to one episode, or null for the
-  /// title's target (movie / next up). [resumePositionMs] is the saved
-  /// position (0 = none) for the overlay's Resume pill.
-  Future<void> openStreamPickerOverlay(
-    // Only handed on to the overlay, which needs it to show the picker;
-    // choosing what to ask is the part that belongs here.
-    // ignore: riverpod_lint/avoid_build_context_in_providers
-    BuildContext context,
-    MultimediaItem details, {
-    Episode? specificEpisode,
-    int resumePositionMs = 0,
-  }) async {
-    final (details: resolvedDetails, request: request) =
-        await _streamRequestFor(details, specificEpisode: specificEpisode);
-    await StreamPickerOverlay.open(
-      context,
-      item: resolvedDetails,
-      request: request,
-      episode: specificEpisode,
-      resumePositionMs: resumePositionMs,
-    );
-  }
-
-  /// The resolved item + stream request both the links box and the stream
-  /// picker overlay ask with: the background TMDB/IMDb enrichment may not
-  /// have landed yet — with no id at all Nuvio is never asked and the
-  /// picker only shows the "no TMDB or IMDb id" note. Reuse the enriched
-  /// state item when it has one, else resolve now before building the
-  /// request.
-  Future<({MultimediaItem details, AddonStreamRequest request})>
-  _streamRequestFor(
-    MultimediaItem details, {
-    Episode? specificEpisode,
-  }) async {
+    // The background TMDB/IMDb enrichment may not have landed yet: with
+    // no id at all Nuvio is never asked and the sheet only shows the
+    // "no TMDB or IMDb id" note. Reuse the enriched state item when it has
+    // one, else resolve now before building the request.
     var resolvedDetails = details;
     if (resolvedDetails.tmdbId == null && resolvedDetails.imdbId == null) {
       final stateItem = state.item;
@@ -706,7 +660,7 @@ class DetailsController extends _$DetailsController {
               .read(metadataResolutionServiceProvider)
               .enrichWithIds(details);
         } catch (_) {
-          // Enrichment failed: open with the raw ids, as before.
+          // Enrichment failed: open the sheet with the raw ids, as before.
         }
       }
     }
@@ -716,8 +670,9 @@ class DetailsController extends _$DetailsController {
       MultimediaContentType.livestream => 'tv',
       MultimediaContentType.other => 'other',
     };
-    return (
-      details: resolvedDetails,
+    await AddonSourcesSheet.open(
+      context,
+      item: resolvedDetails,
       request: AddonStreamRequest(
         type: type,
         contentId: resolvedDetails.url,
@@ -728,6 +683,8 @@ class DetailsController extends _$DetailsController {
         title: resolvedDetails.title,
         year: resolvedDetails.year,
       ),
+      episode: specificEpisode,
+      merged: true,
     );
   }
 }
