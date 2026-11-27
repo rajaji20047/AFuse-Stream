@@ -15,6 +15,10 @@ const String _backdrop = 'https://img.example/backdrop.jpg';
 const String _logo = 'https://img.example/logo.png';
 
 const Size _phone = Size(390, 844);
+
+/// A small landscape phone: wide, so the loading screen shows, but the list
+/// is under the 400 compact threshold, so its columns are icons.
+const Size _narrowWide = Size(700, 360);
 const Size _desktop = Size(1280, 800);
 const Size _television = Size(960, 540);
 
@@ -191,7 +195,7 @@ void main() {
   });
 
   testWidgets('and blank on a narrow list too', (tester) async {
-    await pump(tester, view(rows: _rows(2)), size: _phone);
+    await pump(tester, view(rows: _rows(2)), size: _narrowWide);
 
     expect(
       find.descendant(of: row(0), matching: find.byIcon(Icons.remove_rounded)),
@@ -301,7 +305,7 @@ void main() {
           ),
         ],
       ),
-      size: _phone,
+      size: _narrowWide,
     );
 
     final name = tester.getTopLeft(find.text('Hubstream')).dx;
@@ -311,8 +315,8 @@ void main() {
     expect(check, lessThan(played));
   });
 
-  // Two labelled columns take most of a portrait phone's list, and the link's
-  // own name is the thing the viewer is choosing by.
+  // Two labelled columns take most of a narrow list, and the link's own
+  // name is the thing the viewer is choosing by.
   testWidgets('on a narrow list both columns become icons', (tester) async {
     final l10n = await _english();
     await pump(
@@ -326,7 +330,7 @@ void main() {
           ),
         ],
       ),
-      size: _phone,
+      size: _narrowWide,
     );
 
     expect(find.text(l10n.playerSourceReachable), findsNothing);
@@ -363,6 +367,18 @@ void main() {
     await pump(tester, view(status: 'Getting links from Fake…'));
 
     expect(find.text('Getting links from Fake…'), findsOneWidget);
+    expect(find.byType(ListView), findsNothing);
+  });
+
+  // One loading screen only, the landscape one (user 2026-11-27): in
+  // portrait the screen stays black until the player is wide.
+  testWidgets('in portrait there is no loading screen: no title, no rows', (
+    tester,
+  ) async {
+    await pump(tester, view(rows: _rows(2)), size: _phone);
+
+    expect(find.text('A Film'), findsNothing);
+    expect(row(0), findsNothing);
     expect(find.byType(ListView), findsNothing);
   });
 

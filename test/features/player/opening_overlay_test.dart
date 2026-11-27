@@ -84,9 +84,11 @@ void main() {
       variant: texturePlatform,
       (tester) async {
         // A source name capped at a fixed width, plus the icon and the gaps,
-        // leaves no room for the badge on a 320px phone and the Row overflows.
-        // The name is Flexible instead.
-        tester.view.physicalSize = const Size(320, 640);
+        // leaves no room for the badge in a 320px-wide list and the Row
+        // overflows. The name is Flexible instead. Narrow and wide: the
+        // loading screen shows only in landscape, so the narrow list here is
+        // the right column of a small landscape phone.
+        tester.view.physicalSize = const Size(660, 360);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
 
@@ -139,8 +141,8 @@ void main() {
           sawRows,
           isTrue,
           reason:
-              'the probe rows must have been laid out at 320px, or this '
-              'test proves nothing',
+              'the probe rows must have been laid out in a 320px-wide '
+              'list, or this test proves nothing',
         );
 
         await tester.pumpWidget(const SizedBox());

@@ -290,6 +290,15 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
   }
 
   Widget _content(AppLocalizations l10n, double height, {required bool wide}) {
+    if (!wide) {
+      // One loading screen only, the landscape one (user 2026-11-27: the
+      // portrait loading screen must not appear when the engine is switched,
+      // or on the first frame before the landscape pin settles). The screen
+      // stays black until the player is wide, and only then shows the title,
+      // the status and the source list. Back stays reachable: it is drawn
+      // outside this content.
+      return const SizedBox.shrink();
+    }
     final logo = widget.logoUrl;
     final logoHeight = _logoHeight(height);
     final attempt = widget.attempt;
@@ -440,21 +449,7 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
           )
         : null;
 
-    if (!wide) {
-      // Portrait, as before: one centred column, info over the list.
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          info,
-          ...retry,
-          if (list != null) ...[
-            const SizedBox(height: 18),
-            Flexible(child: list),
-          ],
-        ],
-      );
-    }
-    // Wide: a single column would leave the short landscape screen to the
+    // Wide only now: a single column would leave the short landscape screen to the
     // header and show one row of links, so the info sits left and the list
     // right, over the backdrop.
     return Row(
