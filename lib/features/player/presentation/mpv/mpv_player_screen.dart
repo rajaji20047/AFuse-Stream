@@ -4089,7 +4089,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         await _player.open(
           Media(
             mediaUrl,
-            httpHeaders: stream.headers,
+            // Vega file-host links probe healthy but open silent: the
+            // probe and VLC send clearance cookies + a browser UA via
+            // playbackHeaders, MPV was sending only the provider's own
+            // headers (often nothing). Same identity everywhere.
+            httpHeaders: playbackHeaders(stream),
             start: start != null && start > Duration.zero ? start : null,
           ),
           // Build 73: a renderer move starts on its first frame.
