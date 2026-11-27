@@ -776,7 +776,10 @@ globalThis[$installerKey] = function(__ssTok) {
         // else is a details URL and goes through getMeta first, which names
         // the playable link. A getMeta failure falls back to treating the
         // URL as a direct link (a cold start where the episode was never
-        // seen by getDetails this session).
+        // seen by getDetails this session). For a series on a cold start
+        // the fallback is scoped to the target episode (see below):
+        // resolving every direct link across all seasons hands the
+        // player another episode's streams first.
         var streamLink = url;
         var streamType = 'series';
         if (!_episodeLinks.contains(url)) {
@@ -786,23 +789,52 @@ globalThis[$installerKey] = function(__ssTok) {
             ]);
             if (meta is Map) {
               final info = Map<String, dynamic>.from(meta);
+              final type = (info['type'] as String?) ?? 'movie';
               final links = _allStreamLinks(info);
               if (links.isNotEmpty) {
-                // A details URL (a movie): resolve EVERY direct link,
-                // not just the first one. One link used to hand the
-                // player exactly one stream, which the health probe
-                // skips (single stream) and which left VLC with no
-                // failover when that one stream was bad. Many streams
-                // let the probe + failover do their job.
-                final type = (info['type'] as String?) ?? 'movie';
-                return _streamsFromLinks(links, type, isDownload);
-              }
-              // No direct links at all: fall back to the single-link
-              // resolution (which also tries a season's episodesLink).
-              final resolved = await _firstStreamLink(info);
-              if (resolved != null) {
-                streamLink = resolved;
-                streamType = (info['type'] as String?) ?? 'movie';
+                if (_isSeriesType(type)) {
+                  // A series episode on a cold start: every Play path
+                  // hands loadStreams the target episode's own URL
+                  // (never a bare series details URL), and that URL is
+                  // one of the entry's direct links when the season is
+                  // static. Resolve ONLY the entries that list it.
+                  final scoped = _directLinksForEpisode(info, url);
+                  if (scoped.isNotEmpty) {
+                    return _streamsFromLinks(scoped, 'series', isDownload);
+                  }
+                  // Not a static-season direct link: a dynamic
+                  // season's episode (from getEpisodes) or a link this
+                  // meta does not list. Resolve it directly, exactly
+                  // as the warm path does for a remembered episode
+                  // link — resolving the whole catalogue, or the
+                  // first link of the first season, would play the
+                  // wrong episode.
+                  streamLink = url;
+                  streamType = 'series';
+                } else {
+                  // A details URL (a movie): resolve EVERY direct link,
+                  // not just the first one. One link used to hand the
+                  // player exactly one stream, which the health probe
+                  // skips (single stream) and which left VLC with no
+                  // failover when that one stream was bad. Many streams
+                  // let the probe + failover do their job.
+                  return _streamsFromLinks(links, type, isDownload);
+                }
+              } else if (_isSeriesType(type)) {
+                // No direct links at all (dynamic seasons only): the
+                // first link of the first season is another episode,
+                // so do not resolve it — fall through to getStream on
+                // the episode URL as given, below.
+                streamLink = url;
+                streamType = 'series';
+              } else {
+                // No direct links at all: fall back to the single-link
+                // resolution (which also tries a season's episodesLink).
+                final resolved = await _firstStreamLink(info);
+                if (resolved != null) {
+                  streamLink = resolved;
+                  streamType = type;
+                }
               }
             }
           } catch (_) {
@@ -1132,6 +1164,14 @@ globalThis[$installerKey] = function(__ssTok) {
     List<int> seasonNumbers,
   ) async {
     final episodes = <Episode>[];
+    // A provider whose episodes.js fails for EVERY dynamic season has
+    // nothing to play: surface that (getDetails turns it into its error
+    // item) instead of returning an empty list, which leaves the details
+    // page on a dead Play button with no sign anything failed. A season
+    // that answers — even with zero episodes — is not a failure, and one
+    // bad season among working ones never fails the details, as before.
+    var dynamicSeasons = 0;
+    var dynamicFailures = 0;
     var entryIndex = 0;
     for (final entry in linkList) {
       if (entry is! Map) continue;
@@ -1159,11 +1199,15 @@ globalThis[$installerKey] = function(__ssTok) {
       // Dynamic season: only an episodesLink, no direct links.
       final episodesLink = (entry['episodesLink'] as String?) ?? '';
       if (episodesLink.isEmpty) continue;
+      dynamicSeasons++;
       try {
         final result = await _jsEngine.invokeAsync(_fn('getEpisodes'), [
           {'url': episodesLink},
         ]);
-        if (result is! List) continue;
+        if (result is! List) {
+          dynamicFailures++;
+          continue;
+        }
         var episodeIndex = 0;
         for (final e in result) {
           if (e is! Map) continue;
@@ -1180,6 +1224,7 @@ globalThis[$installerKey] = function(__ssTok) {
           );
         }
       } catch (e) {
+        dynamicFailures++;
         // One bad season must not fail the details.
         if (kDebugMode) {
           debugPrint(
@@ -1187,6 +1232,14 @@ globalThis[$installerKey] = function(__ssTok) {
           );
         }
       }
+    }
+    if (episodes.isEmpty &&
+        dynamicSeasons > 0 &&
+        dynamicFailures == dynamicSeasons) {
+      throw Exception(
+        'Vega provider "$_displayName" could not list any episodes: '
+        'getEpisodes failed for all $dynamicSeasons season(s).',
+      );
     }
     return episodes;
   }
@@ -1252,6 +1305,50 @@ globalThis[$installerKey] = function(__ssTok) {
       }
     }
     return null;
+  }
+
+  /// Whether a Vega meta `type` string is a series (anime carries
+  /// episodes the same way). Mirrors [MultimediaItem.parseContentType];
+  /// anything else — movie, other, livestream — is not a series, so the
+  /// movie path never takes the series branch in [loadStreams].
+  static bool _isSeriesType(String type) => const {
+    'series',
+    'tvseries',
+    'tv',
+    'anime',
+  }.contains(type.toLowerCase());
+
+  /// The direct links of the linkList entries that list [episodeUrl] —
+  /// the target episode's own entry, or every entry when entries are
+  /// quality groups listing the same episode. Empty when the episode is
+  /// not a static-season direct link (a dynamic season's episode, from
+  /// getEpisodes, is not in linkList at all).
+  List<String> _directLinksForEpisode(
+    Map<String, dynamic> info,
+    String episodeUrl,
+  ) {
+    final links = <String>[];
+    final seen = <String>{};
+    final linkList = (info['linkList'] as List?) ?? const [];
+    for (final entry in linkList) {
+      if (entry is! Map) continue;
+      final directLinks = (entry['directLinks'] as List?) ?? const [];
+      var listsEpisode = false;
+      for (final dl in directLinks) {
+        if (dl is Map && (dl['link'] as String?) == episodeUrl) {
+          listsEpisode = true;
+          break;
+        }
+      }
+      if (!listsEpisode) continue;
+      for (final dl in directLinks) {
+        if (dl is Map) {
+          final link = (dl['link'] as String?) ?? '';
+          if (link.isNotEmpty && seen.add(link)) links.add(link);
+        }
+      }
+    }
+    return links;
   }
 
   /// Every direct link in an Info's linkList, across all entries (every
