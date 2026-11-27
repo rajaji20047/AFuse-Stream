@@ -2239,7 +2239,7 @@
   "@downloadSeasonSummaryStopped": {"description": "Download season summary: episodes not reached because the viewer pressed Stop.", "placeholders": {"count": {"type": "int", "example": "2"}}},
   "pluginCheckButton": "Check",
   "@pluginCheckButton": {"description": "Plugins tab, Installed: the button that tests whether each installed plugin still answers."},
-  "pluginCheckHint": "Tests each .cs3 plugin, one at a time",
+  "pluginCheckHint": "Tests each .cs3 plugin and Vega provider, one at a time",
   "@pluginCheckHint": {"description": "Plugins tab, Installed: the line beside the Check button before any check has run. \".cs3\" stays as it is."},
   "pluginCheckProgress": "Checking {current} of {total}…",
   "@pluginCheckProgress": {"description": "Plugins tab, Installed: shown beside the Cancel button while the plugin check runs.", "placeholders": {"current": {"type": "int"}, "total": {"type": "int"}}},

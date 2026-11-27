@@ -2773,7 +2773,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginCheckButton => 'Check';
 
   @override
-  String get pluginCheckHint => 'Tests each .cs3 plugin, one at a time';
+  String get pluginCheckHint => 'Tests each .cs3 plugin and Vega provider, one at a time';
 
   @override
   String pluginCheckProgress(int current, int total) {

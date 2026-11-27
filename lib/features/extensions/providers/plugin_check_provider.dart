@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/cloudstream/cloudstream_provider.dart';
 import '../../../core/cloudstream/cloudstream_repository.dart';
 import '../../../core/extensions/extension_manager.dart';
+import '../../../core/extensions/providers/vega_based_provider.dart';
+import '../../../core/extensions/vega_repository.dart';
 import 'plugin_check.dart';
 
 /// The Installed segment's plugin status check: what the last run found, by
@@ -56,12 +58,14 @@ class PluginCheckState {
 }
 
 /// The plugins a check asks: the installed .cs3 plugins, each with the
-/// runtime providers it added to the provider list. Overridable in tests.
+/// runtime providers it added to the provider list, and the installed
+/// Vega providers that are switched on. Overridable in tests.
 final pluginCheckTargetsProvider = Provider<List<PluginCheckTarget>>((ref) {
   final installed = ref.watch(
     cloudStreamRepositoryProvider.select((s) => s.installed),
   );
   final providers = ref.watch(extensionManagerProvider);
+  final vega = ref.watch(vegaRepositoryProvider);
   return [
     for (final plugin in installed)
       PluginCheckTarget(
@@ -75,6 +79,23 @@ final pluginCheckTargetsProvider = Provider<List<PluginCheckTarget>>((ref) {
               p,
         ],
       ),
+    // Vega: one target per installed provider that is switched on. A
+    // disabled provider is skipped — the user turned it off, so a check
+    // must not report it dead. There is no per-provider load-error
+    // signal; a provider that never initialised throws on getHome and
+    // the probe reports it not responding.
+    for (final vegaInstalled in vega.installed)
+      if (!vega.disabled.contains('vega.${vegaInstalled.entry.value}'))
+        PluginCheckTarget(
+          key: 'vega.${vegaInstalled.entry.value}',
+          name: vegaInstalled.entry.displayName,
+          providers: [
+            for (final p in providers)
+              if (p is VegaBasedProvider &&
+                  p.packageName == 'vega.${vegaInstalled.entry.value}')
+                p,
+          ],
+        ),
   ];
 });
 
