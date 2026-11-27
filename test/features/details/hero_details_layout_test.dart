@@ -143,6 +143,20 @@ class _FakeController extends DetailsController {
   }) async {
     linksOpened.add(specificEpisode?.url);
   }
+
+  /// Records stream-picker overlay opens instead of showing it: the
+  /// episode the ask is for, or null for the title's target.
+  static final List<String?> overlaysOpened = <String?>[];
+
+  @override
+  Future<void> openStreamPickerOverlay(
+    BuildContext context,
+    MultimediaItem details, {
+    Episode? specificEpisode,
+    int resumePositionMs = 0,
+  }) async {
+    overlaysOpened.add(specificEpisode?.url);
+  }
 }
 
 List<Episode> _episodes(
@@ -199,6 +213,7 @@ Future<void> _pump(
 }) async {
   _FakeController.played.clear();
   _FakeController.linksOpened.clear();
+  _FakeController.overlaysOpened.clear();
   _RecordingLauncher.launched.clear();
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = _kPhone;
@@ -353,7 +368,12 @@ void main() {
 
       await tester.tap(find.text('Play E1'));
       await tester.pump();
-      expect(_FakeController.played, ['target']);
+      expect(_FakeController.overlaysOpened, [eps.first.url]);
+      expect(
+        _FakeController.played,
+        isEmpty,
+        reason: 'tapping Play opens the stream picker, it does not play',
+      );
     });
 
     testWidgets('says Resume with saved progress on that episode', (
@@ -436,7 +456,12 @@ void main() {
 
       await tester.tap(find.text('Play'));
       await tester.pump();
-      expect(_FakeController.played, ['target']);
+      expect(_FakeController.overlaysOpened, [null]);
+      expect(
+        _FakeController.played,
+        isEmpty,
+        reason: 'tapping Play opens the stream picker, it does not play',
+      );
     });
 
     testWidgets('holding Play opens the links box', (tester) async {
