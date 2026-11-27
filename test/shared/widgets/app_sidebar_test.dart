@@ -42,6 +42,10 @@ Future<List<FocusNode>> _pump(
                 currentIndex: index,
                 onItemTapped: (i) => setState(() => index = i),
                 focusNodes: nodes,
+                // Six destinations now (Settings joins the rail when
+                // turned on in Settings → Navigation bar), so the
+                // nodes must match the full list, not the five tabs.
+                visibleBranches: const [0, 1, 2, 3, 4, 5],
               ),
             ),
           ),

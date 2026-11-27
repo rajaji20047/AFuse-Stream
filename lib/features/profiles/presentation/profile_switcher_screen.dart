@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/matte_glass_pill.dart';
 import '../../account/data/raja_account_notifier.dart';
+import '../../settings/presentation/general_settings_provider.dart';
 import '../data/fuse_profile.dart';
 import '../data/fuse_profiles_notifier.dart';
 import 'manage_profiles_screen.dart';
@@ -161,6 +162,12 @@ class _FuseProfileSwitchDialogState
     final theme = Theme.of(context);
     final state = ref.watch(fuseProfilesProvider);
     final canAddMore = state.profiles.length < kFuseProfileMaxCount;
+    // The catch: when Settings rides in the bottom nav / side rail
+    // (Settings → Navigation bar, off by default), it leaves this
+    // menu — it lives in exactly one place at a time.
+    final showSettingsInNav = ref.watch(
+      generalSettingsProvider.select((s) => s.showSettingsInNavBar),
+    );
 
     // Small dropdown, top-right just below the header avatar — the
     // user drew it there (build 117) and asked for it smaller again
@@ -243,16 +250,18 @@ class _FuseProfileSwitchDialogState
                       label: 'Manage accounts',
                       onTap: () => unawaited(_openManage()),
                     ),
-                    const Divider(
-                      height: 1,
-                      color: _kGlassDivider,
-                    ),
-                    _ActionRow(
-                      key: const ValueKey('profile-switch-settings'),
-                      icon: Icons.settings_outlined,
-                      label: 'Settings',
-                      onTap: _openSettings,
-                    ),
+                    if (!showSettingsInNav) ...[
+                      const Divider(
+                        height: 1,
+                        color: _kGlassDivider,
+                      ),
+                      _ActionRow(
+                        key: const ValueKey('profile-switch-settings'),
+                        icon: Icons.settings_outlined,
+                        label: 'Settings',
+                        onTap: _openSettings,
+                      ),
+                    ],
                   ],
                 ),
               ),

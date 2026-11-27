@@ -321,6 +321,20 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
     final hiddenNavTabs = navSettings.hiddenNavTabs;
     final visibleBranches = visibleNavBranches(hiddenNavTabs);
     final firstVisibleBranch = visibleBranches.first;
+    // Settings as a nav button is opt-in (Settings → Navigation bar,
+    // off by default): when on, branch 5 rides at the END of the
+    // pill and the rail, after the five tabs. The tab-only lists
+    // above stay 0–4 — the redirect, the default-home fallback and
+    // the last-tab protection only ever land on a tab, never on
+    // Settings (a page, not a tab).
+    final navBranches = <int>[
+      ...visibleBranches,
+      // Branch 5 is Settings (AppShellRouteData.settingsBranchIndex;
+      // the literal matches this file's existing 5s — app_router
+      // already imports this scaffold, so the constant is not
+      // imported here).
+      if (navSettings.showSettingsInNavBar) 5,
+    ];
     // A default home whose button is hidden falls back to the first
     // visible tab instead of landing on a button-less tab.
     final defaultIndex = _getRouteIndex(
@@ -451,13 +465,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                                     widget.navigationShell.currentIndex,
                                 onItemTapped: (int index) =>
                                     _onItemTapped(index, context),
-                                visibleBranches: visibleBranches,
+                                visibleBranches: navBranches,
                                 // One node per VISIBLE branch, in display
                                 // order — the rail's own list is indexed
                                 // by visible position, while _sidebarNodes
                                 // stays indexed by branch.
                                 focusNodes: [
-                                  for (final branch in visibleBranches)
+                                  for (final branch in navBranches)
                                     _sidebarNodes[branch],
                                 ],
                               ),
@@ -667,13 +681,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                             child: child!,
                           ),
                           child: CustomBottomNavBar(
-                            branchIndices: visibleBranches,
+                            branchIndices: navBranches,
                             currentIndex: pillIndex,
                             onTap: (position) => _onItemTapped(
-                              visiblePositionToBranch(
-                                position,
-                                hiddenNavTabs,
-                              ),
+                              navBranches[position.clamp(
+                                0,
+                                navBranches.length - 1,
+                              )],
                               context,
                             ),
                             labelFraction: labelFraction,

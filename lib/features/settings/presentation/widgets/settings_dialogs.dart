@@ -401,6 +401,20 @@ void showNavBarSettingsDialog(BuildContext context, WidgetRef ref) {
                       );
                     },
                   ),
+                // Settings is not one of the five tab switches above:
+                // it is opt-in and off by default, and it never counts
+                // toward the last-tab protection. When off, Settings
+                // stays in the profile menu; when on, it leaves the
+                // menu and rides in the bar instead.
+                SwitchListTile(
+                  title: Text(l10n.settings),
+                  subtitle: const Text(
+                    'When off, Settings stays in the profile menu',
+                  ),
+                  value: settings.showSettingsInNavBar,
+                  onChanged: notifier.setShowSettingsInNavBar,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ],
             ),
           );

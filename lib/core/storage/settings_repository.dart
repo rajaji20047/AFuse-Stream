@@ -184,6 +184,16 @@ class SettingsRepository {
     return _storageService.getHiddenNavTabs();
   }
 
+  /// Whether Settings is also a nav-bar button (Settings → Navigation
+  /// bar). Plain pass-through to [StorageService].
+  Future<void> setShowSettingsInNavBar(bool show) async {
+    await _storageService.setShowSettingsInNavBar(show);
+  }
+
+  bool getShowSettingsInNavBar() {
+    return _storageService.getShowSettingsInNavBar();
+  }
+
   Future<void> setDevLoadAssets(bool enabled) async {
     await _storageService.setDevLoadAssets(enabled);
   }

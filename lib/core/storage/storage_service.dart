@@ -507,6 +507,24 @@ class StorageService {
     );
   }
 
+  /// Whether Settings is also a button in the bottom nav / side rail
+  /// (Settings → Navigation bar). Off by default: Settings lives in
+  /// the profile menu until the user turns it on here, and turning it
+  /// off puts it back there. A plain bool, not part of
+  /// 'hidden_nav_tabs': that set deletes its key when empty (empty =
+  /// all shown) and existing stored values predate the Settings
+  /// option, so it cannot express "off by default for everyone".
+  Future<void> setShowSettingsInNavBar(bool show) async {
+    await _settingsBox.put('show_settings_in_nav_bar', show);
+  }
+
+  bool getShowSettingsInNavBar() {
+    return _asBool(
+      _settingsBox.get('show_settings_in_nav_bar', defaultValue: false),
+      false,
+    );
+  }
+
   Future<void> setDevLoadAssets(bool enabled) async {
     await _settingsBox.put('dev_load_assets', enabled);
   }

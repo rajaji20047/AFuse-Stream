@@ -1,11 +1,13 @@
 /// The bottom-nav / sidebar tabs and the branch ↔ visible-position remap.
 ///
 /// Branches are fixed in `AppShellRouteData` (see `app_router.dart`):
-/// 0 Home, 1 Search, 2 Plugins, 3 Library, 4 Browse; 5 is Settings, which
-/// is never a nav button (it is reached from the Home gear). The pill and
-/// the sidebar show only the *visible* tabs — the user hides individual
-/// buttons in Settings → Navigation bar — so a visible position is NOT a
-/// branch index once anything is hidden: with Library hidden, tapping the
+/// 0 Home, 1 Search, 2 Plugins, 3 Library, 4 Browse; 5 is Settings,
+/// which is a page, not a tab — it rides in the nav bar only when the
+/// user turns it on in Settings → Navigation bar (off by default, when
+/// it lives in the profile menu instead). The pill and the sidebar show
+/// only the *visible* tabs — the user hides individual buttons in
+/// Settings → Navigation bar — so a visible position is NOT a branch
+/// index once anything is hidden: with Library hidden, tapping the
 /// 3rd pill button must open Browse (branch 4), not Library (branch 3).
 ///
 /// Everything that converts between the two goes through here, in both

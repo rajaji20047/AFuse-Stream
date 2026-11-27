@@ -22,7 +22,7 @@ final isDpadActiveProvider = NotifierProvider<DpadActiveNotifier, bool>(
 );
 
 /// Number of destinations rendered by [AppSidebar].
-const int kSidebarDestinationCount = 5;
+const int kSidebarDestinationCount = 6;
 
 /// Piecewise linear mapping for the container size (distance -150 to 150 maps to 40 to 80 to 40)
 double calculateContainerSize(double distance) {
@@ -50,7 +50,7 @@ class AppSidebar extends ConsumerStatefulWidget {
   final List<FocusNode> focusNodes;
 
   /// The branch indices this rail shows, in display order — a subset
-  /// of 0–4 when the user hid a button (Settings → Navigation bar).
+  /// of 0–5 when the user hid a button (Settings → Navigation bar).
   /// [currentIndex] is a BRANCH index and [onItemTapped] reports a
   /// branch index; [focusNodes] must hold exactly one node per visible
   /// branch, in the same order. Defaults to all five tabs.
@@ -145,8 +145,9 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
 
     // Raja (approved design preview): the nav is exactly
     // Home / Search / Plugins / Library / Stremio. Settings is a 6th
-    // shell branch (reachable from the Home AppBar gear), so it is
-    // not one of the 5 sidebar destinations. Only the visible
+    // shell branch: it is a rail item too, but only when the user
+    // turns it on in Settings → Navigation bar (off by default, when
+    // it lives in the profile menu instead). Only the visible
     // branches get a rail item (Settings → Navigation bar): the list
     // below is indexed by visible position, and each item maps back
     // to its branch for selection and taps.
@@ -156,6 +157,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
       (Icons.extension_outlined, Icons.extension, 'Plugins'),
       (Icons.video_library_outlined, Icons.video_library, l10n.library),
       (Icons.explore_outlined, Icons.explore, 'Stremio'),
+      (Icons.settings_outlined, Icons.settings, l10n.settings),
     ];
     final destinations = [
       for (final branch in widget.visibleBranches) allDestinations[branch],
@@ -175,7 +177,7 @@ class _AppSidebarState extends ConsumerState<AppSidebar> {
 
     // Static unscaled Y coordinates of the item centers for calculating distance
     // Top padding = 16.0, Item base size = 40.0, Gap = 16.0
-    const unscaledCenters = [36.0, 92.0, 148.0, 204.0, 260.0];
+    const unscaledCenters = [36.0, 92.0, 148.0, 204.0, 260.0, 316.0];
 
     // Outer container colors matching bg-gray-50 / dark:bg-neutral-900 verbatim
     final dockBgColor = isDark

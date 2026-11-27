@@ -15,6 +15,7 @@ import 'package:raja/features/profiles/data/fuse_profile.dart';
 import 'package:raja/features/profiles/data/fuse_profile_photos_notifier.dart';
 import 'package:raja/features/profiles/data/fuse_profiles_notifier.dart';
 import 'package:raja/features/profiles/presentation/profile_switcher_screen.dart';
+import 'package:raja/features/settings/presentation/general_settings_provider.dart';
 
 FuseProfile _profile({required String id, required String name}) =>
     FuseProfile(
@@ -40,10 +41,21 @@ class _FixedPhotosNotifier extends FuseProfilePhotosNotifier {
   Map<String, String> build() => const {};
 }
 
+class _FixedSettingsNotifier extends GeneralSettingsNotifier {
+  _FixedSettingsNotifier(this._showSettingsInNav);
+
+  final bool _showSettingsInNav;
+
+  @override
+  GeneralSettings build() =>
+      GeneralSettings(showSettingsInNavBar: _showSettingsInNav);
+}
+
 void main() {
   Future<void> pumpDialog(
     WidgetTester tester, {
     List<FuseProfile>? profiles,
+    bool showSettingsInNav = false,
   }) async {
     final state = FuseProfilesState(
       profiles:
@@ -60,6 +72,9 @@ void main() {
           ),
           fuseProfilePhotosProvider.overrideWith(
             _FixedPhotosNotifier.new,
+          ),
+          generalSettingsProvider.overrideWith(
+            () => _FixedSettingsNotifier(showSettingsInNav),
           ),
         ],
         child: MaterialApp(
@@ -188,6 +203,9 @@ void main() {
           fuseProfilePhotosProvider.overrideWith(
             _FixedPhotosNotifier.new,
           ),
+          generalSettingsProvider.overrideWith(
+            () => _FixedSettingsNotifier(false),
+          ),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -205,4 +223,20 @@ void main() {
       '/settings',
     );
   });
+
+  testWidgets(
+    'when Settings rides in the nav bar, the dropdown has no Settings row',
+    (tester) async {
+      await pumpDialog(tester, showSettingsInNav: true);
+
+      expect(find.text('Settings'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('profile-switch-settings')),
+        findsNothing,
+      );
+      // The other rows still show.
+      expect(find.text('Add account'), findsOneWidget);
+      expect(find.text('Manage accounts'), findsOneWidget);
+    },
+  );
 }

@@ -64,6 +64,11 @@ class GeneralSettings {
   /// .setNavTabVisible]).
   final Set<String> hiddenNavTabs;
 
+  /// Whether Settings is also a button in the bottom nav / side rail
+  /// (Settings → Navigation bar). Off by default: Settings lives in
+  /// the profile menu until the user turns it on.
+  final bool showSettingsInNavBar;
+
   /// The GitHub proxy choice. Replaces the old on/off toggle: a stored
   /// choice of [GithubProxyOption.none] is off, anything else is on.
   final GithubProxyOption githubProxy;
@@ -113,6 +118,7 @@ class GeneralSettings {
     this.navBarGlassEnabled = true,
     this.navBarIconColorArgb,
     this.hiddenNavTabs = const {},
+    this.showSettingsInNavBar = false,
   });
 
   GeneralSettings copyWith({
@@ -135,6 +141,7 @@ class GeneralSettings {
     int? navBarIconColorArgb,
     bool clearNavBarIconColor = false,
     Set<String>? hiddenNavTabs,
+    bool? showSettingsInNavBar,
   }) {
     return GeneralSettings(
       watchHistoryEnabled: watchHistoryEnabled ?? this.watchHistoryEnabled,
@@ -165,6 +172,8 @@ class GeneralSettings {
           ? null
           : (navBarIconColorArgb ?? this.navBarIconColorArgb),
       hiddenNavTabs: hiddenNavTabs ?? this.hiddenNavTabs,
+      showSettingsInNavBar:
+          showSettingsInNavBar ?? this.showSettingsInNavBar,
     );
   }
 }
@@ -225,6 +234,7 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       navBarGlassEnabled: repository.getNavBarGlass(),
       navBarIconColorArgb: repository.getNavBarIconColor(),
       hiddenNavTabs: repository.getHiddenNavTabs(),
+      showSettingsInNavBar: repository.getShowSettingsInNavBar(),
     );
   }
 
@@ -355,6 +365,19 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       final repository = ref.read(settingsRepositoryProvider);
       await repository.setHiddenNavTabs(hidden);
       state = state.copyWith(hiddenNavTabs: hidden);
+    });
+  }
+
+  /// Shows or hides the Settings button in the bottom nav / side rail
+  /// (Settings → Navigation bar). Off by default; when off, Settings
+  /// stays in the profile menu (see the profile switcher). Unlike the
+  /// tab switches above, this one never counts toward the last-tab
+  /// protection — the tabs always leave one button on their own.
+  Future<void> setShowSettingsInNavBar(bool show) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setShowSettingsInNavBar(show);
+      state = state.copyWith(showSettingsInNavBar: show);
     });
   }
 

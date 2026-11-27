@@ -69,7 +69,7 @@ class CustomBottomNavBar extends StatelessWidget {
   final void Function(int) onTap;
 
   /// The branch indices this pill shows, in display order — a subset
-  /// of 0–4 when the user hid a button (Settings → Navigation bar).
+  /// of 0–5 when the user hid a button (Settings → Navigation bar).
   /// [currentIndex] and [onTap] are VISIBLE positions into this list,
   /// not branch indices: with Library hidden, position 3 is Browse
   /// (branch 4). The shell remaps both ways (see `nav_tabs.dart`).
@@ -207,7 +207,7 @@ class CustomBottomNavBar extends StatelessWidget {
       -contentClearance;
 
   /// One pill item for [branch] (0 Home, 1 Search, 2 Plugins,
-  /// 3 Library, 4 Browse). The icons, labels and ids are exactly the
+  /// 3 Library, 4 Browse, 5 Settings). The icons, labels and ids are exactly the
   /// ones the hardcoded list used to carry — only the list itself is
   /// now built from [branchIndices], so a hidden tab simply has no item.
   static LiquidGlassNavItem _navItem(
@@ -242,6 +242,14 @@ class CustomBottomNavBar extends StatelessWidget {
           id: 'library',
           label: localizations.library,
           icon: ReiconFilledIcons.library,
+        );
+      case 5:
+        return LiquidGlassNavItem(
+          id: 'settings',
+          label: localizations.settings,
+          // No Reicon gear in the vendored set: the Material gear,
+          // the same icon the profile menu's Settings row uses.
+          icon: Icons.settings,
         );
       case 4:
       default:
