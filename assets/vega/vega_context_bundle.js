@@ -3547,21 +3547,21 @@ var factory = (env) => {
         throw err;
       }
       if (err && err.name === "TypeError" && /Load failed|fetch/i.test(err.message)) {
-        const networkError = new AxiosError_default(
+        const networkError2 = new AxiosError_default(
           "Network Error",
           AxiosError_default.ERR_NETWORK,
           config,
           request,
           err && err.response
         );
-        Object.defineProperty(networkError, "cause", {
+        Object.defineProperty(networkError2, "cause", {
           __proto__: null,
           value: err.cause || err,
           writable: true,
           enumerable: false,
           configurable: true
         });
-        throw networkError;
+        throw networkError2;
       }
       throw AxiosError_default.from(err, err && err.code, config, request, err && err.response);
     }
@@ -19028,6 +19028,612 @@ function timeoutError(config, timeoutMs) {
   e.code = "ECONNABORTED";
   e.config = config;
   return e;
+}
+function abortError() {
+  const e = new Error("The user aborted a request.");
+  e.name = "AbortError";
+  return e;
+}
+var VegaAbortSignal = class {
+  constructor() {
+    this.aborted = false;
+    this.reason = void 0;
+    this.onabort = null;
+    this._listeners = [];
+  }
+  addEventListener(type, fn) {
+    if (type === "abort" && typeof fn === "function") this._listeners.push(fn);
+  }
+  removeEventListener(type, fn) {
+    if (type !== "abort") return;
+    const i = this._listeners.indexOf(fn);
+    if (i >= 0) this._listeners.splice(i, 1);
+  }
+  throwIfAborted() {
+    if (this.aborted) throw this.reason || abortError();
+  }
+  _fire(reason) {
+    if (this.aborted) return;
+    this.aborted = true;
+    if (reason !== void 0) this.reason = reason;
+    if (this.reason === void 0) this.reason = abortError();
+    const listeners = this._listeners.slice();
+    for (const fn of listeners) {
+      try {
+        fn.call(this, { type: "abort", target: this });
+      } catch (e) {
+      }
+    }
+    if (typeof this.onabort === "function") {
+      try {
+        this.onabort.call(this, { type: "abort", target: this });
+      } catch (e) {
+      }
+    }
+  }
+};
+var VegaAbortController = class {
+  constructor() {
+    this.signal = new VegaAbortSignal();
+  }
+  abort(reason) {
+    this.signal._fire(reason);
+  }
+};
+var VegaHeaders = class _VegaHeaders {
+  constructor(init) {
+    this._entries = [];
+    if (init === void 0 || init === null) return;
+    if (init instanceof _VegaHeaders) {
+      for (const pair of init._entries) {
+        this._entries.push([pair[0], pair[1]]);
+      }
+    } else if (Array.isArray(init)) {
+      for (const pair of init) {
+        if (Array.isArray(pair) && pair.length >= 2) {
+          this.append(pair[0], pair[1]);
+        }
+      }
+    } else if (typeof init === "object") {
+      for (const key of Object.keys(init)) this.append(key, init[key]);
+    }
+  }
+  _norm(name) {
+    return String(name).toLowerCase();
+  }
+  append(name, value) {
+    this._entries.push([this._norm(name), String(value)]);
+  }
+  set(name, value) {
+    const n = this._norm(name);
+    this._entries = this._entries.filter((pair) => pair[0] !== n);
+    this._entries.push([n, String(value)]);
+  }
+  get(name) {
+    const n = this._norm(name);
+    const found = [];
+    for (const pair of this._entries) {
+      if (pair[0] === n) found.push(pair[1]);
+    }
+    if (found.length === 0) return null;
+    return found.join(", ");
+  }
+  has(name) {
+    const n = this._norm(name);
+    for (const pair of this._entries) {
+      if (pair[0] === n) return true;
+    }
+    return false;
+  }
+  delete(name) {
+    const n = this._norm(name);
+    this._entries = this._entries.filter((pair) => pair[0] !== n);
+  }
+  forEach(callback, thisArg) {
+    for (const pair of this._entries) {
+      callback.call(thisArg, pair[1], pair[0], this);
+    }
+  }
+  *entries() {
+    for (const pair of this._entries) yield [pair[0], pair[1]];
+  }
+  *keys() {
+    for (const pair of this._entries) yield pair[0];
+  }
+  *values() {
+    for (const pair of this._entries) yield pair[1];
+  }
+  [Symbol.iterator]() {
+    return this.entries();
+  }
+  toObject() {
+    const obj = {};
+    for (const pair of this._entries) {
+      if (obj[pair[0]] === void 0) obj[pair[0]] = pair[1];
+      else obj[pair[0]] = obj[pair[0]] + ", " + pair[1];
+    }
+    return obj;
+  }
+};
+function decodeQueryComponent(s) {
+  try {
+    return decodeURIComponent(s.replace(/\+/g, " "));
+  } catch (e) {
+    return s;
+  }
+}
+function encodeQueryComponent(s) {
+  return encodeURIComponent(s).replace(/%20/g, "+");
+}
+var VegaURLSearchParams = class _VegaURLSearchParams {
+  constructor(init) {
+    this._pairs = [];
+    if (init === void 0 || init === null) return;
+    if (typeof init === "string") {
+      const qs = init.charAt(0) === "?" ? init.slice(1) : init;
+      if (!qs) return;
+      const parts = qs.split("&");
+      for (const part of parts) {
+        if (!part) continue;
+        const eq2 = part.indexOf("=");
+        if (eq2 >= 0) {
+          this._pairs.push([
+            decodeQueryComponent(part.slice(0, eq2)),
+            decodeQueryComponent(part.slice(eq2 + 1))
+          ]);
+        } else {
+          this._pairs.push([decodeQueryComponent(part), ""]);
+        }
+      }
+    } else if (init instanceof _VegaURLSearchParams) {
+      for (const pair of init._pairs) this._pairs.push([pair[0], pair[1]]);
+    } else if (Array.isArray(init)) {
+      for (const pair of init) {
+        if (Array.isArray(pair) && pair.length >= 2) {
+          this._pairs.push([String(pair[0]), String(pair[1])]);
+        } else {
+          throw new TypeError("URLSearchParams sequence items must be pairs");
+        }
+      }
+    } else if (typeof init === "object") {
+      for (const key of Object.keys(init)) {
+        this._pairs.push([key, String(init[key])]);
+      }
+    }
+  }
+  get size() {
+    return this._pairs.length;
+  }
+  append(name, value) {
+    this._pairs.push([String(name), String(value)]);
+  }
+  delete(name) {
+    const n = String(name);
+    this._pairs = this._pairs.filter((pair) => pair[0] !== n);
+  }
+  get(name) {
+    const n = String(name);
+    for (const pair of this._pairs) {
+      if (pair[0] === n) return pair[1];
+    }
+    return null;
+  }
+  getAll(name) {
+    const n = String(name);
+    const out = [];
+    for (const pair of this._pairs) {
+      if (pair[0] === n) out.push(pair[1]);
+    }
+    return out;
+  }
+  has(name) {
+    const n = String(name);
+    for (const pair of this._pairs) {
+      if (pair[0] === n) return true;
+    }
+    return false;
+  }
+  set(name, value) {
+    const n = String(name);
+    const v = String(value);
+    let seen = false;
+    const kept = [];
+    for (const pair of this._pairs) {
+      if (pair[0] === n) {
+        if (!seen) {
+          seen = true;
+          kept.push([n, v]);
+        }
+      } else {
+        kept.push(pair);
+      }
+    }
+    if (!seen) kept.push([n, v]);
+    this._pairs = kept;
+  }
+  sort() {
+    this._pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  }
+  toString() {
+    const parts = [];
+    for (const pair of this._pairs) {
+      parts.push(
+        encodeQueryComponent(pair[0]) + "=" + encodeQueryComponent(pair[1])
+      );
+    }
+    return parts.join("&");
+  }
+  forEach(callback, thisArg) {
+    for (const pair of this._pairs) {
+      callback.call(thisArg, pair[1], pair[0], this);
+    }
+  }
+  *entries() {
+    for (const pair of this._pairs) yield [pair[0], pair[1]];
+  }
+  *keys() {
+    for (const pair of this._pairs) yield pair[0];
+  }
+  *values() {
+    for (const pair of this._pairs) yield pair[1];
+  }
+  [Symbol.iterator]() {
+    return this.entries();
+  }
+};
+function utf8DecodeBytes(bytes, fatal) {
+  let out = "";
+  let i = 0;
+  const len = bytes.length;
+  const bad = () => {
+    if (fatal) throw new TypeError("Invalid UTF-8 sequence");
+    return "\uFFFD";
+  };
+  while (i < len) {
+    const b0 = bytes[i++];
+    if (b0 < 128) {
+      out += String.fromCharCode(b0);
+      continue;
+    }
+    let cp;
+    let need;
+    if ((b0 & 224) === 192) {
+      cp = b0 & 31;
+      need = 1;
+    } else if ((b0 & 240) === 224) {
+      cp = b0 & 15;
+      need = 2;
+    } else if ((b0 & 248) === 240) {
+      cp = b0 & 7;
+      need = 3;
+    } else {
+      out += bad();
+      continue;
+    }
+    let ok = true;
+    for (let j = 0; j < need; j++) {
+      if (i >= len) {
+        ok = false;
+        break;
+      }
+      const bx = bytes[i];
+      if ((bx & 192) !== 128) {
+        ok = false;
+        break;
+      }
+      i++;
+      cp = cp << 6 | bx & 63;
+    }
+    if (!ok) {
+      out += bad();
+      continue;
+    }
+    if (need === 1 && cp < 128 || need === 2 && cp < 2048 || need === 3 && cp < 65536 || cp > 1114111 || cp >= 55296 && cp <= 57343) {
+      out += bad();
+      continue;
+    }
+    if (cp <= 65535) {
+      out += String.fromCharCode(cp);
+    } else {
+      cp -= 65536;
+      out += String.fromCharCode(55296 + (cp >> 10), 56320 + (cp & 1023));
+    }
+  }
+  return out;
+}
+function utf8EncodeString(str) {
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    let cp = str.charCodeAt(i);
+    if (cp >= 55296 && cp <= 56319 && i + 1 < str.length) {
+      const lo = str.charCodeAt(i + 1);
+      if (lo >= 56320 && lo <= 57343) {
+        cp = 65536 + (cp - 55296 << 10) + (lo - 56320);
+        i++;
+      }
+    }
+    if (cp < 128) {
+      bytes.push(cp);
+    } else if (cp < 2048) {
+      bytes.push(192 | cp >> 6, 128 | cp & 63);
+    } else if (cp < 65536) {
+      bytes.push(
+        224 | cp >> 12,
+        128 | cp >> 6 & 63,
+        128 | cp & 63
+      );
+    } else {
+      bytes.push(
+        240 | cp >> 18,
+        128 | cp >> 12 & 63,
+        128 | cp >> 6 & 63,
+        128 | cp & 63
+      );
+    }
+  }
+  return new Uint8Array(bytes);
+}
+var VegaTextDecoder = class {
+  constructor(label, options) {
+    const l = label === void 0 ? "utf-8" : String(label).toLowerCase().replace(/_/g, "-");
+    if (l !== "utf-8" && l !== "utf8" && l !== "unicode-1-1-utf-8") {
+      throw new RangeError("Unsupported encoding: " + String(label));
+    }
+    this.encoding = "utf-8";
+    this.fatal = !!(options && options.fatal);
+    this.ignoreBOM = !!(options && options.ignoreBOM);
+  }
+  decode(input) {
+    if (input === void 0 || input === null) return "";
+    let bytes;
+    if (input instanceof Uint8Array) {
+      bytes = input;
+    } else if (typeof ArrayBuffer !== "undefined" && input instanceof ArrayBuffer) {
+      bytes = new Uint8Array(input);
+    } else if (input && typeof input === "object" && typeof input.length === "number") {
+      bytes = Uint8Array.from(input);
+    } else {
+      throw new TypeError(
+        "TextDecoder.decode requires a Uint8Array or ArrayBuffer"
+      );
+    }
+    let start = 0;
+    if (!this.ignoreBOM && bytes.length >= 3 && bytes[0] === 239 && bytes[1] === 187 && bytes[2] === 191) {
+      start = 3;
+    }
+    const view = start > 0 ? bytes.subarray(start) : bytes;
+    return utf8DecodeBytes(view, this.fatal);
+  }
+};
+var VegaTextEncoder = class {
+  constructor() {
+    this.encoding = "utf-8";
+  }
+  encode(str) {
+    return utf8EncodeString(str === void 0 ? "" : String(str));
+  }
+  encodeInto(str, dest) {
+    const bytes = utf8EncodeString(String(str));
+    const n = Math.min(bytes.length, dest.length);
+    dest.set(bytes.subarray(0, n));
+    return { read: String(str).length, written: n };
+  }
+};
+var VegaFormData = class {
+  constructor() {
+    this._entries = [];
+  }
+  append(name, value) {
+    this._entries.push([
+      String(name),
+      value === void 0 ? "undefined" : String(value)
+    ]);
+  }
+  set(name, value) {
+    const n = String(name);
+    this._entries = this._entries.filter((pair) => pair[0] !== n);
+    this.append(n, value);
+  }
+  get(name) {
+    const n = String(name);
+    for (const pair of this._entries) {
+      if (pair[0] === n) return pair[1];
+    }
+    return null;
+  }
+  getAll(name) {
+    const n = String(name);
+    const out = [];
+    for (const pair of this._entries) {
+      if (pair[0] === n) out.push(pair[1]);
+    }
+    return out;
+  }
+  has(name) {
+    const n = String(name);
+    for (const pair of this._entries) {
+      if (pair[0] === n) return true;
+    }
+    return false;
+  }
+  delete(name) {
+    const n = String(name);
+    this._entries = this._entries.filter((pair) => pair[0] !== n);
+  }
+  forEach(callback, thisArg) {
+    for (const pair of this._entries) {
+      callback.call(thisArg, pair[1], pair[0], this);
+    }
+  }
+  *entries() {
+    for (const pair of this._entries) yield [pair[0], pair[1]];
+  }
+  *keys() {
+    for (const pair of this._entries) yield pair[0];
+  }
+  *values() {
+    for (const pair of this._entries) yield pair[1];
+  }
+  [Symbol.iterator]() {
+    return this.entries();
+  }
+  toString() {
+    const parts = [];
+    for (const pair of this._entries) {
+      parts.push(
+        encodeQueryComponent(pair[0]) + "=" + encodeQueryComponent(pair[1])
+      );
+    }
+    return parts.join("&");
+  }
+};
+function networkError(e) {
+  return new TypeError(
+    typeof e === "string" ? e : e && e.message || "Network request failed"
+  );
+}
+function normalizeFetchBody(body) {
+  if (body === void 0 || body === null) return { body: void 0 };
+  if (typeof body === "string") return { body };
+  if (body instanceof VegaFormData) {
+    return {
+      body: body.toString(),
+      contentType: "application/x-www-form-urlencoded"
+    };
+  }
+  if (body instanceof VegaURLSearchParams) {
+    return {
+      body: body.toString(),
+      contentType: "application/x-www-form-urlencoded"
+    };
+  }
+  if (body instanceof Uint8Array || body instanceof ArrayBuffer) {
+    throw new TypeError(
+      "fetch body as binary is not supported by the Vega bridge"
+    );
+  }
+  if (typeof body === "object") {
+    return { body: JSON.stringify(body), contentType: "application/json" };
+  }
+  return { body: String(body) };
+}
+async function vegaFetch(input, init) {
+  var _a5;
+  const opts = init || {};
+  let url;
+  let inputHeaders;
+  let inputSignal;
+  let inputBody;
+  if (input !== null && typeof input === "object") {
+    if (typeof input.url === "string") url = input.url;
+    else url = String(input);
+    inputHeaders = input.headers;
+    inputSignal = input.signal;
+    inputBody = input.body;
+  } else {
+    url = String(input);
+  }
+  const method = String(
+    opts.method || input !== null && typeof input === "object" && input.method || "GET"
+  ).toUpperCase();
+  const headers = new VegaHeaders(
+    opts.headers !== void 0 ? opts.headers : inputHeaders
+  );
+  const signal = opts.signal !== void 0 ? opts.signal : inputSignal;
+  if (signal && signal.aborted) throw abortError();
+  const bodyInit = opts.body !== void 0 ? opts.body : inputBody;
+  const norm = normalizeFetchBody(bodyInit);
+  if (norm.contentType && !headers.has("content-type")) {
+    headers.set("Content-Type", norm.contentType);
+  }
+  const call = _dartAsyncCall("http_request", {
+    method: method.toLowerCase(),
+    url,
+    headers: headers.toObject(),
+    body: norm.body
+  });
+  let res;
+  if (signal && typeof signal.addEventListener === "function") {
+    res = await new Promise((resolve, reject) => {
+      let done = false;
+      const onAbort = () => {
+        if (!done) {
+          done = true;
+          reject(abortError());
+        }
+      };
+      signal.addEventListener("abort", onAbort);
+      const detach = () => {
+        if (typeof signal.removeEventListener === "function") {
+          signal.removeEventListener("abort", onAbort);
+        }
+      };
+      call.then(
+        (v) => {
+          if (!done) {
+            done = true;
+            detach();
+            resolve(v);
+          }
+        },
+        (e) => {
+          if (!done) {
+            done = true;
+            detach();
+            reject(networkError(e));
+          }
+        }
+      );
+    });
+  } else {
+    try {
+      res = await call;
+    } catch (e) {
+      throw networkError(e);
+    }
+  }
+  if (res && res.error && (res.code === 0 || res.status === 0)) {
+    throw new TypeError(res.error || "Network request failed");
+  }
+  const status = res && ((_a5 = res.code) != null ? _a5 : res.status) || 0;
+  const headersOut = new VegaHeaders(res && res.headers || {});
+  const bodyText = res && res.body !== void 0 && res.body !== null ? String(res.body) : "";
+  const finalUrl = res && res.finalUrl || url;
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "",
+    headers: headersOut,
+    url: finalUrl,
+    redirected: finalUrl !== url,
+    text: async () => bodyText,
+    json: async () => JSON.parse(bodyText),
+    arrayBuffer: async () => new VegaTextEncoder().encode(bodyText).buffer
+  };
+}
+if (typeof globalThis.AbortSignal === "undefined") {
+  globalThis.AbortSignal = VegaAbortSignal;
+}
+if (typeof globalThis.AbortController === "undefined") {
+  globalThis.AbortController = VegaAbortController;
+}
+if (typeof globalThis.Headers === "undefined") {
+  globalThis.Headers = VegaHeaders;
+}
+if (typeof globalThis.URLSearchParams === "undefined") {
+  globalThis.URLSearchParams = VegaURLSearchParams;
+}
+if (typeof globalThis.TextDecoder === "undefined") {
+  globalThis.TextDecoder = VegaTextDecoder;
+}
+if (typeof globalThis.TextEncoder === "undefined") {
+  globalThis.TextEncoder = VegaTextEncoder;
+}
+if (typeof globalThis.FormData === "undefined") {
+  globalThis.FormData = VegaFormData;
+}
+if (typeof globalThis.fetch === "undefined") {
+  globalThis.fetch = vegaFetch;
 }
 var KV_INDEX_KEY = "__vega_kv_keys";
 function createVegaProviderContext(token) {
