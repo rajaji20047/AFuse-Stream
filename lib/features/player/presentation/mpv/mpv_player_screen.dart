@@ -1018,7 +1018,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // included — is landscape after Play. The first-frame call stays as a
     // safety net. Post-frame: MediaQuery is not dependable in initState.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_disposed) _forceLandscapeIfPortrait();
+      if (mounted && !_disposed) _pinLandscape();
     });
     _chrome = ChromeVisibilityController(
       isPlaying: () => _adapter.value.isPlaying,
@@ -1536,16 +1536,21 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     unawaited(_openStream(_streamIndex, start: _position, autoPlay: true));
   }
 
-  void _forceLandscapeIfPortrait() {
-    final size = MediaQuery.sizeOf(context);
-    if (size.width < size.height) {
-      unawaited(
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]),
-      );
-    }
+  /// Pins landscape (both directions) for the whole session.
+  ///
+  /// Unconditional: the pair is what lets the handset turn end for end
+  /// (sensor landscape), so it has to be set even when the phone is
+  /// already landscape at entry — otherwise no pin is ever set in this
+  /// screen (there is no shape settle here, unlike VLC) and turning the
+  /// phone does nothing (user 2026-11-27: phone ghumane pe flip nahi
+  /// hota). Setting the pair when already landscape is a no-op visually.
+  void _pinLandscape() {
+    unawaited(
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]),
+    );
   }
 
   void _restoreOrientation() {
@@ -3206,10 +3211,10 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
             // its temp download from here (or from the duration event,
             // whichever lands first; the trigger runs once per source).
             unawaited(_maybeStartTempDownload());
-            // First frame of playback: the video itself has started, so
-            // now — and only now — rotate to landscape on a portrait
-            // handset. The source list shown before this stays portrait.
-            _forceLandscapeIfPortrait();
+            // First frame of playback: safety net for the entry pin
+            // above — the pair has to stand for the whole session, so
+            // turning the phone flips the player.
+            _pinLandscape();
             // And the source list's job is done: the video is up.
             if (_stage == _Stage.resolving) {
               _stage = _Stage.playing;

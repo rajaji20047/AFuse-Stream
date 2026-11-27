@@ -1269,20 +1269,20 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // platform service's pin: the shape settle still runs after it and
     // still pins (a portrait clip still turns portrait, the rotate button
     // still flips), so the orientation tests keep seeing the settle's own
-    // pin. Read off the implicit view, not a MediaQuery: an inherited
-    // widget may not be depended on in initState (see [_panelHeightPx]).
-    // [_handBack] releases this pin when no shape ever pinned.
-    final viewSize =
-        WidgetsBinding.instance.platformDispatcher.implicitView?.physicalSize;
-    if (viewSize != null && viewSize.width < viewSize.height) {
-      _pinnedLandscapeOnEntry = true;
-      unawaited(
-        SystemChrome.setPreferredOrientations(const [
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]),
-      );
-    }
+    // pin. [_handBack] releases this pin when no shape ever pinned.
+    // Unconditional: the pair is what lets the handset turn end for end,
+    // so it has to stand even when the phone is already landscape at
+    // entry — otherwise no pin is set until the shape settles, and turning
+    // the phone does nothing in the meantime (user 2026-11-27: phone
+    // ghumane pe flip nahi hota). Setting the pair when already landscape
+    // is a no-op visually.
+    _pinnedLandscapeOnEntry = true;
+    unawaited(
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]),
+    );
 
     // Subtitles are drawn by the engine, so the user's appearance settings have
     // to be supplied at construction. Without them VLC uses its own default
