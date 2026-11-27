@@ -289,13 +289,19 @@ class AddonManifest {
   /// `other` is a Stremio-legal catch-all used by multi-provider scrapers
   /// (CNCVerse bridges, MovieBox aggregators). Keep it first so the add-on's
   /// own type is asked before any movie/series fallback.
+  ///
+  /// The fallback is symmetric: an `other`-typed title already tries
+  /// `movie`/`series`, so a `movie`/`series` title also tries `other` —
+  /// otherwise an add-on whose stream resource declares only `['other']`
+  /// is silently skipped for a Cinemeta-typed movie/series. `other` goes
+  /// last so the canonical type is always asked first.
   static List<String> typeAliases(String type) {
     final normalized = type.toLowerCase();
     if (normalized == 'series' || normalized == 'tv' || normalized == 'show') {
-      return const ['series', 'tv', 'show'];
+      return const ['series', 'tv', 'show', 'other'];
     }
     if (normalized == 'movie' || normalized == 'film') {
-      return const ['movie', 'film'];
+      return const ['movie', 'film', 'other'];
     }
     if (normalized == 'other') {
       // Prefer the declared type, then try the two canonical ones — some
