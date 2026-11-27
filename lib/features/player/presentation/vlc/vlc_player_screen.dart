@@ -1333,6 +1333,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // deduped, so every tick would rebuild the overlay and run the progress
       // listener. Four updates a second is plenty for a seek bar.
       eventThrottleInterval: const Duration(milliseconds: 250),
+      // The stall ring only on a real stall: the position clock steps in
+      // ~1 s moves on Android, and the default 1000 ms delay is the same
+      // length as one step, so a step that arrives a fraction late flashes
+      // the ring over healthy playback. Two seconds means the clock really
+      // stood still — a starved source, not a slow segment — before the
+      // ring comes up. The recovery timers are untouched: a genuine stall
+      // is still caught by the same 1 s clock, only the indicator waits.
+      stallIndicatorDelay: const Duration(milliseconds: 2000),
       config: VlcPlayerConfig(
         network: VlcNetworkConfig(
           // For anything that reaches libVLC without media options. Each
