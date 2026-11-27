@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../../core/providers/device_info_provider.dart';
 import '../../../../../core/router/app_router.dart';
@@ -128,6 +129,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
   bool _isPlaying = false;
+  // The playing edge the wakelock follows (see [_syncWakelock]): only
+  // a flip touches the platform lock, never a position tick.
+  bool _wasPlaying = false;
   bool _isBuffering = false;
   bool _isLive = false;
   bool _inPip = false;
@@ -303,6 +307,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // Immersive, like the other players: the system bars stay hidden
     // while the video is up.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Held for startup, then handed to playback (see [_syncWakelock]):
+    // resolving can take minutes with nothing playing yet, and a screen
+    // that sleeps through it never gets to the video. VLC takes the
+    // lock the same way; the package's allowedScreenSleep flag does not
+    // — it only enables the lock inside the package's own fullscreen
+    // route, which Fuse never pushes.
+    unawaited(WakelockPlus.enable());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_disposed) return;
       _pinLandscape();
@@ -333,6 +344,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _platform.detachPipListener();
     _platform.stopRotationSensor();
     _disposeController();
+    // The screen is gone: the display may sleep again. An engine switch
+    // disables here and the new engine takes the lock in its own init.
+    unawaited(WakelockPlus.disable());
     // An engine switch hands the new player the landscape pin (see
     // [_restoreOrientation]): only a real exit gives the pin back.
     if (!_leavingForEngineSwitch) _restoreOrientation();
@@ -492,6 +506,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _duration = Duration.zero;
     _buffered = Duration.zero;
     _isPlaying = false;
+    _wasPlaying = false;
     _isBuffering = false;
     _ended = null;
     // A new source has not played yet: the spinner shows until its first
@@ -500,6 +515,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _pendingSeekTarget = null;
     _pendingSeekTargetSetAt = null;
     _disposeController();
+    // Every open keeps the display on until playback decides — the
+    // config's autoPlay is always true here, so every open plays.
+    // (VLC: autoPlay ? enable : disable.)
+    unawaited(WakelockPlus.enable());
     final stream = _streams[index];
     final settings =
         ref.read(playerSettingsProvider).value ?? const PlayerSettings();
@@ -511,7 +530,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         // package's own fit is fixed at controller creation, so a
         // runtime fit change must live in Flutter, not in the config.
         fit: BoxFit.fill,
-        // The screen must stay awake while the video plays.
+        // The screen must stay awake while the video plays — but this
+        // flag alone does not hold it: better_player_plus only enables
+        // the wakelock inside its own fullscreen route, which Fuse never
+        // pushes (fullscreen is managed here). The screen holds the lock
+        // directly with WakelockPlus, mirroring VLC (see [_syncWakelock]).
         allowedScreenSleep: false,
         startAt: start > Duration.zero ? start : null,
         // Fuse draws its own chrome; the package's controls stay off.
@@ -769,6 +792,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       }
     }
     if (_isPlaying && !_startedPlaying) _startedPlaying = true;
+    _syncWakelock();
     if (_isPlaying) {
       final sample = ProgressSample(
         position: _position,
@@ -783,6 +807,32 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       _flushProgress();
     }
     if (mounted) setState(() {});
+  }
+
+  /// Fans the playing/not-playing edge out to the wakelock — VLC's
+  /// `_syncPlayingState` in miniature, same rule.
+  ///
+  /// Only on the flip: the wakelock is a platform call with no business
+  /// running on every position tick. The lock follows playback rather
+  /// than the screen's lifetime, so a player parked on pause lets the
+  /// display sleep.
+  ///
+  /// Only a real stop releases the screen. The engine also reports
+  /// not-playing across every setMedia — failover, the next episode —
+  /// and a reopen can take minutes; dropping the lock there is exactly
+  /// the case initState took it out for. [_startedPlaying] is false
+  /// until the first frame, so a not-playing edge before it keeps the
+  /// lock.
+  void _syncWakelock() {
+    if (_isPlaying == _wasPlaying) return;
+    _wasPlaying = _isPlaying;
+    unawaited(
+      _isPlaying
+          ? WakelockPlus.enable()
+          : (_startedPlaying
+                ? WakelockPlus.disable()
+                : Future<void>.value()),
+    );
   }
 
   /// Writes the last known-good sample, bypassing the rate limit.
@@ -1269,27 +1319,76 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     ).whenComplete(() => _chrome.release());
   }
 
+  /// One dense picker row: radio glyph, title, optional subtitle.
+  ///
+  /// Hand-built (InkWell + Row + Text), not a [ListTile]: in build #11
+  /// the Sources/Quality/Audio drawers rendered their rows as error
+  /// views ("Null check operator used on a null value") while the
+  /// drawer's own header rendered fine, and every data read feeding the
+  /// rows is null-safe in source — so the row widget itself is replaced
+  /// with primitives that cannot throw from a framework null check.
+  /// Same look as before: dense row, radio glyph, white title.
   Widget _sheetRow({
     required String title,
     String? subtitle,
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      dense: true,
-      selected: selected,
-      selectedColor: Colors.white,
-      leading: Icon(
-        selected
-            ? Icons.radio_button_checked_rounded
-            : Icons.radio_button_unchecked_rounded,
-        color: Colors.white70,
-      ),
-      title: Text(title, style: const TextStyle(color: Colors.white)),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle, style: const TextStyle(color: Colors.white70)),
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: Colors.white70,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One disabled row for a panel whose list has not loaded yet: the
+  /// panel opens with this instead of an empty drawer.
+  Widget _sheetEmptyRow(String message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Text(
+        message,
+        style: const TextStyle(color: Colors.white54, fontSize: 14),
+      ),
     );
   }
 
@@ -1300,16 +1399,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     await _showListSheet(
       title: l10n.sources,
       children: [
-        for (var i = 0; i < _streams.length; i++)
-          _sheetRow(
-            title: _startupRowLabel(_streams[i]),
-            subtitle: sourceServer(_streams[i]),
-            selected: i == _streamIndex,
-            onTap: () {
-              Navigator.of(context).pop();
-              _pickSource(i);
-            },
-          ),
+        if (_streams.isEmpty)
+          _sheetEmptyRow(l10n.noResultsFound)
+        else
+          for (var i = 0; i < _streams.length; i++)
+            _sheetRow(
+              title: _startupRowLabel(_streams[i]),
+              subtitle: sourceServer(_streams[i]),
+              selected: i == _streamIndex,
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickSource(i);
+              },
+            ),
       ],
     );
   }
@@ -1350,7 +1452,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             selected: selectedHeight == height,
             onTap: () {
               Navigator.of(context).pop();
-              unawaited(controller.setTrack(byHeight[height]!));
+              final track = byHeight[height];
+              if (track != null) {
+                unawaited(controller.setTrack(track));
+              }
             },
           ),
       ],
@@ -1412,19 +1517,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     await _showListSheet(
       title: l10n.audio,
       children: [
-        for (final track in tracks)
-          _sheetRow(
-            title:
-                track.label ??
-                track.language ??
-                'Audio ${track.id ?? ''}',
-            subtitle: track.language,
-            selected: selected?.id == track.id,
-            onTap: () {
-              Navigator.of(context).pop();
-              controller.setAudioTrack(track);
-            },
-          ),
+        if (tracks.isEmpty)
+          _sheetEmptyRow(l10n.noAudioTracks)
+        else
+          for (final track in tracks)
+            _sheetRow(
+              title:
+                  track.label ??
+                  track.language ??
+                  'Audio ${track.id ?? ''}',
+              subtitle: track.language,
+              selected: selected?.id == track.id,
+              onTap: () {
+                Navigator.of(context).pop();
+                controller.setAudioTrack(track);
+              },
+            ),
       ],
     );
   }
