@@ -44,13 +44,6 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity(), FlutterEngineCon
 
     private var isPlaying = false
 
-    /// Cloudflare WARP as a local HTTP proxy (see WarpModule): the
-    /// `usque` subprocess lives as long as the engine does, so it is
-    /// stopped when the engine goes away, not on activity destroy —
-    /// rotation recreates nothing here (configChanges handles it) but
-    /// the engine outlives any single activity instance.
-    private var warpModule: WarpModule? = null
-
     /// The shape of the video currently playing, as the PiP window should be
     /// shaped. Null until Dart has decoded a frame and told us. Held as a
     /// field because `updatePipActions()` rebuilds the params from scratch on
@@ -63,10 +56,6 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity(), FlutterEngineCon
         GeneratedPluginRegister.registerGeneratedPlugins(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
-        // Cloudflare WARP (see WarpModule): a local HTTP proxy on
-        // 127.0.0.1:<port> the app's Dart HTTP client routes through.
-        warpModule = WarpModule(applicationContext).also { it.register(messenger) }
-        
         // Whether a Flutter text field has focus, for the televisions that give
         // a keyboard a session only for a text editor - see TextEditorProxy.
         val textEditing = TextEditingReports(resources) { flutterViewIn(flutterFragment?.view) }
@@ -310,10 +299,6 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity(), FlutterEngineCon
         }
     }
 
-    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
-        warpModule?.stop()
-        warpModule = null
-    }
 
     private fun flutterViewIn(view: android.view.View?): FlutterView? = when (view) {
         is FlutterView -> view
