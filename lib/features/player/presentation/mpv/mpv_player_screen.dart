@@ -157,6 +157,15 @@ import 'mpv_vlc_controller.dart';
 /// holds more because its stall has no other recovery below.
 const int kMpvBufferSize = 768 * 1024 * 1024;
 
+/// How long the link resolution may run before it counts as failed and
+/// the player shows Retry instead of spinning on "Getting links" for
+/// ever. A slow provider gets 30s — the probe race is capped at 10s and
+/// a JS provider's own call at 90s, so a resolve that has not returned
+/// in 30s is a hung one, not a slow one. The timeout throws a
+/// [StreamResolutionException] (loadFailed), so it lands in the failed
+/// stage with Retry, like any other load failure.
+const Duration _kResolveTimeout = Duration(seconds: 30);
+
 /// How long an opened stream gets to show playback before it counts as dead
 /// and the failover moves to the next candidate.
 const Duration _kStartupWatchdog = Duration(seconds: 12);
@@ -166,7 +175,8 @@ const Duration _kStartupWatchdog = Duration(seconds: 12);
 /// fast and the list would otherwise flash past unseen — the viewer must see
 /// the list (and get a chance to tap a row) before the video starts. This is
 /// a floor on visibility, not a forced wait: a tap still opens at once.
-const Duration _kMinListVisible = Duration(milliseconds: 3000);
+/// 1s is enough to see the list; 3s made every open feel slow.
+const Duration _kMinListVisible = Duration(milliseconds: 1000);
 
 /// Pre-buffer before the first play: how much must be buffered ahead of
 /// the playhead before the video starts, and the longest the start may be
@@ -177,22 +187,22 @@ const Duration _kMinListVisible = Duration(milliseconds: 3000);
 /// knob — `PlayerConfiguration` only carries the cache SIZE), so the
 /// playhead catches the buffered edge 2–3s in and stalls, then stalls
 /// again when the next segment is slow. Holding the start until 5s are
-/// buffered gives it a cushion. The hold is capped at 4s so a slow source
+/// buffered gives it a cushion. The hold is capped at 2s so a slow source
 /// still starts instead of hanging on a paused first frame — and a fast
 /// source plays at once, since the buffer is usually there already.
 ///
 /// A high-bitrate (4K) stream gets a bigger cushion: at ~25 Mbit/s the
 /// same 5s is only ~15 MB and the playhead eats it in seconds on a line
-/// that cannot keep up, so 4K opens wait for 10s (capped at 6s). The
+/// that cannot keep up, so 4K opens wait for 10s (capped at 3s). The
 /// values are per-open — see [_prebufferTarget]/[_prebufferMaxWait],
 /// set in [_openStream] from [isHighBitrateStream].
 const Duration _kPrebufferTarget = Duration(seconds: 5);
-const Duration _kPrebufferMaxWait = Duration(seconds: 4);
+const Duration _kPrebufferMaxWait = Duration(seconds: 2);
 
 /// The pre-buffer target and hold cap for a high-bitrate (4K) open.
 /// See [_kPrebufferTarget].
 const Duration _kPrebufferTargetHighBitrate = Duration(seconds: 10);
-const Duration _kPrebufferMaxWaitHighBitrate = Duration(seconds: 6);
+const Duration _kPrebufferMaxWaitHighBitrate = Duration(seconds: 3);
 
 /// How many times a stalled source may be reopened at the same position
 /// before the watchdog gives up on it and fails over to the next
@@ -3687,6 +3697,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         item: widget.item,
         videoUrl: _currentVideoUrl,
         preloadedStreams: widget.preloadedStreams,
+        // A resolve superseded by a newer one (a tap, a switch, the
+        // screen going away) aborts instead of running to completion.
+        isCancelled: () => _disposed || token != _resolveToken,
         // The original's list appears as soon as the candidates arrive and
         // its rows update live as each source is probed — the viewer watches
         // the sources resolve and picks one before anything plays. mpv used
@@ -3705,6 +3718,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
           _probes[index] = outcome;
           if (mounted) setState(() {});
         },
+      ).timeout(
+        // A hung provider used to spin "Getting links" for ever (the
+        // resolve had no overall bound). 30s and it fails with Retry.
+        _kResolveTimeout,
+        onTimeout: () => throw const StreamResolutionException(
+          StreamResolutionFailure.loadFailed,
+          detail: 'Links took too long to load.',
+        ),
       );
       if (token != _resolveToken) return;
       final resume = await resolveResumePoint(
