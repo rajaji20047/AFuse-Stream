@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:raja/l10n/generated/app_localizations.dart';
 
 import '../../app_lock/app_lock_passcode_flow.dart';
 import '../../app_lock/app_lock_provider.dart';
@@ -13,7 +14,7 @@ import 'profile_pin_screen.dart';
 import 'fuse_profile_avatar.dart';
 
 /// Add a profile: a name, a palette colour, and a 4-digit PIN (required
-/// — every profile has one).
+/// — every profile has one, unless it was created with Skip).
 ///
 /// Two steps: name + colour, then the PIN pad (typed twice). The caller
 /// ([onCreated]) creates the profile — for the picker's "+" tile that is
@@ -21,15 +22,16 @@ import 'fuse_profile_avatar.dart';
 /// moves the current Continue Watching / My List into it. The screen
 /// stays up (with the reason) when creation fails.
 ///
-/// For the first profile there is no way out of this screen: a logged-in
-/// account has profiles, and the first one needs its PIN before the app
-/// can be used. (Logging out is the way back, from Settings — the gate
-/// never offers it over the picker.)
+/// For the first profile [onSkip] offers the way out: a default profile
+/// with no PIN (see [FuseProfile.hasPin]), created through the same
+/// migration. The gate never offers Cancel over the first profile —
+/// Skip is the exit.
 class FuseProfileCreateScreen extends ConsumerStatefulWidget {
   const FuseProfileCreateScreen({
     required this.isFirstProfile,
     required this.onCreated,
     this.onCancel,
+    this.onSkip,
     super.key,
   });
 
@@ -42,6 +44,10 @@ class FuseProfileCreateScreen extends ConsumerStatefulWidget {
   /// this screen can be saved against its id.)
   final Future<FuseProfile?> Function(String name, String color, String pin)
   onCreated;
+
+  /// Skips the setup: creates the first profile with no PIN from the
+  /// collected name and colour. Only the first profile offers it.
+  final Future<FuseProfile?> Function(String name, String color)? onSkip;
 
   /// Shows a Cancel button when set (the "+" tile). The first profile
   /// has none.
@@ -83,6 +89,7 @@ class _FuseProfileCreateScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final profilesError = ref.watch(
       fuseProfilesProvider.select((s) => s.error),
     );
@@ -238,6 +245,14 @@ class _FuseProfileCreateScreenState
                   onPressed: _continue,
                   child: const Text('Continue'),
                 ),
+                if (widget.isFirstProfile && widget.onSkip != null) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    key: const ValueKey('profile-create-skip'),
+                    onPressed: _busy ? null : _skip,
+                    child: Text(l10n.skip),
+                  ),
+                ],
               ] else ...[
                 Text(
                   'Set a 4-digit PIN for ${_nameController.text.trim().isEmpty ? 'this profile' : _nameController.text.trim()}',
@@ -258,6 +273,14 @@ class _FuseProfileCreateScreenState
                 if (_busy) ...[
                   const SizedBox(height: 8),
                   const Center(child: CircularProgressIndicator()),
+                ],
+                if (widget.isFirstProfile && widget.onSkip != null) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    key: const ValueKey('profile-create-skip-pin'),
+                    onPressed: _busy ? null : _skip,
+                    child: Text(l10n.skip),
+                  ),
                 ],
               ],
               if (error != null) ...[
@@ -326,6 +349,36 @@ class _FuseProfileCreateScreenState
     }
     // On success the gate moves on (the picker, or straight into the
     // profile) and this screen is gone.
+  }
+
+  /// Skip: create the first profile with no PIN from the collected
+  /// name and colour, through the same migration as [onCreated].
+  Future<void> _skip() async {
+    final onSkip = widget.onSkip;
+    if (_busy || onSkip == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final name = _nameController.text.trim();
+    final profile = await onSkip(
+      name.isEmpty ? kFuseProfileDefaultName : name,
+      _color,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (profile == null) {
+      setState(() {
+        _error ??= 'Could not create the profile. Try again.';
+      });
+      return;
+    }
+    if (_pendingPhoto != null) {
+      await ref
+          .read(fuseProfilePhotosProvider.notifier)
+          .savePhoto(profile.id, _pendingPhoto!);
+    }
+    // On success the gate moves on and this screen is gone.
   }
 }
 

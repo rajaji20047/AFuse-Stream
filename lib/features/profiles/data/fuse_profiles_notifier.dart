@@ -294,10 +294,14 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
   /// Logged out (no session): the profile is created on this device
   /// only, with a device-generated id, and stored in the local cache —
   /// no account, no server call.
+  ///
+  /// [pin] is null or empty for a profile created with Skip: no PIN is
+  /// set ([FuseProfile.hasPin] false, empty record), and the profile
+  /// opens without a PIN pad. A non-empty PIN must be 4 digits, as before.
   Future<FuseProfile?> createFuseProfile({
     required String name,
     required String color,
-    required String pin,
+    String? pin,
   }) async {
     final nameError = fuseProfileNameError(name);
     if (nameError != null) {
@@ -308,7 +312,8 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
       state = state.copyWith(error: 'Unknown profile colour.');
       return null;
     }
-    if (!isValidAppLockPasscode(pin)) {
+    final hasPin = pin != null && pin.isNotEmpty;
+    if (hasPin && !isValidAppLockPasscode(pin)) {
       state = state.copyWith(error: 'The PIN must be 4 digits.');
       return null;
     }
@@ -328,10 +333,13 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
         id: newFuseProfileId(),
         name: name.trim(),
         color: color,
-        pinRecord: AppLockPasscodeHash.create(
-          pin,
-          rounds: kFuseProfilePinRounds,
-        ),
+        pinRecord: hasPin
+            ? AppLockPasscodeHash.create(
+                pin!,
+                rounds: kFuseProfilePinRounds,
+              )
+            : '',
+        hasPin: hasPin,
         createdAt: now,
         updatedAt: now,
       );
@@ -348,16 +356,24 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
     }
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final profile = await _client.createFuseProfile(
+      final created = await _client.createFuseProfile(
         baseUrl,
         token,
         name: name.trim(),
         color: color,
-        pinRecord: AppLockPasscodeHash.create(
-          pin,
-          rounds: kFuseProfilePinRounds,
-        ),
+        pinRecord: hasPin
+            ? AppLockPasscodeHash.create(
+                pin!,
+                rounds: kFuseProfilePinRounds,
+              )
+            : '',
+        hasPin: hasPin,
       );
+      // The server's echo may not carry hasPin (an older worker drops
+      // unknown fields): this device's own answer stands either way.
+      final profile = hasPin
+          ? created
+          : created.copyWith(pinRecord: '', hasPin: false);
       final profiles = [...state.profiles, profile];
       await _writeCache(profiles);
       if (ref.mounted) {
@@ -526,11 +542,12 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
   /// the account migration, minus the server: create locally, switch to
   /// it, copy the legacy history + library into its boxes, clear the
   /// legacy boxes and mark the migration done. Returns the profile, or
-  /// null when it could not be created.
+  /// null when it could not be created. A null/empty [pin] creates the
+  /// profile with no PIN (Skip).
   Future<FuseProfile?> completeLocalProfileMigration({
     required String name,
     required String color,
-    required String pin,
+    String? pin,
   }) async {
     final profile = await createFuseProfile(name: name, color: color, pin: pin);
     if (profile == null) return null;
@@ -553,6 +570,10 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
     FuseProfile? profile;
     for (final p in state.profiles) {
       if (p.id == profileId) profile = p;
+    }
+    // A profile with no PIN always opens: there is nothing to check.
+    if (profile != null && !profile.hasPin) {
+      return AppLockPasscodeCheck.ok;
     }
     if (profile == null || !profile.hasPinRecord) {
       return AppLockPasscodeCheck.missing;

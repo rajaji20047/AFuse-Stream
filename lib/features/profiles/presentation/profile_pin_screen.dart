@@ -85,6 +85,10 @@ class _FuseProfilePinScreenState
   String? _forgotError;
   int _padKey = 0;
 
+  /// Whether the no-PIN auto-unlock below has already fired, so a rebuild
+  /// does not switch twice.
+  bool _autoUnlocked = false;
+
   FuseProfile get _profile => widget.profile;
 
   @override
@@ -92,6 +96,26 @@ class _FuseProfilePinScreenState
     final theme = Theme.of(context);
     final profiles = ref.watch(fuseProfilesProvider);
     final notifier = ref.read(fuseProfilesProvider.notifier);
+
+    // A profile with no PIN opens without a pad: switch to it (when this
+    // screen is meant to) and report unlocked. The gate normally opens
+    // such profiles directly and never shows this screen; this is the
+    // backstop for any path that reaches it.
+    if (!_profile.hasPin) {
+      if (!_autoUnlocked) {
+        _autoUnlocked = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (widget.switchOnUnlock) {
+            await notifier.switchFuseProfile(_profile.id);
+          }
+          if (mounted) widget.onUnlocked();
+        });
+      }
+      return _PinScaffold(
+        onBack: widget.onBack,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     // A profile that has never been opened on this device has no cached
     // record offline: its PIN cannot be checked until one online open

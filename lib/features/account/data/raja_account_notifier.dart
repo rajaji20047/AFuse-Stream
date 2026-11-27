@@ -518,10 +518,11 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
   /// and its local copy exist, the legacy boxes are left alone, and the
   /// next sync round (or Build 2's move prompt) picks the data up — the
   /// server backup is the safety net, and nothing is lost either way.
+  /// A null/empty [pin] creates the profile with no PIN (Skip).
   Future<FuseProfile?> completeFuseProfileMigration({
     required String name,
     required String color,
-    required String pin,
+    String? pin,
   }) async {
     if (!state.loggedIn) return null;
     final profilesNotifier = ref.read(fuseProfilesProvider.notifier);

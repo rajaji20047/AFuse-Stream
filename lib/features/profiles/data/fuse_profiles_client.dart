@@ -66,12 +66,14 @@ class FuseProfilesClient {
     required String name,
     required String color,
     required String pinRecord,
+    bool hasPin = true,
   }) async {
     final body = await _post(baseUrl, '/profiles', {
       'token': token,
       'name': name,
       'color': color,
       'pinRecord': pinRecord,
+      'hasPin': hasPin,
     });
     final profile = body['profile'];
     if (profile is! Map) {

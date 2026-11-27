@@ -126,6 +126,25 @@ class _ProfileGateState extends ConsumerState<ProfileGate> {
                 );
             return profile;
           },
+          onSkip: (name, color) async {
+            // Skip: the same migration, but the profile has no PIN.
+            if (account.loggedIn) {
+              return ref
+                  .read(rajaAccountProvider.notifier)
+                  .completeFuseProfileMigration(
+                    name: name,
+                    color: color,
+                    pin: null,
+                  );
+            }
+            return ref
+                .read(fuseProfilesProvider.notifier)
+                .completeLocalProfileMigration(
+                  name: name,
+                  color: color,
+                  pin: null,
+                );
+          },
         );
       } else if (pinFor != null) {
         overlay = FuseProfilePinScreen(
@@ -160,6 +179,16 @@ class _ProfileGateState extends ConsumerState<ProfileGate> {
         overlay = FuseProfilePickerScreen(
           key: const ValueKey('profile-gate-picker'),
           onSelect: (profile) {
+            // A profile with no PIN opens straight away; the PIN pad
+            // is only for profiles that have one.
+            if (!profile.hasPin) {
+              unawaited(
+                ref
+                    .read(fuseProfilesProvider.notifier)
+                    .switchFuseProfile(profile.id),
+              );
+              return;
+            }
             if (mounted) setState(() => _pinFor = profile);
           },
           onCreate: () {
