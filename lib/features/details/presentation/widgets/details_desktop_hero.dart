@@ -28,6 +28,7 @@ class DetailsDesktopHero extends ConsumerWidget {
     required this.isMovie,
     required this.itemUrl,
     required this.child,
+    this.hidePlay = false,
   });
 
   /// The resolved item for display (details ?? widget.item).
@@ -44,6 +45,12 @@ class DetailsDesktopHero extends ConsumerWidget {
 
   final bool isMovie;
   final String itemUrl;
+
+  /// True for a Vega series: the episode pills below are the play
+  /// surface, so the hero's generic Play button is hidden (official
+  /// Vega rule: no standalone Play button on the details page). A Vega
+  /// movie keeps the generic Play button.
+  final bool hidePlay;
 
   /// Content rendered below the hero section (episodes, cast, etc.).
   final Widget child;
@@ -225,6 +232,7 @@ class DetailsDesktopHero extends ConsumerWidget {
                                 item: baseItem,
                                 details: details,
                                 itemUrl: itemUrl,
+                                hidePlay: hidePlay,
                               ),
                       ),
                     ],

@@ -224,6 +224,17 @@ class DetailsActionButtons extends HookConsumerWidget {
   /// neither.
   final bool showPlay;
 
+  /// True for a Vega series: the episode pills below are the whole play
+  /// surface — the official Vega app has no standalone Play button on
+  /// its details page, the season list IS the play interface — so the
+  /// generic Play button is hidden here on both the phone page and the
+  /// desktop hero. A Vega movie keeps the generic Play button: it has
+  /// no Vega-only UI of its own. What stays is the watched-so-far bar
+  /// and Download (on the desktop hero; on the phone page Download is
+  /// the round button on the banner), and nothing at all for a title
+  /// with neither. Every other title is unchanged.
+  final bool hidePlay;
+
   const DetailsActionButtons({
     super.key,
     required this.item,
@@ -231,6 +242,7 @@ class DetailsActionButtons extends HookConsumerWidget {
     required this.itemUrl,
     this.vertical = false,
     this.showPlay = true,
+    this.hidePlay = false,
   });
 
   @override
@@ -517,6 +529,23 @@ class DetailsActionButtons extends HookConsumerWidget {
             ),
           ],
         ),
+      );
+    }
+
+    if (hidePlay) {
+      // A Vega series: no generic Play button — the episode pills below
+      // are the play surface. Download stays on the desktop hero only;
+      // on the phone page it is the round button on the banner.
+      final hasProgress = pos > 0 && dur > 0 && !isLivestream;
+      if (!hasProgress && !(showPlay && showDownload)) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          progressWidget,
+          if (showPlay && showDownload) downloadBtn,
+        ],
       );
     }
 

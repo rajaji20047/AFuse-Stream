@@ -489,6 +489,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
         detailsState: detailsState,
         isMovie: isMovie,
         itemUrl: widget.item.url,
+        // A Vega series hides the hero's generic Play button: its episode
+        // pills below are the whole play surface (official Vega rule: no
+        // standalone Play button on the details page). A Vega movie keeps
+        // the generic Play button: it has no Vega-only UI of its own.
+        hidePlay:
+            !isMovie &&
+            (isVegaDetailsItem(item) ||
+                (details != null && isVegaDetailsItem(details))),
         child: _buildDesktopContentBelow(
           context,
           item,
@@ -542,9 +550,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
               itemUrl: widget.item.url,
             )
           else
-            DetailsSeasonListWrapper(itemUrl: widget.item.url)
-        else if (isMovie && isVega)
-          VegaMovieQualitySection(item: item, details: details),
+            DetailsSeasonListWrapper(itemUrl: widget.item.url),
 
         const SizedBox(height: 16),
 
@@ -603,9 +609,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     final theme = Theme.of(context);
     final isLoading = detailsState is AsyncLoading;
     final provider = item.provider;
-    // Vega-only details UI (quality list for a film, episode pills for a
-    // series): every other provider renders the shared UI below exactly
-    // as before.
+    // Vega-only details UI (episode pills for a series; a Vega movie has
+    // no Vega-only UI and plays through the generic Play button): every
+    // other provider renders the shared UI below exactly as before.
     final isVega =
         isVegaDetailsItem(item) ||
         (details != null && isVegaDetailsItem(details));
@@ -662,13 +668,18 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                 const SizedBox(height: 12),
               ],
               // Download is the round button on the banner; what stays here is
-              // the watched-so-far bar and Play.
+              // the watched-so-far bar and Play — except for a Vega series,
+              // whose episode pills are the whole play surface (official
+              // Vega rule: no standalone Play button on the details page).
+              // A Vega movie keeps the generic Play button: it has no
+              // Vega-only UI of its own.
               if (!item.comingSoon)
                 DetailsActionButtons(
                   item: widget.item,
                   details: details,
                   itemUrl: widget.item.url,
                   showPlay: false,
+                  hidePlay: isVega && !isMovie,
                 ),
               if (nextAiringAhead(item)) ...[
                 const SizedBox(height: 12),
@@ -722,9 +733,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                     itemUrl: widget.item.url,
                   )
                 else
-                  DetailsSeasonListWrapper(itemUrl: widget.item.url)
-              else if (isMovie && isVega)
-                VegaMovieQualitySection(item: item, details: details),
+                  DetailsSeasonListWrapper(itemUrl: widget.item.url),
             ],
           ),
         ),

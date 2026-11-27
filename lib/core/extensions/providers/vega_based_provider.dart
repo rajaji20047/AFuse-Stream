@@ -914,6 +914,123 @@ globalThis[$installerKey] = function(__ssTok) {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Real season/episode numbers from provider titles
+  // ---------------------------------------------------------------------------
+  //
+  // A Vega provider carries no season/episode numbers in its data:
+  // episode identity is just {title, link}. The only place a real number
+  // can live is the season-entry title ("Season 2", "S01E05", "Show S2
+  // 1080p") and the episode-link title ("Episode 5", "EPISODE 12",
+  // "5. Pilot"). The patterns below mirror the provider ecosystem's own
+  // title parsing (Zenda-Cross/vega-providers `getCinemetaMeta.ts`:
+  // `getCinemetaSeason` and `getEpisodeNumber`): a range ("Season 1-2",
+  // "Episode 1-2") or conflicting numbers mean "no number", and the
+  // positional number is the fallback. Nothing is invented: when a title
+  // carries no number, the entry keeps its position in the list.
+  //
+  // Two entries must never share a season number — the details page
+  // groups episodes by season, so a shared number would merge two
+  // entries' episodes (with duplicate episode numbers) into one season.
+  // [_seasonNumbersFor] keeps every entry distinct: a later entry that
+  // parses to an already-used number falls back to its position, and a
+  // position that is already used takes the next free number up. That
+  // matters for providers whose linkList entries are quality groups
+  // rather than seasons (HdHub4u: "Yashoda - 1080p", "Yashoda - 720p"
+  // carry no season number at all, so they stay positional, as before).
+
+  static final _seasonRangePattern = RegExp(
+    r'\bseason\s*:?\s*\d{1,2}\s*[-–&/]\s*(?:season\s*:?\s*)?\d{1,2}\b'
+    r'|\bS\d{1,2}\s*[-–]\s*S?\d{1,2}\b',
+    caseSensitive: false,
+  );
+  static final _seasonPatterns = <RegExp>[
+    RegExp(r'\bseason\s*:?\s*(\d{1,2})\b', caseSensitive: false),
+    RegExp(r'\bS(\d{1,2})\s*E\d{1,3}\b', caseSensitive: false),
+    RegExp(r'\b(\d{1,2})x\d{1,3}\b'),
+    RegExp(r'\bS(\d{1,2})(?=\s*E\d|\b)', caseSensitive: false),
+  ];
+
+  static final _episodeRangePattern = RegExp(
+    r'\b(?:e\d+|ep\s*\.?:?\s*\d+|episodes?\s*:?\s*\d+)\s*(?:[-–,&/]|\band\b)\s*(?:e|ep\s*\.?:?\s*|episodes?\s*:?\s*)?\d+',
+    caseSensitive: false,
+  );
+  static final _episodePatterns = <RegExp>[
+    RegExp(r'\bS\d{1,2}\s*E(\d{1,3})\b', caseSensitive: false),
+    RegExp(r'\bepisodes?\s*:?\s*(\d{1,3})\b', caseSensitive: false),
+    RegExp(r'\bep\s*\.?:?\s*(\d{1,3})\b', caseSensitive: false),
+    RegExp(r'\bE(\d{1,3})\b', caseSensitive: false),
+    RegExp(r'\b\d{1,2}x(\d{1,3})\b'),
+    RegExp(r'^\s*(\d{1,3})\s*[.:-]\s*'),
+    RegExp(r'^\s*(\d{1,3})\s*$'),
+  ];
+
+  /// The real season number in a season-entry [title], or null when the
+  /// title carries none (a range, conflicting numbers, or no number at
+  /// all — e.g. a quality group like "Yashoda - 1080p").
+  static int? _seasonNumberFromTitle(String title) {
+    if (title.isEmpty) return null;
+    if (_seasonRangePattern.hasMatch(title)) return null;
+    final numbers = <int>{
+      for (final pattern in _seasonPatterns)
+        for (final m in pattern.allMatches(title)) int.parse(m.group(1)!),
+    }..removeWhere((n) => n <= 0);
+    return numbers.length == 1 ? numbers.single : null;
+  }
+
+  /// The real episode number in an episode-link [title], or null when
+  /// the title carries none. [season] is the season the link sits in: a
+  /// title naming a different season (a misplaced "S02E05") has no
+  /// trustworthy episode number either.
+  static int? _episodeNumberFromTitle(String title, int season) {
+    if (title.isEmpty) return null;
+    if (_episodeRangePattern.hasMatch(title)) return null;
+    final namedSeasons = <int>{
+      for (final m in RegExp(
+        r'\bseason\s*:?\s*(\d{1,2})\b',
+        caseSensitive: false,
+      ).allMatches(title))
+        int.parse(m.group(1)!),
+      for (final m in RegExp(
+        r'\bS(\d{1,2})\s*E\d{1,3}\b',
+        caseSensitive: false,
+      ).allMatches(title))
+        int.parse(m.group(1)!),
+      for (final m in RegExp(r'\b(\d{1,2})x\d{1,3}\b').allMatches(title))
+        int.parse(m.group(1)!),
+    };
+    if (namedSeasons.any((s) => s != season)) return null;
+    final numbers = <int>{
+      for (final pattern in _episodePatterns)
+        for (final m in pattern.allMatches(title)) int.parse(m.group(1)!),
+    }..removeWhere((n) => n <= 0);
+    return numbers.length == 1 ? numbers.single : null;
+  }
+
+  /// One season number per Map entry of [linkList], in list order: the
+  /// number parsed from the entry's own title when it carries exactly
+  /// one, else the entry's position, kept distinct (see above).
+  static List<int> _seasonNumbersFor(List<dynamic> linkList) {
+    final numbers = <int>[];
+    final used = <int>{};
+    var position = 0;
+    for (final entry in linkList) {
+      if (entry is! Map) continue;
+      position++;
+      final title = (entry['title'] as String?) ?? '';
+      var season = _seasonNumberFromTitle(title) ?? position;
+      if (used.contains(season)) {
+        season = position;
+        while (used.contains(season)) {
+          season++;
+        }
+      }
+      used.add(season);
+      numbers.add(season);
+    }
+    return numbers;
+  }
+
   Future<MultimediaItem> _infoToItem(
     Map<String, dynamic> info,
     String url,
@@ -936,20 +1053,25 @@ globalThis[$installerKey] = function(__ssTok) {
         ?.map((name) => Actor(name: name))
         .toList(growable: false);
     final linkList = (info['linkList'] as List?) ?? const [];
+    // The season numbers the episodes below are built with, so the
+    // dropdown names and the episodes' own seasons always agree.
+    final seasonNumbers = _seasonNumbersFor(linkList);
     final seasonNames = <SeasonName>[];
-    var seasonIndex = 0;
+    var entryIndex = 0;
     for (final entry in linkList) {
       if (entry is! Map) continue;
-      seasonIndex++;
       final title = (entry['title'] as String?) ?? '';
       if (title.isNotEmpty) {
-        seasonNames.add(SeasonName(season: seasonIndex, name: title));
+        seasonNames.add(
+          SeasonName(season: seasonNumbers[entryIndex], name: title),
+        );
       }
+      entryIndex++;
     }
 
     List<Episode>? episodes;
     if (isSeries || type == MultimediaContentType.anime) {
-      episodes = await _episodesFromLinkList(linkList);
+      episodes = await _episodesFromLinkList(linkList, seasonNumbers);
     } else if (type == MultimediaContentType.movie ||
         type == MultimediaContentType.other) {
       // A film has no episode list, but the details page's Play button is
@@ -992,13 +1114,16 @@ globalThis[$installerKey] = function(__ssTok) {
     );
   }
 
-  Future<List<Episode>> _episodesFromLinkList(List<dynamic> linkList) async {
+  Future<List<Episode>> _episodesFromLinkList(
+    List<dynamic> linkList,
+    List<int> seasonNumbers,
+  ) async {
     final episodes = <Episode>[];
-    var seasonIndex = 0;
+    var entryIndex = 0;
     for (final entry in linkList) {
       if (entry is! Map) continue;
-      seasonIndex++;
-      final season = seasonIndex;
+      final season = seasonNumbers[entryIndex];
+      entryIndex++;
       final directLinks = (entry['directLinks'] as List?) ?? const [];
       if (directLinks.isNotEmpty) {
         var episodeIndex = 0;
@@ -1059,11 +1184,16 @@ globalThis[$installerKey] = function(__ssTok) {
     int season,
     int episode,
   ) {
+    final title = (link['title'] as String?) ?? '';
+    // The provider's real episode number lives in the link title when
+    // it carries one ("Episode 5", "S01E05", "5. Pilot"); the position
+    // in the list is only the fallback.
+    final episodeNumber = _episodeNumberFromTitle(title, season) ?? episode;
     final episodeLink = Episode(
-      name: (link['title'] as String?) ?? 'Episode $episode',
+      name: title.isNotEmpty ? title : 'Episode $episodeNumber',
       url: url,
       season: season,
-      episode: episode,
+      episode: episodeNumber,
       description: link['description'] as String?,
       posterUrl: link['image'] as String?,
     );
