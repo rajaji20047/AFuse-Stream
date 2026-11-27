@@ -2298,6 +2298,25 @@ class _BottomBar extends StatelessWidget {
     final canSeek = !isLive && value.isSeekable && duration > Duration.zero;
     final position = seeking ? seekPreview : value.position;
 
+    // The utility row's fixed width, without the flexible gap: every
+    // button is 38, every gap 6. Counted from the children below, so the
+    // two cannot drift apart silently — a button added below needs its
+    // width here too.
+    var fixedWidth = 38.0; // Subtitles
+    fixedWidth += 6 + 38; // Audio
+    fixedWidth += 6 + 38; // Sources
+    fixedWidth += 6; // gap after Sources
+    if (onOpenQuality != null) fixedWidth += 38 + 6; // Quality
+    if (onOpenVideo != null) fixedWidth += 38; // Video (iOS only)
+    fixedWidth += 6; // the gap after Video, always present
+    fixedWidth += 38 + 6; // Volume
+    fixedWidth += 38 + 6; // Speed
+    if (lockAvailable) fixedWidth += 38 + 6; // Lock
+    fixedWidth += 38; // Aspect ratio
+    if (onRotate != null && showRotate) fixedWidth += 6 + 38; // Rotate
+    if (onPreviousEpisode != null) fixedWidth += 38; // Previous episode
+    if (onNextEpisode != null) fixedWidth += 6 + 38; // Next episode
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -2352,9 +2371,17 @@ class _BottomBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        // Utility row.
-        Row(
-          children: <Widget>[
+        // Utility row: in portrait the buttons do not fit, and a plain
+        // Row clips the ones on the right with no way to reach them
+        // (user 2026-11-27: some bottom buttons hide and do not slide).
+        // When the room is narrower than the buttons, the row scrolls
+        // instead; when it fits, it is the same Row as before, the
+        // option buttons flush right.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= fixedWidth) {
+              return Row(
+                children: <Widget>[
             if (onPreviousEpisode != null)
               GoldenIconButton(
                 icon: Icons.skip_previous_rounded,
@@ -2464,6 +2491,127 @@ class _BottomBar extends StatelessWidget {
                 size: 38,
               ),
           ],
+              );
+            }
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: <Widget>[
+            if (onPreviousEpisode != null)
+              GoldenIconButton(
+                icon: Icons.skip_previous_rounded,
+                onPressed: onPreviousEpisode,
+                tooltip: 'Previous episode',
+                size: 38,
+              ),
+            if (onNextEpisode != null) ...<Widget>[
+              const SizedBox(width: 6),
+              GoldenIconButton(
+                icon: Icons.skip_next_rounded,
+                onPressed: onNextEpisode,
+                tooltip: 'Next episode',
+                size: 38,
+              ),
+            ],
+            // Sleep timer (v7): the time left, only while one is armed.
+            // A tap opens the drawer the picker lives in.
+            // v9: the buttons after this sit flush right, always. The
+            // badge used to be a Flexible beside a Spacer — the two split
+            // the free width, the badge used a sliver of its half, and
+            // the unused rest pushed the buttons to the middle whenever a
+            // timer was armed. One Expanded now owns all the free width.
+            if (sleepTimer != null) ...<Widget>[
+              GoldenSleepTimerBadge(timer: sleepTimer!, onTap: onOpenVideo),
+              const SizedBox(width: 6),
+            ],
+            _SubtitleButton(
+              hasSubtitles: hasSubtitles,
+              onPressed: onOpenSubtitleStyle,
+            ),
+            const SizedBox(width: 6),
+            // Audio, straight from the bottom bar — the same drawer the
+            // top-right More menu opens. Sources sits beside it, as its
+            // own button and its own drawer.
+            GoldenIconButton(
+              icon: Icons.audiotrack_rounded,
+              onPressed: onOpenAudioSources,
+              tooltip: 'Audio',
+              size: 38,
+            ),
+            const SizedBox(width: 6),
+            GoldenIconButton(
+              icon: Icons.dns_rounded,
+              onPressed: onOpenSources,
+              tooltip: 'Sources',
+              size: 38,
+            ),
+            const SizedBox(width: 6),
+            // Quality, beside Sources: the HLS ladder's heights, or Auto.
+            // Only where the source offers a choice — one height or none
+            // is no choice, and the button never renders then.
+            if (onOpenQuality != null)
+              GoldenIconButton(
+                icon: Icons.high_quality_rounded,
+                onPressed: onOpenQuality!,
+                tooltip: 'Quality',
+                size: 38,
+              ),
+            if (onOpenQuality != null) const SizedBox(width: 6),
+            // Video output presets (+57), beside Sources — the panel the
+            // Infuse screenshot shows. iOS mpv only: onOpenVideo is null
+            // on Android, and the button never renders then.
+            if (onOpenVideo != null)
+              GoldenIconButton(
+                icon: Icons.tune_rounded,
+                onPressed: onOpenVideo!,
+                tooltip: 'Video',
+                size: 38,
+              ),
+            const SizedBox(width: 6),
+            GoldenIconButton(
+              icon: Icons.volume_up_rounded,
+              onPressed: onPickVolume,
+              tooltip: 'Volume',
+              size: 38,
+            ),
+            const SizedBox(width: 6),
+            // Speed, as one of the row's round buttons (2026-11-26): the
+            // gold-outlined pill read as a different control from the
+            // discs beside it. Same 38 disc, white "1x" in it.
+            GoldenIconButton(
+              label: '${_formatSpeed(speed)}x',
+              onPressed: onPickSpeed,
+              tooltip: 'Speed',
+              size: 38,
+            ),
+            const SizedBox(width: 6),
+            if (lockAvailable)
+              GoldenIconButton(
+                icon: locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                onPressed: onToggleLock,
+                active: locked,
+                tooltip: locked ? 'Unlock' : 'Lock',
+                size: 38,
+              ),
+            if (lockAvailable) const SizedBox(width: 6),
+            GoldenIconButton(
+              icon: _fitIcon(fit),
+              onPressed: onCycleFit,
+              tooltip: 'Aspect ratio',
+              size: 38,
+            ),
+            if (onRotate != null && showRotate) const SizedBox(width: 6),
+            if (onRotate != null && showRotate)
+              GoldenIconButton(
+                icon: Icons.screen_rotation_rounded,
+                onPressed: onRotate,
+                tooltip: 'Rotate',
+                size: 38,
+              ),
+          ],
+              ),
+            );
+          },
         ),
       ],
     );
