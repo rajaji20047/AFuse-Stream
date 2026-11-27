@@ -227,32 +227,19 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     _host.setSwitchedOff(!state.enabled);
     _publish();
     _syncRepositories();
-    // Raja: first launch with no repositories yet - pre-add the owner's
-    // repository, so its plugins are there from the start.
-    unawaited(_seedDefaultRepository());
   }
 
-  /// Raja's default CloudStream repositories: the owner's own repo (RajajiX)
-  /// and the official CloudStream providers repository. Each is seeded once,
-  /// on a launch where it is not stored yet. Never re-added after the user
-  /// removed it (see [removedReposKey]), and retried on the next launch if
-  /// the network was down when first tried.
-  ///
-  /// The owner's repo moved from `sezkc16/katdrama` to `sezkc16/TojiX`
-  /// (the old address still serves the same list); [_legacyRajajiXRepositoryUrl]
-  /// is that old address, so an install that already has it does not get
-  /// RajajiX added a second time, and one that removed it does not get it back.
+  /// The two well-known CloudStream repositories, for display grouping
+  /// only ([isFuseRepository], [isCloudStreamRepository]). Nothing is
+  /// seeded: a fresh install starts with no repositories at all, and
+  /// the user adds whichever ones they want. The owner's repo
+  /// (RajajiX / TojiX) keeps its own "Fuse" section when the user adds
+  /// it, and the official CloudStream providers repository is labelled
+  /// "CloudStream".
   static const String _rajajiXRepositoryUrl =
       'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json';
   static const String _cloudStreamRepositoryUrl =
       'https://raw.githubusercontent.com/recloudstream/extensions/master/repo.json';
-  static const String _legacyRajajiXRepositoryUrl =
-      'https://raw.githubusercontent.com/sezkc16/katdrama/builds/plugins.json';
-
-  static const List<String> _defaultRepositoryUrls = [
-    _rajajiXRepositoryUrl,
-    _cloudStreamRepositoryUrl,
-  ];
 
   /// The repositories Fuse seeds, as the Plugins screen labels them:
   /// the official CloudStream providers repository is the "CloudStream"
@@ -278,28 +265,6 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   static String displayNameFor(CsRepository repo) {
     if (isCloudStreamRepository(repo.url)) return 'CloudStream';
     return repo.name;
-  }
-
-  Future<void> _seedDefaultRepository() async {
-    await _loaded;
-    if (!ref.mounted) return;
-    final prefs = await SharedPreferences.getInstance();
-    final removed = prefs.getStringList(removedReposKey) ?? const [];
-    final stored = {for (final repo in state.repositories) repo.url};
-    for (final url in _defaultRepositoryUrls) {
-      // RajajiX: the old katdrama address is the same repository.
-      final aliases = url == _rajajiXRepositoryUrl
-          ? {_rajajiXRepositoryUrl, _legacyRajajiXRepositoryUrl}
-          : {url};
-      if (aliases.any(stored.contains) || aliases.any(removed.contains)) {
-        continue;
-      }
-      try {
-        await addRepository(url);
-      } catch (error) {
-        talker.warning('[CloudStream] default repository did not load: $error');
-      }
-    }
   }
 
   Future<List<CsRepository>> _readRepositories(SharedPreferences prefs) async {
