@@ -28,8 +28,8 @@ on:
 
 permissions:
   contents: write # Draft GitHub Release creation needs write; the
-    # release is a draft (owner-only) with no assets attached — the
-    # APK stays on the Actions artifact only.
+    # release is a draft (owner-only) with the APK attached — the APK
+    # is NOT uploaded to Actions Artifacts.
 
 env:
   FLUTTER_VERSION: 3.47.7
@@ -123,24 +123,15 @@ jobs:
           "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee /tmp/apksigner-certs.txt
           grep -q "b22e7a906d83bd06cd52f86393887ee35bc6f0896af76122c3be1726c0519e63" /tmp/apksigner-certs.txt && echo "APK signed with the Fuse release key" || { echo "::error::APK is not signed with the Fuse release key"; exit 1; }
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        continue-on-error: true # Artifact quota can be full (account-wide
-          # 500 MB free tier); a failed upload must not fail the build.
-        with:
-          name: Fuse-Android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
-
-      # Draft GitHub Release, owner-only, with NO assets attached: the
-      # APK is downloaded from the Actions artifact above, never from
-      # the release. A draft is visible only to people with write
+      # Draft GitHub Release, owner-only, with the APK attached: the
+      # APK lives ONLY on this draft release — it is NOT uploaded to
+      # Actions Artifacts. A draft is visible only to people with write
       # access to the repo (the owner). Tag is unique per run so a
       # re-run never collides with an existing tag.
-      - name: Create draft GitHub Release (owner-only, no assets)
+      - name: Create draft GitHub Release (owner-only, APK attached)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           TAG="v${VERSION}-build-${{ github.run_number }}"
-          gh release create "$TAG" --draft --title "Fuse Android $VERSION (build ${{ github.run_number }})" --notes "Draft release. The APK is available from the Actions artifact (Fuse-Android-release), not attached here."
+          gh release create "$TAG" --draft --title "Fuse Android $VERSION (build ${{ github.run_number }})" --notes "Draft release (owner-only). The APK is attached here." build/app/outputs/flutter-apk/app-release.apk
