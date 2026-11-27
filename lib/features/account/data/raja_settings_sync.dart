@@ -112,8 +112,13 @@ Future<int> applySyncedSettings(
     final incoming = settings[key];
     final current = read(key);
     if (_isPlainSettingValue(incoming)) {
-      if (current != incoming) {
-        await write(key, incoming);
+      // M7: a backup from another device may carry a number as a double
+      // where this device stores an int (or a 0/1 where it stores a
+      // bool). Write the value in the type the current setting already
+      // has, so the readers never meet a wrong-typed value.
+      final normalized = _coerceToCurrent(incoming, current);
+      if (current != normalized) {
+        await write(key, normalized);
         changed++;
       }
     } else if (current != null) {
@@ -122,6 +127,19 @@ Future<int> applySyncedSettings(
     }
   }
   return changed;
+}
+
+/// Coerces [incoming] to the type [current] already has, when both are
+/// plain values of compatible kinds; otherwise returns [incoming] as-is.
+/// A key with nothing stored yet keeps the backup's type (the readers
+/// coerce on read too — see `StorageService.getPlayerSetting`).
+Object? _coerceToCurrent(Object? incoming, Object? current) {
+  if (incoming is num && current is int) return incoming.toInt();
+  if (incoming is num && current is double) return incoming.toDouble();
+  if (incoming is num && current is bool) return incoming != 0;
+  if (incoming is bool && current is int) return incoming ? 1 : 0;
+  if (incoming is bool && current is num) return incoming ? 1 : 0;
+  return incoming;
 }
 
 /// Whether a Stremio add-on's manifest URL looks like it carries a

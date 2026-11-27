@@ -14,6 +14,7 @@ import '../../../core/cloudstream/cloudstream_repository.dart';
 import '../../../core/extensions/models/extension_plugin.dart';
 import '../../../core/logger/app_logger.dart';
 import '../../../core/nuvio/data/nuvio_repository.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/storage/library_repository.dart';
 import '../../../core/storage/secure_token_storage.dart';
 import '../../../core/storage/storage_service.dart';
@@ -381,14 +382,28 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
         password,
       );
       await _saveSession(email.trim().toLowerCase(), token);
+      // Profiles (Build 1): fetch the list FIRST (H6), so the download
+      // and upload below key by the server's active profile — not the
+      // local-only id left over from the logout, whose key cannot exist
+      // on the server (the download would find nothing and the upload
+      // would orphan the data under it).
+      await refreshFuseProfiles();
       // v9: on login the cloud copy's settings apply. And the upload only
       // follows a download that worked (or found no backup yet): a cloud
       // copy this app could not read is never overwritten.
       final outcome = await _downloadAndRestore(cloudSettingsWin: true);
-      if (outcome != _DownloadOutcome.failed) await uploadBackup();
-      // Profiles (Build 1): fetch the list (and work out the migration
-      // case) now that the session is live.
-      await refreshFuseProfiles();
+      if (outcome != _DownloadOutcome.failed) {
+        // No server profile active (the picker is pending): the upload
+        // would write the local data to the legacy key, orphaning it
+        // from every profile. The profile's own sync round uploads once
+        // the user picks one. No profiles at all keeps the legacy
+        // upload, as before.
+        final fuseProfiles = ref.read(fuseProfilesProvider);
+        if (fuseProfiles.profiles.isEmpty ||
+            fuseProfiles.activeProfileId != null) {
+          await uploadBackup();
+        }
+      }
       return true;
     } on RajaSyncException catch (e) {
       if (ref.mounted) state = state.copyWith(busy: false, error: e.message);
@@ -426,24 +441,47 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       if (token != null && baseUrl.isNotEmpty) {
         await _client.logout(baseUrl, token);
       }
-    } finally {
-      final tokens = ref.read(secureTokenStorageProvider);
-      await tokens.delete(_kTokenKey);
-      await tokens.delete(_kEmailKey);
+    } catch (e) {
+      // Server logout is best effort; the local session is removed below.
+      talker.warning('[Raja Account] server logout failed: $e');
+    }
+    // The session is only gone once the saved token is gone (M6): if
+    // the delete fails, stay logged in and say so, so a retry can finish
+    // the logout instead of silently leaving the user logged in.
+    final tokens = ref.read(secureTokenStorageProvider);
+    final tokenDeleted = await tokens.delete(_kTokenKey);
+    final emailDeleted = await tokens.delete(_kEmailKey);
+    if (!tokenDeleted || !emailDeleted) {
+      if (ref.mounted) {
+        state = state.copyWith(
+          busy: false,
+          error:
+              'Could not remove the saved session. Please try logging out again.',
+        );
+      }
+      return;
+    }
     // Profiles (Build 2): back onto the device's local-only profiles.
     // The server cache is deleted (a next login must not flash the old
     // account's list) and the local list loads; the local profiles and
     // their data survive. The server list is untouched — the next login
     // re-fetches it.
-    await ref.read(fuseProfilesProvider.notifier).switchToLocalProfiles();
-      if (ref.mounted) {
-        state = state.copyWith(
-          email: null,
-          loggedIn: false,
-          busy: false,
-          lastSyncedAt: null,
-        );
-      }
+    try {
+      await ref.read(fuseProfilesProvider.notifier).switchToLocalProfiles();
+    } catch (e) {
+      // The session is already gone: a failed profile switch must not
+      // leave the UI stuck logged-in + busy (L11).
+      talker.warning(
+        '[Raja Account] logout: switching to local profiles failed: $e',
+      );
+    }
+    if (ref.mounted) {
+      state = state.copyWith(
+        email: null,
+        loggedIn: false,
+        busy: false,
+        lastSyncedAt: null,
+      );
     }
   }
 
@@ -660,7 +698,14 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
   /// email stays, local data is untouched; logging in again clears this.
   Future<void> _expireSession() async {
     try {
-      await ref.read(secureTokenStorageProvider).delete(_kTokenKey);
+      final deleted = await ref
+          .read(secureTokenStorageProvider)
+          .delete(_kTokenKey);
+      if (!deleted) {
+        talker.warning(
+          '[Raja Account] dropping the expired session: the saved token could not be removed',
+        );
+      }
     } catch (e) {
       talker.warning('[Raja Account] dropping the expired session: $e');
     }
@@ -685,6 +730,18 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
   /// automatic sync makes, but with the busy state and errors shown.
   Future<bool> syncNow() async {
     if (!state.loggedIn) return false;
+    // Profiles (Build 1): no sync round until a profile is active, when
+    // the account has profiles — the same guard autoSync() has (H6).
+    final fuseProfiles = ref.read(fuseProfilesProvider);
+    if (fuseProfiles.profiles.isNotEmpty &&
+        fuseProfiles.activeProfileId == null) {
+      if (ref.mounted) {
+        state = state.copyWith(
+          error: 'Pick a profile first, then sync.',
+        );
+      }
+      return false;
+    }
     final outcome = await _downloadAndRestore();
     if (outcome == _DownloadOutcome.failed) return false;
     return uploadBackup();
@@ -810,11 +867,14 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
         fuseProfiles.activeProfileId == null) {
       return false;
     }
-    _autoSyncGate.markRan(at);
     _autoSyncRunning = true;
     try {
       final outcome = await _downloadAndRestore(silent: true);
       if (outcome == _DownloadOutcome.failed) return true;
+      // Only a round that actually ran consumes the 10-minute throttle
+      // (L10): a failed round must not block the retry when the network
+      // comes back.
+      _autoSyncGate.markRan(at);
       if (!ref.mounted || !state.loggedIn) return true;
       // The round's own upload replaces any upload a change scheduled.
       _autoSyncTimer?.cancel();
@@ -836,15 +896,31 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
   void requestAutoSync() {
     if (_restoring) return;
     if (!state.loggedIn || !state.cloudConfigured) return;
+    // H5: the switch is the switch — an upload must never fire while
+    // auto-sync is off, and never over playback.
+    if (!state.autoSyncEnabled) return;
+    if (_playerOnTop) return;
     _autoSyncTimer?.cancel();
     _autoSyncTimer = Timer(_autoSyncDebounce, () async {
       if (!ref.mounted || !state.loggedIn) return;
+      if (!state.autoSyncEnabled || _playerOnTop) return;
       try {
         await _uploadBackup(silent: true);
       } catch (e) {
         talker.warning('[Raja Account] auto-upload failed: $e');
       }
     });
+  }
+
+  /// Whether the player route is on top (H5): an auto-upload must never
+  /// run over playback. Unknown (the router is not built yet) reads as
+  /// on top — the round's own gate re-checks when the app returns.
+  bool get _playerOnTop {
+    try {
+      return playerRouteIsOnTop(ref.read(appRouterProvider));
+    } catch (_) {
+      return true;
+    }
   }
 
   // --- backup: collect ---------------------------------------------------------
@@ -1008,6 +1084,12 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     SettingsRestore settingsRule,
   ) async {
     final errors = <String>[];
+    // Entries the backup file itself could not be read as (L12).
+    if (backup.droppedEntries > 0) {
+      errors.add(
+        '${backup.droppedEntries} ${backup.droppedEntries == 1 ? 'entry' : 'entries'} in the backup file could not be read and were skipped.',
+      );
+    }
     var historyRestored = 0;
     var historySkipped = 0;
     var libraryRestored = 0;
@@ -1022,14 +1104,19 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       for (final raw in storage.getAllHistoryEntries())
         if (raw['key'] is String)
           raw['key'] as String:
-              ((raw['entry'] as Map?)?['timestamp'] as int?) ?? 0,
+              ((raw['entry'] as Map?)?['timestamp'] as num?)?.toInt() ?? 0,
     };
     final toPut = <Map<String, dynamic>>[];
     for (final raw in backup.history) {
       final key = raw['key'];
       final entry = raw['entry'];
-      if (key is! String || entry is! Map) continue;
-      final timestamp = (entry['timestamp'] as int?) ?? 0;
+      if (key is! String || entry is! Map) {
+        errors.add(
+          'Could not restore a history entry: the saved entry is incomplete.',
+        );
+        continue;
+      }
+      final timestamp = (entry['timestamp'] as num?)?.toInt() ?? 0;
       if (!local.containsKey(key) || timestamp > (local[key] ?? 0)) {
         toPut.add(raw);
         historyRestored++;
@@ -1045,7 +1132,12 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     final library = ref.read(libraryRepositoryProvider);
     for (final raw in backup.library) {
       final item = libraryItemFromBackup(raw);
-      if (item == null) continue;
+      if (item == null) {
+        errors.add(
+          'Could not restore a bookmark: the saved entry is incomplete.',
+        );
+        continue;
+      }
       try {
         final wasThere = library.isInLibrary(item.url);
         await library.addToLibrary(item);

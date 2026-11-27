@@ -183,9 +183,27 @@ class SettingsRoute extends GoRouteData with $SettingsRoute {
   Widget build(BuildContext context, GoRouterState state) => EdgeSwipeBack(
     // Settings is a branch, not a pushed page, so the iOS back swipe is
     // done here: the same place its back arrow goes.
-    onBack: () => const HomeRoute().go(context),
+    onBack: () => goDefaultHome(context),
     child: SettingsScreen(initialCategory: category),
   );
+}
+
+/// Back from Settings goes to the default home tab (L7), not always
+/// Home: a user whose default home is Library expects Back to land
+/// there — the same destination the shell's back uses. (The Settings
+/// screen's own back arrow is a separate one-line change in
+/// settings_screen.dart.)
+void goDefaultHome(BuildContext context) {
+  var home = '/home';
+  try {
+    final saved = ProviderScope.containerOf(
+      context,
+    ).read(settingsRepositoryProvider).getDefaultHomeScreen();
+    if (kShellBranchRoutes.contains(saved)) home = saved;
+  } catch (_) {
+    // Unreadable setting: fall back to Home.
+  }
+  GoRouter.of(context).go(home);
 }
 
 // --- Sub-routes of Settings ---
@@ -424,53 +442,63 @@ class _RouteExtraDecoder extends Converter<Object?, Object?> {
     if (input == null) return null;
     if (input is! Map) return input;
     final map = Map<String, dynamic>.from(input);
-    switch (map['_type']) {
-      case 'DetailsRouteExtra':
-        return DetailsRouteExtra(
-          item: MultimediaItem.fromJson(
-            Map<String, dynamic>.from(map['item'] as Map),
-          ),
-          autoPlay: map['autoPlay'] as bool? ?? false,
-        );
-      case 'PlayerRouteExtra':
-        return PlayerRouteExtra(
-          item: MultimediaItem.fromJson(
-            Map<String, dynamic>.from(map['item'] as Map),
-          ),
-          videoUrl: map['videoUrl'] as String,
-          episode: map['episode'] != null
-              ? Episode.fromJson(
-                  Map<String, dynamic>.from(map['episode'] as Map),
-                )
-              : null,
-          preloadedStreams: map['preloadedStreams'] != null
-              ? (map['preloadedStreams'] as List)
-                    .map(
-                      (s) => StreamResult.fromJson(
-                        Map<String, dynamic>.from(s as Map),
-                      ),
-                    )
-                    .toList()
-              : null,
-        );
-      case 'ViewAllRouteExtra':
-        return ViewAllRouteExtra(
-          title: map['title'] as String,
-          initialMediaList: (map['initialMediaList'] as List)
-              .map(
-                (e) => MultimediaItem.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ),
-              )
-              .toList(),
-          category: ViewAllCategory.values.firstWhere(
-            (c) => c.name == map['category'],
-            orElse: () => ViewAllCategory.trending,
-          ),
-          // onTap cannot be restored — callers must handle null.
-        );
-      default:
-        return input;
+    try {
+      switch (map['_type']) {
+        case 'DetailsRouteExtra':
+          return DetailsRouteExtra(
+            item: MultimediaItem.fromJson(
+              Map<String, dynamic>.from(map['item'] as Map),
+            ),
+            autoPlay: map['autoPlay'] as bool? ?? false,
+          );
+        case 'PlayerRouteExtra':
+          return PlayerRouteExtra(
+            item: MultimediaItem.fromJson(
+              Map<String, dynamic>.from(map['item'] as Map),
+            ),
+            // L4: a missing videoUrl used to throw on restore.
+            videoUrl: map['videoUrl'] as String? ?? '',
+            episode: map['episode'] != null
+                ? Episode.fromJson(
+                    Map<String, dynamic>.from(map['episode'] as Map),
+                  )
+                : null,
+            preloadedStreams: map['preloadedStreams'] != null
+                ? (map['preloadedStreams'] as List)
+                      .map(
+                        (s) => StreamResult.fromJson(
+                          Map<String, dynamic>.from(s as Map),
+                        ),
+                      )
+                      .toList()
+                : null,
+          );
+        case 'ViewAllRouteExtra':
+          return ViewAllRouteExtra(
+            title: map['title'] as String? ?? '',
+            initialMediaList:
+                (map['initialMediaList'] as List?)
+                        ?.map(
+                          (e) => MultimediaItem.fromJson(
+                            Map<String, dynamic>.from(e as Map),
+                          ),
+                        )
+                        .toList() ??
+                    [],
+            category: ViewAllCategory.values.firstWhere(
+              (c) => c.name == map['category'],
+              orElse: () => ViewAllCategory.trending,
+            ),
+            // onTap cannot be restored — callers must handle null.
+          );
+        default:
+          return input;
+      }
+    } catch (_) {
+      // Malformed saved extra (an old build's shape, a truncated
+      // state): hand the raw input back instead of crashing the
+      // restore (L4).
+      return input;
     }
   }
 }
@@ -746,6 +774,14 @@ GoRouter appRouter(Ref ref) {
     debugLogDiagnostics: kDebugMode,
     routes: $appRoutes,
     extraCodec: const RouteExtraCodec(),
+    // L3: an unknown location used to land on a dead-end error page
+    // (no back, no way home except the system back). Go home instead.
+    errorBuilder: (context, state) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) const HomeRoute().go(context);
+      });
+      return const SizedBox.shrink();
+    },
   );
 }
 

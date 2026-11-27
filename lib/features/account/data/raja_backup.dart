@@ -52,6 +52,7 @@ class RajaBackup {
     this.settingsUpdatedAt = 0,
     this.addonsSkippedForSecrets = 0,
     this.profileId,
+    this.droppedEntries = 0,
   });
 
   final int version;
@@ -89,6 +90,12 @@ class RajaBackup {
   /// How many add-ons were left out because their URL carries a
   /// credential. Informational.
   final int addonsSkippedForSecrets;
+
+  /// Entries in the backup file that could not be read at all (not a
+  /// map) and were dropped on import. Import-side metadata only: never
+  /// written back out (L12) — the restore report says so instead of
+  /// silently losing bookmarks/history.
+  final int droppedEntries;
 
   /// Unix milliseconds when the backup was made.
   final int exportedAt;
@@ -145,6 +152,15 @@ class RajaBackup {
       );
     }
     final rawSettings = json['settings'];
+    // Entries the comprehensions below drop for not being a map: count
+    // them so the restore report can say so (L12).
+    var droppedEntries = 0;
+    for (final e in (json['history'] as List?) ?? const []) {
+      if (e is! Map) droppedEntries++;
+    }
+    for (final e in (json['library'] as List?) ?? const []) {
+      if (e is! Map) droppedEntries++;
+    }
     return RajaBackup(
       version: version,
       exportedAt: (json['exportedAt'] as num?)?.toInt() ?? 0,
@@ -207,6 +223,7 @@ class RajaBackup {
       profileId: json['profileId'] is String
           ? json['profileId'] as String
           : null,
+      droppedEntries: droppedEntries,
     );
   }
 }

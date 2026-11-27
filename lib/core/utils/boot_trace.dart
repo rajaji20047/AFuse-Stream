@@ -73,4 +73,14 @@ class BootTrace {
       });
     } catch (_) {}
   }
+
+  /// Stops the 1 s heartbeat (L5): its diagnostic value ends once the
+  /// first frame lands, but the timer — a synchronous flushed file write
+  /// on the main isolate — used to run forever.
+  static void stopHeartbeat() {
+    try {
+      _heartbeat?.cancel();
+      _heartbeat = null;
+    } catch (_) {}
+  }
 }

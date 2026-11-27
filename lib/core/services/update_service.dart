@@ -31,49 +31,53 @@ class UpdateService {
 
   UpdateService(this._dio);
 
+  /// Checks GitHub for a newer release. Returns the release when one is
+  /// newer, null when up to date. Throws on failure (offline, rate
+  /// limit, malformed tag) — the caller reports it as an error instead
+  /// of "up to date" (M12); a failure used to collapse to null here.
   Future<GithubRelease?> checkForUpdate() async {
-    try {
-      final currentPackageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = parseReleaseVersion(currentPackageInfo.version);
+    final currentPackageInfo = await PackageInfo.fromPlatform();
+    final currentVersion = parseReleaseVersion(currentPackageInfo.version);
 
-      final response = await _dio.get<Map<String, dynamic>>(
-        'https://api.github.com/repos/$_owner/$_repo/releases/latest',
-      );
+    final response = await _dio.get<Map<String, dynamic>>(
+      'https://api.github.com/repos/$_owner/$_repo/releases/latest',
+    );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final release = GithubRelease.fromJson(response.data!);
-        // Clean tag name (remove 'v' prefix if present)
-        final tagName = release.tagName.replaceAll(RegExp(r'^v'), '');
-        final latestVersion = parseReleaseVersion(tagName);
+    if (response.statusCode == 200 && response.data != null) {
+      final release = GithubRelease.fromJson(response.data!);
+      // Clean tag name (remove 'v' prefix if present)
+      final tagName = release.tagName.replaceAll(RegExp(r'^v'), '');
+      final latestVersion = parseReleaseVersion(tagName);
 
+      if (kDebugMode) {
+        debugPrint(
+          '[UpdateService] Current version: $currentPackageInfo.version -> $currentVersion, Latest version: $tagName -> $latestVersion',
+        );
+      }
+
+      if (latestVersion > currentVersion) {
         if (kDebugMode) {
           debugPrint(
-            '[UpdateService] Current version: $currentPackageInfo.version -> $currentVersion, Latest version: $tagName -> $latestVersion',
+            '[UpdateService] Update check RESULT: New version available ($latestVersion)',
           );
         }
-
-        if (latestVersion > currentVersion) {
-          if (kDebugMode) {
-            debugPrint(
-              '[UpdateService] Update check RESULT: New version available ($latestVersion)',
-            );
-          }
-          return release;
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-              '[UpdateService] Update check RESULT: Already up to date',
-            );
-          }
+        return release;
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[UpdateService] Update check RESULT: Already up to date',
+          );
         }
       }
-    } catch (e) {
-      // Fail silently or log error
-      if (kDebugMode) debugPrint('Update check failed: $e');
     }
     return null;
   }
 
+  /// Downloads the release's platform asset, resuming a partial file
+  /// from a previous attempt (M16): a stalled download used to restart
+  /// from zero, and a truncated file was only discovered at install
+  /// time. Returns null when no asset fits this platform, the download
+  /// fails, or the finished file does not match the asset's size.
   Future<File?> downloadUpdateAsset(
     GithubRelease release,
     void Function(double) onProgress,
@@ -84,18 +88,68 @@ class UpdateService {
 
       final dir = await getApplicationDocumentsDirectory();
       final savePath = '${dir.path}/${asset.name}';
+      final file = File(savePath);
+      final expectedSize = asset.size;
 
-      await _dio.download(
+      // Resume: a previous attempt may have left a partial file. A file
+      // already at the expected size is the finished download (a previous
+      // attempt completed but the install never ran).
+      var downloaded = await file.exists() ? await file.length() : 0;
+      if (expectedSize > 0 && downloaded == expectedSize) return file;
+      // Bigger than the asset (or from another release): start over
+      // rather than appending to the wrong bytes.
+      if (expectedSize > 0 && downloaded > expectedSize) downloaded = 0;
+
+      // Dio's download truncates the file, so resume is done by hand:
+      // a ranged GET streamed into the file in append mode.
+      final response = await _dio.get<ResponseBody>(
         asset.browserDownloadUrl,
-        savePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            onProgress(received / total);
-          }
-        },
+        options: Options(
+          responseType: ResponseType.stream,
+          // An APK is tens of MB; give the download a longer leash than
+          // the shared 15 s receive timeout.
+          receiveTimeout: const Duration(minutes: 10),
+          headers: downloaded > 0
+              ? {'Range': 'bytes=$downloaded-'}
+              : null,
+        ),
       );
+      // The server ignored Range (200, not 206): the bytes coming are
+      // the whole file, so the partial file must be restarted, not
+      // appended to.
+      final resumed = downloaded > 0 && response.statusCode == 206;
+      if (!resumed) downloaded = 0;
+      final sink = file.openWrite(
+        mode: resumed ? FileMode.append : FileMode.write,
+      );
+      var received = 0;
+      try {
+        await for (final chunk in response.data!.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (expectedSize > 0) {
+            final progress = (downloaded + received) / expectedSize;
+            onProgress(progress.clamp(0.0, 1.0).toDouble());
+          }
+        }
+      } finally {
+        await sink.close();
+      }
 
-      return File(savePath);
+      // Integrity: a truncated file must never reach the installer.
+      if (expectedSize > 0) {
+        final actualSize = await file.length();
+        if (actualSize != expectedSize) {
+          if (kDebugMode) {
+            debugPrint(
+              '[UpdateService] Download size mismatch: got $actualSize, expected $expectedSize',
+            );
+          }
+          await file.delete();
+          return null;
+        }
+      }
+      return file;
     } catch (e) {
       if (kDebugMode) debugPrint('Download failed: $e');
       return null;

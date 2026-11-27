@@ -40,6 +40,9 @@ Dio dioClient(Ref ref) {
     BaseOptions(
       connectTimeout: kDioConnectTimeout,
       receiveTimeout: const Duration(seconds: 15),
+      // M10: a stalled upload (tracking sync, GraphQL POST) must not
+      // hang forever either.
+      sendTimeout: const Duration(seconds: 15),
       // Default to a real browser UA so resolution presents the same
       // identity the player will use during playback. Per-request headers
       // from plugins still override this. See http_defaults.dart.
@@ -66,7 +69,15 @@ Dio dioClient(Ref ref) {
             return taskFuture.then((task) {
               return ConnectionTask.fromSocket(
                 task.socket.then((socket) {
-                  return SecureSocket.secure(socket, host: uri.host);
+                  // M9: the 10 s timeout above covers the TCP connect
+                  // only — a host that accepts TCP but never completes
+                  // TLS used to hang the request forever, because Dio's
+                  // own timeout cannot fire until this factory future
+                  // resolves.
+                  return SecureSocket.secure(
+                    socket,
+                    host: uri.host,
+                  ).timeout(const Duration(seconds: 10));
                 }),
                 task.cancel,
               );
@@ -115,6 +126,14 @@ Dio dioClient(Ref ref) {
     },
   );
 
+  // Retries idempotent GETs on transient failures (M10): on flaky
+  // mobile data a single socket error / timeout / 429 / 5xx used to
+  // come back as an empty screen, with no retry anywhere except TMDB
+  // and Anilist. Added before the clearance interceptor so a bot-check
+  // gets solved first (onError runs in reverse order) and only a
+  // failure Clearance passes on is retried here.
+  dio.interceptors.add(_RetryInterceptor(dio));
+
   // Bot checks (Cloudflare, DDoS-Guard): a cleared site's requests carry its
   // clearance, and a check is solved and the request sent again. See
   // clearance/clearance.dart.
@@ -122,4 +141,47 @@ Dio dioClient(Ref ref) {
   if (clearance != null) dio.interceptors.add(clearance);
 
   return dio;
+}
+
+/// Retries idempotent GETs on transient failures (M10). Two retries,
+/// 300/600 ms backoff. Non-GETs are never retried (not idempotent).
+class _RetryInterceptor extends Interceptor {
+  _RetryInterceptor(this._dio);
+
+  final Dio _dio;
+
+  static const _retriesKey = '_retryCount';
+  static const _maxRetries = 2;
+
+  @override
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final request = err.requestOptions;
+    if (request.method != 'GET') return super.onError(err, handler);
+    final retries = (request.extra[_retriesKey] as int?) ?? 0;
+    if (retries >= _maxRetries) return super.onError(err, handler);
+    final status = err.response?.statusCode;
+    final retryable =
+        err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.sendTimeout ||
+        err.type == DioExceptionType.connectionError ||
+        status == 429 ||
+        (status != null && status >= 500);
+    if (!retryable) return super.onError(err, handler);
+    request.extra[_retriesKey] = retries + 1;
+    await Future<void>.delayed(
+      Duration(milliseconds: retries == 0 ? 300 : 600),
+    );
+    try {
+      final response = await _dio.fetch<dynamic>(request);
+      handler.resolve(response);
+    } catch (_) {
+      // The retry failed too: hand the original error on, so the caller
+      // sees the first failure, not the retry's.
+      super.onError(err, handler);
+    }
+  }
 }

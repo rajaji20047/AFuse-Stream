@@ -124,7 +124,7 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => const HomeRoute().go(context),
+            onPressed: () => goDefaultHome(context),
           ),
           const SizedBox(width: 4),
           Expanded(

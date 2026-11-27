@@ -18,6 +18,9 @@ class AnilistExploreService {
     : _dio = Dio(
         baseDio.options.copyWith(baseUrl: 'https://graphql.anilist.co'),
       ) {
+    // M13: share the base client's adapter (DoH, socket timeouts) —
+    // without it this client bypasses them.
+    _dio.httpClientAdapter = baseDio.httpClientAdapter;
     _dio.interceptors.addAll(baseDio.interceptors);
   }
 
@@ -60,6 +63,9 @@ class AnilistExploreService {
           talker.error(
             'AnilistExploreService: GraphQL errors: ${body['errors']}',
           );
+          // M14: an error payload is not data — do not cache it as if
+          // it were, or the tab serves the error for 5 minutes.
+          return body;
         }
         // Cache for 5 minutes
         _cache[cacheKey] = _CacheEntry(
@@ -73,8 +79,10 @@ class AnilistExploreService {
         final response = e.response;
         if (response != null && response.statusCode == 429 && retryCount < 3) {
           final retryAfterStr = response.headers.value('retry-after');
-          int retryAfterSeconds = int.tryParse(retryAfterStr ?? '') ?? 2;
-          if (retryAfterSeconds <= 0) retryAfterSeconds = 2;
+          // M14: a Retry-After of an hour used to stall the call that
+          // long; cap it at 30 s.
+          final retryAfterSeconds =
+              (int.tryParse(retryAfterStr ?? '') ?? 2).clamp(2, 30);
           talker.warning(
             'AnilistExploreService: 429 Rate Limit. Retrying in $retryAfterSeconds seconds (retry $retryCount/3)...',
           );

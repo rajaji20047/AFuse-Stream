@@ -153,6 +153,20 @@ class GeneralSettings {
 
 @Riverpod(keepAlive: true)
 class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
+  /// Serialises setting writes (L8): rapid same-field taps used to
+  /// race — each setter read `state` at completion time, so the slower
+  /// write could overwrite the newer one. Every setter runs through
+  /// this chain, in tap order.
+  Future<void> _writeChain = Future.value();
+
+  Future<void> _enqueue(Future<void> Function() work) {
+    final run = _writeChain.then((_) => work());
+    // Keep the chain alive past a failed write (a later tap must still
+    // run), while the caller still sees its own write's error.
+    _writeChain = run.catchError((_) {});
+    return run;
+  }
+
   @override
   GeneralSettings build() {
     final repository = ref.watch(settingsRepositoryProvider);
@@ -194,16 +208,20 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
     );
   }
 
-  Future<void> setWatchHistoryEnabled(bool enabled) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setWatchHistoryEnabled(enabled);
-    state = state.copyWith(watchHistoryEnabled: enabled);
+  Future<void> setWatchHistoryEnabled(bool enabled) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setWatchHistoryEnabled(enabled);
+      state = state.copyWith(watchHistoryEnabled: enabled);
+    });
   }
 
-  Future<void> setDefaultHomeScreen(String path) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setDefaultHomeScreen(path);
-    state = state.copyWith(defaultHomeScreen: path);
+  Future<void> setDefaultHomeScreen(String path) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setDefaultHomeScreen(path);
+      state = state.copyWith(defaultHomeScreen: path);
+    });
   }
 
   /// Picks the GitHub proxy, and the custom base URL when the choice is
@@ -213,107 +231,134 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
   Future<void> setGithubProxy(
     GithubProxyOption option, {
     String? customUrl,
-  }) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setGithubProxyOption(option.name);
-    final url = customUrl?.trim() ?? state.githubProxyCustomUrl;
-    if (customUrl != null) {
-      await repository.setGithubProxyCustomUrl(url);
-    }
-    // The legacy toggle mirrors the choice, so anything still reading it —
-    // and a downgrade back to the old build — sees the same on/off.
-    await repository.setGithubProxyEnabled(option != GithubProxyOption.none);
-    state = state.copyWith(githubProxy: option, githubProxyCustomUrl: url);
+  }) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setGithubProxyOption(option.name);
+      final url = customUrl?.trim() ?? state.githubProxyCustomUrl;
+      if (customUrl != null) {
+        await repository.setGithubProxyCustomUrl(url);
+      }
+      // The legacy toggle mirrors the choice, so anything still reading it —
+      // and a downgrade back to the old build — sees the same on/off.
+      await repository.setGithubProxyEnabled(option != GithubProxyOption.none);
+      state = state.copyWith(githubProxy: option, githubProxyCustomUrl: url);
+    });
   }
 
-  Future<void> setGithubProxyEnabled(bool enabled) async {
-    await setGithubProxy(
+  Future<void> setGithubProxyEnabled(bool enabled) {
+    // Delegates to setGithubProxy (which enqueues); wrapping
+    // this too would deadlock, because the outer work would
+    // wait on the inner enqueue, which waits on the outer work.
+    return setGithubProxy(
       enabled ? GithubProxyOption.jsdelivr : GithubProxyOption.none,
     );
   }
 
-  Future<void> setAlwaysOnTop(bool enabled) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setAlwaysOnTop(enabled);
-    state = state.copyWith(alwaysOnTop: enabled);
+  Future<void> setAlwaysOnTop(bool enabled) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setAlwaysOnTop(enabled);
+      state = state.copyWith(alwaysOnTop: enabled);
+    });
   }
 
-  Future<void> setTitlePosition(String position) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setTitlePosition(position);
-    state = state.copyWith(titlePosition: position);
+  Future<void> setTitlePosition(String position) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setTitlePosition(position);
+      state = state.copyWith(titlePosition: position);
+    });
   }
 
   /// Nuvio's nav-bar settings (Settings → Navigation bar). Each writes
   /// through to storage and updates the state, so the shell's bar
   /// restyles without an app restart.
-  Future<void> setNavBarStyle(NavBarStyle style) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setNavBarStyle(style.name);
-    state = state.copyWith(navBarStyle: style);
+  Future<void> setNavBarStyle(NavBarStyle style) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setNavBarStyle(style.name);
+      state = state.copyWith(navBarStyle: style);
+    });
   }
 
-  Future<void> setNavBarGlowEnabled(bool enabled) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setNavBarGlow(enabled);
-    state = state.copyWith(navBarGlowEnabled: enabled);
+  Future<void> setNavBarGlowEnabled(bool enabled) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setNavBarGlow(enabled);
+      state = state.copyWith(navBarGlowEnabled: enabled);
+    });
   }
 
-  Future<void> setNavBarGlassEnabled(bool enabled) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setNavBarGlass(enabled);
-    state = state.copyWith(navBarGlassEnabled: enabled);
+  Future<void> setNavBarGlassEnabled(bool enabled) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setNavBarGlass(enabled);
+      state = state.copyWith(navBarGlassEnabled: enabled);
+    });
   }
 
   /// Pass null to clear the override back to the default icon colour.
-  Future<void> setNavBarIconColor(int? argb) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setNavBarIconColor(argb);
-    state = state.copyWith(
-      navBarIconColorArgb: argb,
-      clearNavBarIconColor: argb == null,
-    );
+  Future<void> setNavBarIconColor(int? argb) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setNavBarIconColor(argb);
+      state = state.copyWith(
+        navBarIconColorArgb: argb,
+        clearNavBarIconColor: argb == null,
+      );
+    });
   }
 
-  Future<void> setDownloadDirectory(String? path) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setDownloadDirectory(path);
-    state = state.copyWith(
-      downloadDirectory: path,
-      clearDownloadDirectory: path == null,
-    );
+  Future<void> setDownloadDirectory(String? path) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setDownloadDirectory(path);
+      state = state.copyWith(
+        downloadDirectory: path,
+        clearDownloadDirectory: path == null,
+      );
+    });
   }
 
-  Future<void> setDownloadConcurrency(int value) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setDownloadConcurrency(value);
-    state = state.copyWith(downloadConcurrency: value);
+  Future<void> setDownloadConcurrency(int value) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setDownloadConcurrency(value);
+      state = state.copyWith(downloadConcurrency: value);
+    });
   }
 
   /// Persists a user-supplied TMDB key and mirrors it into [TmdbConfig] so
   /// in-flight screens pick it up without an app restart. Passing an empty
   /// string clears the override and reverts to the build-time key.
-  Future<void> setTmdbApiKey(String value) async {
-    final trimmed = value.trim();
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setTmdbApiKey(trimmed);
-    TmdbConfig.setUserApiKey(trimmed);
-    state = state.copyWith(tmdbApiKey: trimmed);
+  Future<void> setTmdbApiKey(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setTmdbApiKey(trimmed);
+      TmdbConfig.setUserApiKey(trimmed);
+      state = state.copyWith(tmdbApiKey: trimmed);
+    });
   }
 
   /// Persists a user-supplied WeTrakr client id. Passing an empty string
   /// clears it and reverts to the build-time id. The Accounts row and the
   /// service both read this state, so they pick it up without a restart.
-  Future<void> setWetrakrClientId(String value) async {
-    final trimmed = value.trim();
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setWetrakrClientId(trimmed);
-    state = state.copyWith(wetrakrClientId: trimmed);
+  Future<void> setWetrakrClientId(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setWetrakrClientId(trimmed);
+      state = state.copyWith(wetrakrClientId: trimmed);
+    });
   }
 
-  Future<void> setDownloadChunks(int value) async {
-    final repository = ref.read(settingsRepositoryProvider);
-    await repository.setDownloadChunks(value);
-    state = state.copyWith(downloadChunks: value);
+  Future<void> setDownloadChunks(int value) {
+    return _enqueue(() async {
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setDownloadChunks(value);
+      state = state.copyWith(downloadChunks: value);
+    });
   }
 }

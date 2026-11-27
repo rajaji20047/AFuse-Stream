@@ -74,6 +74,15 @@ class StorageService {
   /// (logged-out) boxes.
   String? _activeFuseProfileId;
 
+  /// Whether [init] has assigned every `late` box. False while init is
+  /// still running (or failed): the launch must not build on the boxes
+  /// until this is true (H1 — a timed-out init used to let the first
+  /// build read unassigned boxes and crash with LateInitializationError).
+  bool _isReady = false;
+
+  /// Whether [init] has finished assigning every box.
+  bool get isReady => _isReady;
+
   /// The profile a history/library box belongs to: `history_box_<id>`,
   /// `library_box_<id>`.
   static String fuseProfileHistoryBoxName(String profileId) =>
@@ -95,16 +104,24 @@ class StorageService {
     _hiveDir = supportDir.path;
     Hive.init(supportDir.path);
 
-    _libraryBox = await _safeOpenBox(kLibraryBox);
-    _settingsBox = await _safeOpenBox(kSettingsBox);
-    _extensionsBox = await _safeOpenBox(kExtensionsBox);
+    // Open into locals first: a failure part-way must not leave some
+    // `late` boxes assigned and the rest not (M2) — the launch then fails
+    // cleanly (LaunchErrorApp) instead of crashing on first build.
+    final libraryBox = await _safeOpenBox(kLibraryBox);
+    final settingsBox = await _safeOpenBox(kSettingsBox);
+    final extensionsBox = await _safeOpenBox(kExtensionsBox);
     await _safeOpenBox(
       kDownloadMetadataBox,
     ); // Opened here; later reads go through Hive.box().
-    await initHistory();
+    final historyBox = await _safeOpenBox(kHistoryBox);
+    _libraryBox = libraryBox;
+    _settingsBox = settingsBox;
+    _extensionsBox = extensionsBox;
+    _historyBox = historyBox;
     // The pair init() opened is the legacy (logged-out) pair.
     _legacyLibraryBox = _libraryBox;
     _legacyHistoryBox = _historyBox;
+    _isReady = true;
   }
 
   /// Opens a box, and if it will not open, preserves whatever is on disk
@@ -138,7 +155,19 @@ class StorageService {
         return true;
       }());
       await _quarantineBox(boxName);
-      return Hive.openBox<dynamic>(boxName);
+      try {
+        return await Hive.openBox<dynamic>(boxName);
+      } catch (_) {
+        // The quarantine could not free the files (a locked file) or the
+        // fresh box still will not open: drop whatever is left by name
+        // and try once more, so a stuck lock does not wedge the launch.
+        // (The corrupt files were already renamed aside by the
+        // quarantine above, so this only removes what could not move.)
+        try {
+          await Hive.deleteBoxFromDisk(boxName);
+        } catch (_) {}
+        return await Hive.openBox<dynamic>(boxName);
+      }
     }
   }
 
@@ -199,7 +228,10 @@ class StorageService {
     final items = <MultimediaItem>[];
     for (var i = 0; i < _libraryBox.length; i++) {
       final key = _libraryBox.keyAt(i);
-      final map = Map<String, dynamic>.from(_libraryBox.get(key) as Map);
+      // M1: one bad entry must not poison the whole library read.
+      final raw = _libraryBox.get(key);
+      if (raw is! Map) continue;
+      final map = Map<String, dynamic>.from(raw);
       items.add(
         MultimediaItem(
           title: (map['title'] as String?) ?? '',
@@ -338,8 +370,11 @@ class StorageService {
   }
 
   String getDefaultHomeScreen() {
-    return _settingsBox.get('default_home_screen', defaultValue: '/home')
-        as String;
+    final value = _settingsBox.get(
+      'default_home_screen',
+      defaultValue: '/home',
+    );
+    return value is String ? value : '/home';
   }
 
   Future<void> setDownloadDirectory(String? path) async {
@@ -359,8 +394,8 @@ class StorageService {
   }
 
   int getDownloadConcurrency() {
-    return (_settingsBox.get('download_concurrency', defaultValue: 3) as int)
-        .clamp(1, 10);
+    final value = _settingsBox.get('download_concurrency', defaultValue: 3);
+    return (value is num ? value.toInt() : 3).clamp(1, 10);
   }
 
   Future<void> setDownloadChunks(int value) async {
@@ -368,10 +403,8 @@ class StorageService {
   }
 
   int getDownloadChunks() {
-    return (_settingsBox.get('download_chunks', defaultValue: 8) as int).clamp(
-      1,
-      16,
-    );
+    final value = _settingsBox.get('download_chunks', defaultValue: 8);
+    return (value is num ? value.toInt() : 8).clamp(1, 16);
   }
 
   Future<void> setTitlePosition(String position) async {
@@ -406,7 +439,10 @@ class StorageService {
   }
 
   bool getNavBarGlow() {
-    return _settingsBox.get('nav_bar_glow', defaultValue: true) as bool;
+    return _asBool(
+      _settingsBox.get('nav_bar_glow', defaultValue: true),
+      true,
+    );
   }
 
   /// Nav bar glass: the pill's liquid-glass layer. On by default; off
@@ -416,7 +452,10 @@ class StorageService {
   }
 
   bool getNavBarGlass() {
-    return _settingsBox.get('nav_bar_glass', defaultValue: true) as bool;
+    return _asBool(
+      _settingsBox.get('nav_bar_glass', defaultValue: true),
+      true,
+    );
   }
 
   /// Nav bar icon colour override (ARGB int): the unselected icons'
@@ -439,7 +478,10 @@ class StorageService {
   }
 
   bool getDevLoadAssets() {
-    return _settingsBox.get('dev_load_assets', defaultValue: false) as bool;
+    return _asBool(
+      _settingsBox.get('dev_load_assets', defaultValue: false),
+      false,
+    );
   }
 
   Future<void> setDevQoeLog(bool enabled) async {
@@ -447,7 +489,10 @@ class StorageService {
   }
 
   bool getDevQoeLog() {
-    return _settingsBox.get('dev_qoe_log', defaultValue: false) as bool;
+    return _asBool(
+      _settingsBox.get('dev_qoe_log', defaultValue: false),
+      false,
+    );
   }
 
   // --- Active Provider ---
@@ -521,8 +566,11 @@ class StorageService {
   }
 
   String getExploreLanguage() {
-    return _settingsBox.get('explore_language', defaultValue: 'en-US')
-        as String;
+    final value = _settingsBox.get(
+      'explore_language',
+      defaultValue: 'en-US',
+    );
+    return value is String ? value : 'en-US';
   }
 
   // --- Watch History Toggle ---
@@ -646,8 +694,24 @@ class StorageService {
     }
   }
 
+  /// A stored bool, tolerating the `0`/`1` a backup may carry (M7).
+  static bool _asBool(Object? value, bool fallback) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    return fallback;
+  }
+
   T? getPlayerSetting<T>(String key, {T? defaultValue}) {
-    return _settingsBox.get(key, defaultValue: defaultValue) as T?;
+    final value = _settingsBox.get(key, defaultValue: defaultValue);
+    if (value is T) return value;
+    // A value stored with the wrong numeric type (a double where an int
+    // is expected, carried through a backup) must not crash the provider
+    // build that reads it: coerce instead of throwing (M7).
+    if (value is num && T == int) return value.toInt() as T;
+    if (value is num && T == double) return value.toDouble() as T;
+    if (value is int && T == bool) return (value != 0) as T;
+    if (value is bool && T == int) return (value ? 1 : 0) as T;
+    return defaultValue;
   }
 
   /// The raw stored value of a settings key, whatever its type (v9: the
@@ -713,20 +777,34 @@ class StorageService {
   /// `getWatchHistory`, `getLibraryItems`, the backup collect/restore and
   /// the player resume positions all read the active pair.
   ///
+  /// Guards [setActiveFuseProfile] against overlapping switches (H2):
+  /// a slow first-time box open must not overwrite the boxes of a switch
+  /// that already completed.
+  int _profileSwitchGeneration = 0;
+
   /// Switching invalidates the history cache, so the next read is the new
   /// profile's data, not the old profile's. `clearAllHistory` clears only
   /// the active profile's box, never all profiles'.
   Future<void> setActiveFuseProfile(String? profileId) async {
+    final generation = ++_profileSwitchGeneration;
     _activeFuseProfileId = profileId;
+    Box<dynamic>? historyBox;
+    Box<dynamic>? libraryBox;
     if (profileId == null) {
-      final legacyHistory = _legacyHistoryBox;
-      final legacyLibrary = _legacyLibraryBox;
-      if (legacyHistory != null) _historyBox = legacyHistory;
-      if (legacyLibrary != null) _libraryBox = legacyLibrary;
+      historyBox = _legacyHistoryBox;
+      libraryBox = _legacyLibraryBox;
     } else {
-      _historyBox = await _fuseProfileHistoryBox(profileId);
-      _libraryBox = await _fuseProfileLibraryBox(profileId);
+      historyBox = await _fuseProfileHistoryBox(profileId);
+      libraryBox = await _fuseProfileLibraryBox(profileId);
     }
+    // A newer switch may have completed while this one awaited its
+    // boxes: only the latest switch owns the active pair.
+    if (generation != _profileSwitchGeneration ||
+        _activeFuseProfileId != profileId) {
+      return;
+    }
+    if (historyBox != null) _historyBox = historyBox;
+    if (libraryBox != null) _libraryBox = libraryBox;
     _historyCacheDirty = true;
   }
 
@@ -774,10 +852,10 @@ class StorageService {
       final key = legacyHistory.keyAt(i);
       final raw = legacyHistory.get(key);
       if (key is! String || raw is! Map) continue;
-      final legacyTimestamp = (raw['timestamp'] as int?) ?? 0;
+      final legacyTimestamp = (raw['timestamp'] as num?)?.toInt() ?? 0;
       final existing = historyBox.get(key);
       final existingTimestamp = existing is Map
-          ? (existing['timestamp'] as int?) ?? 0
+          ? (existing['timestamp'] as num?)?.toInt() ?? 0
           : 0;
       if (!historyBox.containsKey(key) ||
           legacyTimestamp > existingTimestamp) {
@@ -924,8 +1002,12 @@ class StorageService {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     };
 
+    // H3: capture the box once — a profile switch between the two puts
+    // must not land the main entry in one profile and the episode entry
+    // in another.
+    final box = _historyBox;
     // Save main entry (keyed by series/movie URL)
-    await _historyBox.put(_getKey(item.url), entry);
+    await box.put(_getKey(item.url), entry);
 
     // Save episode-specific progress for both series and anime.
     final isSeries =
@@ -934,30 +1016,33 @@ class StorageService {
 
     if (isSeries && lastEpisodeUrl != null) {
       final episodeKey = "EP_${_getKey(lastEpisodeUrl)}";
-      await _historyBox.put(episodeKey, entry);
+      await box.put(episodeKey, entry);
     }
 
     _historyCacheDirty = true;
   }
 
   Future<void> removeFromHistory(String url) async {
+    // H3: capture the box once — a profile switch mid-loop must not
+    // delete the *new* profile's episode entries.
+    final box = _historyBox;
     final mainKey = _getKey(url);
-    await _historyBox.delete(mainKey);
+    await box.delete(mainKey);
 
     // Cascade delete: find and remove all EP_ entries for this series
     final keysToDelete = <String>[];
-    for (var i = 0; i < _historyBox.length; i++) {
-      final key = _historyBox.keyAt(i) as String;
-      if (key.startsWith("EP_")) {
-        final entry = _historyBox.get(key);
-        if (entry != null && entry['url'] == url) {
+    for (var i = 0; i < box.length; i++) {
+      final key = box.keyAt(i);
+      if (key is String && key.startsWith("EP_")) {
+        final entry = box.get(key);
+        if (entry is Map && entry['url'] == url) {
           keysToDelete.add(key);
         }
       }
     }
 
     for (final k in keysToDelete) {
-      await _historyBox.delete(k);
+      await box.delete(k);
     }
 
     _historyCacheDirty = true;
@@ -969,22 +1054,25 @@ class StorageService {
     int timestamp,
     int position,
   ) async {
+    // H3: capture the box once — a profile switch between the reads
+    // must not split the main and episode updates across profiles.
+    final box = _historyBox;
     final mainKey = _getKey(url);
-    final entry = _historyBox.get(mainKey);
-    if (entry != null) {
-      final updatedEntry = Map<String, dynamic>.from(entry as Map);
+    final entry = box.get(mainKey);
+    if (entry is Map) {
+      final updatedEntry = Map<String, dynamic>.from(entry);
       updatedEntry['timestamp'] = timestamp;
       updatedEntry['position'] = position;
-      await _historyBox.put(mainKey, updatedEntry);
+      await box.put(mainKey, updatedEntry);
 
       if (lastEpisodeUrl != null) {
         final episodeKey = "EP_${_getKey(lastEpisodeUrl)}";
-        final epEntry = _historyBox.get(episodeKey);
-        if (epEntry != null) {
-          final updatedEpEntry = Map<String, dynamic>.from(epEntry as Map);
+        final epEntry = box.get(episodeKey);
+        if (epEntry is Map) {
+          final updatedEpEntry = Map<String, dynamic>.from(epEntry);
           updatedEpEntry['timestamp'] = timestamp;
           updatedEpEntry['position'] = position;
-          await _historyBox.put(episodeKey, updatedEpEntry);
+          await box.put(episodeKey, updatedEpEntry);
         }
       }
       _historyCacheDirty = true;
@@ -1003,15 +1091,22 @@ class StorageService {
 
     final items = <Map<String, dynamic>>[];
     for (var i = 0; i < _historyBox.length; i++) {
-      final key = _historyBox.keyAt(i) as String;
+      final key = _historyBox.keyAt(i);
+      if (key is! String) continue;
       // Filter out episode-specific entries from the main history list
       if (key.startsWith("EP_")) continue;
 
-      final map = Map<String, dynamic>.from(_historyBox.get(key) as Map);
-      items.add(map);
+      // H4: one bad entry (not a Map) must not crash all of Continue
+      // Watching on every launch — skip it, like getAllHistoryEntries.
+      final raw = _historyBox.get(key);
+      if (raw is! Map) continue;
+      items.add(Map<String, dynamic>.from(raw));
     }
     items.sort(
-      (a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int),
+      (a, b) =>
+          ((b['timestamp'] as num?)?.toInt() ?? 0).compareTo(
+            (a['timestamp'] as num?)?.toInt() ?? 0,
+          ),
     );
 
     _cachedHistory = items;
@@ -1057,20 +1152,23 @@ class StorageService {
     _historyCacheDirty = true;
   }
 
+  /// The history entry under [key], or null when there is none or it
+  /// is not a map (M1: one bad entry must not poison every resume lookup
+  /// — the player and details screens call these getters during build).
+  Map<String, dynamic>? _historyEntry(String key) {
+    final raw = _historyBox.get(key);
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
+  }
+
   int getPosition(String url) {
     // Check main entry first (movies use this)
-    final key = _getKey(url);
-    if (_historyBox.containsKey(key)) {
-      final map = _historyBox.get(key) as Map;
-      return (map['position'] as int?) ?? 0;
-    }
+    final map = _historyEntry(_getKey(url));
+    if (map != null) return (map['position'] as num?)?.toInt() ?? 0;
 
     // Fallback to episode if applicable (for legacy or mixed lookups)
-    final epKey = "EP_${_getKey(url)}";
-    if (_historyBox.containsKey(epKey)) {
-      final map = _historyBox.get(epKey) as Map;
-      return (map['position'] as int?) ?? 0;
-    }
+    final epMap = _historyEntry("EP_${_getKey(url)}");
+    if (epMap != null) return (epMap['position'] as num?)?.toInt() ?? 0;
     return 0;
   }
 
@@ -1081,18 +1179,17 @@ class StorageService {
     int? episode,
   }) {
     final epKey = "EP_${_getKey(epUrl)}";
-    if (_historyBox.containsKey(epKey)) {
-      final map = _historyBox.get(epKey) as Map;
-      return (map['position'] as int?) ?? 0;
+    final epMap = _historyEntry(epKey);
+    if (epMap != null) {
+      return (epMap['position'] as num?)?.toInt() ?? 0;
     }
 
     // Fallback: If we have season/episode info, look into the main item entry
     if (mainUrl != null && season != null && episode != null) {
-      final mainKey = _getKey(mainUrl);
-      if (_historyBox.containsKey(mainKey)) {
-        final map = _historyBox.get(mainKey) as Map;
-        if (map['season'] == season && map['episode'] == episode) {
-          return (map['position'] as int?) ?? 0;
+      final mainMap = _historyEntry(_getKey(mainUrl));
+      if (mainMap != null) {
+        if (mainMap['season'] == season && mainMap['episode'] == episode) {
+          return (mainMap['position'] as num?)?.toInt() ?? 0;
         }
       }
     }
@@ -1100,17 +1197,11 @@ class StorageService {
   }
 
   int getDuration(String url) {
-    final key = _getKey(url);
-    if (_historyBox.containsKey(key)) {
-      final map = _historyBox.get(key) as Map;
-      return (map['duration'] as int?) ?? 0;
-    }
+    final map = _historyEntry(_getKey(url));
+    if (map != null) return (map['duration'] as num?)?.toInt() ?? 0;
 
-    final epKey = "EP_${_getKey(url)}";
-    if (_historyBox.containsKey(epKey)) {
-      final map = _historyBox.get(epKey) as Map;
-      return (map['duration'] as int?) ?? 0;
-    }
+    final epMap = _historyEntry("EP_${_getKey(url)}");
+    if (epMap != null) return (epMap['duration'] as num?)?.toInt() ?? 0;
     return 0;
   }
 
@@ -1121,18 +1212,17 @@ class StorageService {
     int? episode,
   }) {
     final epKey = "EP_${_getKey(epUrl)}";
-    if (_historyBox.containsKey(epKey)) {
-      final map = _historyBox.get(epKey) as Map;
-      return (map['duration'] as int?) ?? 0;
+    final epMap = _historyEntry(epKey);
+    if (epMap != null) {
+      return (epMap['duration'] as num?)?.toInt() ?? 0;
     }
 
     // Fallback: Look into main item entry
     if (mainUrl != null && season != null && episode != null) {
-      final mainKey = _getKey(mainUrl);
-      if (_historyBox.containsKey(mainKey)) {
-        final map = _historyBox.get(mainKey) as Map;
-        if (map['season'] == season && map['episode'] == episode) {
-          return (map['duration'] as int?) ?? 0;
+      final mainMap = _historyEntry(_getKey(mainUrl));
+      if (mainMap != null) {
+        if (mainMap['season'] == season && mainMap['episode'] == episode) {
+          return (mainMap['duration'] as num?)?.toInt() ?? 0;
         }
       }
     }
@@ -1140,21 +1230,15 @@ class StorageService {
   }
 
   String? getLastStreamUrl(String url) {
-    final key = _getKey(url);
-    if (_historyBox.containsKey(key)) {
-      final map = _historyBox.get(key) as Map;
-      return map['lastStreamUrl'] as String?;
-    }
-    return null;
+    final map = _historyEntry(_getKey(url));
+    final value = map?['lastStreamUrl'];
+    return value is String ? value : null;
   }
 
   String? getLastEpisodeUrl(String url) {
-    final key = _getKey(url);
-    if (_historyBox.containsKey(key)) {
-      final map = _historyBox.get(key) as Map;
-      return map['lastEpisodeUrl'] as String?;
-    }
-    return null;
+    final map = _historyEntry(_getKey(url));
+    final value = map?['lastEpisodeUrl'];
+    return value is String ? value : null;
   }
 
   static const String _kExtensionRepoUrls = 'extension_repo_urls';
@@ -1189,11 +1273,13 @@ class StorageService {
   /// `<name>.hive`, `<name>.hivec` and `<name>.lock` by name.
   Future<void> _closeAndDeleteBox(
     String name,
-    Box<dynamic> Function() box,
+    Box<dynamic>? Function() box,
   ) async {
     try {
+      // A null box was never opened this run: nothing to close, and the
+      // delete below must not close some *other* box by mistake (L1).
       final opened = box();
-      if (opened.isOpen) await opened.close();
+      if (opened != null && opened.isOpen) await opened.close();
     } catch (e) {
       // An unassigned `late` field, or a box that will not close cleanly.
       // Either way the delete below is still both possible and wanted.
@@ -1320,21 +1406,25 @@ class StorageService {
         () => _legacyHistoryBox ?? _historyBox,
       );
       for (final profileId in fuseProfileIdsToDelete) {
+        // Close only that profile's own box: the old fallback through
+        // the other box (or the active pair) closed a box that belongs
+        // to a different profile — or the active one (L1).
         await _closeAndDeleteBox(
           fuseProfileHistoryBoxName(profileId),
-          () =>
-              _fuseProfileHistoryBoxes[profileId] ??
-              _fuseProfileLibraryBoxes[profileId] ??
-              _historyBox,
+          () => _fuseProfileHistoryBoxes[profileId],
         );
         await _closeAndDeleteBox(
           fuseProfileLibraryBoxName(profileId),
-          () =>
-              _fuseProfileLibraryBoxes[profileId] ??
-              _fuseProfileHistoryBoxes[profileId] ??
-              _libraryBox,
+          () => _fuseProfileLibraryBoxes[profileId],
         );
+        // The closed boxes are gone from the cache, so a later open
+        // re-opens them instead of returning a closed box.
+        _fuseProfileHistoryBoxes.remove(profileId);
+        _fuseProfileLibraryBoxes.remove(profileId);
       }
+      // The history cache may hold entries from a deleted box.
+      _cachedHistory = null;
+      _historyCacheDirty = true;
 
       // Only delete extension data box if NOT keeping extensions
       if (!keepRepos) {

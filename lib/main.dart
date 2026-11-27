@@ -253,8 +253,11 @@ class _AppRootState extends State<AppRoot> {
     _storageService = StorageService();
     BootTrace.mark('INIT start');
     try {
+      // Kept in hand: the second-chance wait below awaits this same
+      // future, not a second init().
+      final storageInit = _storageService.init();
       await Future.wait([
-        _initWithTimeout(_storageService.init(), 'StorageService.init'),
+        _initWithTimeout(storageInit, 'StorageService.init'),
         _initWithTimeout(DohService.instance.init(), 'DohService.init'),
         // Saved bot-check clearances; opens no browser.
         _initWithTimeout(Clearance.instance.init(), 'Clearance.init'),
@@ -264,6 +267,46 @@ class _AppRootState extends State<AppRoot> {
           }),
       ]);
       BootTrace.mark('INIT all futures done');
+
+      // H1 + M8: storage and Clearance are the two inits the first build
+      // depends on — storage's boxes are `late`, and the shared Dio
+      // attaches its bot-check interceptor once, at construction. A 10 s
+      // timeout above lets the launch proceed, but if either is still
+      // running it must finish before the app builds: otherwise the
+      // first build reads unassigned boxes (LateInitializationError) or
+      // the session never gets bot-check solving. Give both a bounded
+      // second chance in parallel. If storage still has not finished,
+      // fail the launch (LaunchErrorApp) rather than crash on first
+      // build; Clearance failing just means no interceptor, as before.
+      final secondChance = <Future<void>>[];
+      if (!_storageService.isReady) {
+        secondChance.add(
+          storageInit.timeout(
+            const Duration(seconds: 20),
+            onTimeout: () {
+              throw StateError(
+                'StorageService.init did not finish within 30 s',
+              );
+            },
+          ),
+        );
+      }
+      if (!Clearance.instance.isReady) {
+        secondChance.add(
+          Clearance.instance
+              .init()
+              .timeout(
+                const Duration(seconds: 15),
+                onTimeout: () {
+                  // Still not ready: launch proceeds without bot-check
+                  // solving, as before.
+                },
+              )
+              .catchError((_) {}),
+        );
+      }
+      if (secondChance.isNotEmpty) await Future.wait(secondChance);
+      BootTrace.mark('INIT second-chance done');
 
       // The developer option's QoE switch, kept across launches.
       // Guarded: if storage init timed out above, its boxes may not be open
@@ -295,9 +338,18 @@ class _AppRootState extends State<AppRoot> {
       }
       BootTrace.mark('INIT TMDB key mirrored');
 
+      // Guarded like the QoE and TMDB reads above (L6): a storage
+      // timeout must not turn a recovered launch into an error.
+      // Android never reaches this branch.
       if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        final alwaysOnTop = _storageService.isAlwaysOnTop();
-        await windowManager.setAlwaysOnTop(alwaysOnTop);
+        try {
+          final alwaysOnTop = _storageService.isAlwaysOnTop();
+          await windowManager.setAlwaysOnTop(alwaysOnTop);
+        } catch (e) {
+          debugPrint(
+            '[AppRoot] always-on-top failed (storage may have timed out): $e',
+          );
+        }
       }
 
       BootTrace.mark('INIT setting _initialized=true');
@@ -386,6 +438,9 @@ class _MyAppState extends ConsumerState<MyApp> {
     // A page's own dialog its extension left to the app: Raja's, over whatever shows (Phase 7c).
     ExtensionPages.shared.dialogs = _showPageDialog;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The boot trace's 1 s heartbeat has done its job once the first
+      // frame lands (L5): stop it instead of writing to disk forever.
+      BootTrace.stopHeartbeat();
       ref.read(downloadServiceProvider).init();
       // Raja Account (v2.9.4): build the account provider at startup so
       // the session is restored and the auto-sync listeners are live even
@@ -521,11 +576,13 @@ class _MyAppState extends ConsumerState<MyApp> {
   /// Loads the installed .cs3 plugins in the background (v7), one at a
   /// time, so the first search or title does not pay for loading a
   /// plugin's code. Starts only after the launch and the update check are
-  /// over; iOS only (the platform this build ships for); stops for good on
-  /// a memory warning or when the app leaves the foreground. See
-  /// [CloudStreamRepository.warmUp] for what it loads and how many.
+  /// over; stops for good on a memory warning or when the app leaves the
+  /// foreground. See [CloudStreamRepository.warmUp] for what it loads and
+  /// how many. (Was iOS-gated — a stale comment from when this build
+  /// shipped iOS; this build ships Android, and the warm-up never ran
+  /// here at all. M11.)
   Future<void> _warmUpPlugins() async {
-    if (!mounted || kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+    if (!mounted || kIsWeb) {
       return;
     }
     final guard = PluginWarmUpGuard()..attach();
@@ -595,7 +652,16 @@ class _MyAppState extends ConsumerState<MyApp> {
               .autoUpdate(),
         ),
       ),
-    ]);
+    ]).timeout(const Duration(minutes: 5), onTimeout: () {
+      // One hung system must not block the merged report — and the
+      // warm-up that follows it — forever (M11).
+      if (kDebugMode) {
+        debugPrint(
+          'Extension update check timed out; skipping the report',
+        );
+      }
+      return const <ExtensionUpdateReport>[];
+    });
     final report = ExtensionUpdateReport.merge(reports);
     if (report.isEmpty || !mounted) return;
     _announceExtensionUpdates(report);
