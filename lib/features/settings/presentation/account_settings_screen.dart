@@ -14,6 +14,7 @@ import 'widgets/tracking_auth_dialog.dart';
 import 'player_settings_provider.dart';
 import 'general_settings_provider.dart';
 import '../../../core/network/doh_service.dart';
+import '../../../core/network/warp_service.dart';
 
 import '../../../core/logger/app_logger.dart';
 import '../../../core/config/tmdb_config.dart';
@@ -716,12 +717,67 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                       final dohState =
                           ref.watch(dohSettingsProvider).asData?.value ??
                           const DohSettings();
+                      final warpState =
+                          ref.watch(warpSettingsProvider).asData?.value ??
+                          const WarpSettings();
                       final generalSettings = ref.watch(
                         generalSettingsProvider,
                       );
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          SettingsTile(
+                            reicon: Reicon.cloud,
+                            title: 'WARP Mode',
+                            subtitle:
+                                'Bypass ISP restrictions with Cloudflare WARP VPN',
+                            // The live port, Vega-style, once the proxy
+                            // is up; nothing while it is off.
+                            value: warpState.running && warpState.port != null
+                                ? 'Active :${warpState.port}'
+                                : null,
+                            trailing: Switch(
+                              value: warpState.enabled,
+                              onChanged: (val) async {
+                                if (warpState.busy) return;
+                                try {
+                                  await ref
+                                      .read(warpSettingsProvider.notifier)
+                                      .setEnabled(val);
+                                } catch (e) {
+                                  final message = e is WarpException
+                                      ? e.message
+                                      : e.toString();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('WARP: $message'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                            onTap: () async {
+                              if (warpState.busy) return;
+                              try {
+                                await ref
+                                    .read(warpSettingsProvider.notifier)
+                                    .setEnabled(!warpState.enabled);
+                              } catch (e) {
+                                final message = e is WarpException
+                                    ? e.message
+                                    : e.toString();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('WARP: $message'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
                           SettingsTile(
                             reicon: Reicon.shieldLock,
                             title: l10n.dnsOverHttps,

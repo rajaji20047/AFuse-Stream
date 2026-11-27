@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -8,6 +9,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'clearance/clearance.dart';
 import 'doh_service.dart';
 import 'http_defaults.dart';
+import 'warp_service.dart';
 
 part 'dio_client_provider.g.dart';
 
@@ -84,6 +86,53 @@ Dio dioClient(Ref ref) {
             });
           }
           return taskFuture;
+        }
+
+        // WARP: when the proxy is up, every request goes through it —
+        // the local usque HTTP proxy on 127.0.0.1:<port>. Localhost is
+        // never proxied (the proxy itself, and local servers). A proxy
+        // that died on its own refuses the connect; that request falls
+        // back to the normal path and the stale port is cleared, so the
+        // next request does not keep pointing at a dead port — the same
+        // fallback Vega's OkHttp factory does when its proxy dies.
+        final warpPort = WarpService.instance.proxyPort;
+        if (warpPort != null &&
+            warpPort > 0 &&
+            host != '127.0.0.1' &&
+            host != 'localhost') {
+          try {
+            final proxySocket = await Socket.connect(
+              '127.0.0.1',
+              warpPort,
+            ).timeout(const Duration(seconds: 10));
+            if (uri.scheme == 'https') {
+              await httpConnect(proxySocket, host, uri.port);
+              return connectWithTlsUpgrade(
+                Future.value(
+                  ConnectionTask.fromSocket(
+                    Future.value(proxySocket),
+                    () => proxySocket.destroy(),
+                  ),
+                ),
+              );
+            }
+            return ConnectionTask.fromSocket(
+              Future.value(proxySocket),
+              () => proxySocket.destroy(),
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('[WARP] Proxy connect failed ($e); going direct');
+            }
+            // The proxy is dead: clear the stale port so the next
+            // request does not retry it, and fall through to the
+            // normal (DoH/direct) path for this request.
+            unawaited(
+              WarpService.instance.getStatus().catchError(
+                (_) => WarpStatus.stopped,
+              ),
+            );
+          }
         }
 
         // Optionally skip if DoH is disabled

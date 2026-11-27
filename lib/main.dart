@@ -29,6 +29,7 @@ import 'core/storage/storage_service.dart';
 import 'core/services/stream_cache/stream_cache_service.dart';
 import 'features/player/domain/temp_download.dart';
 import 'core/network/doh_service.dart';
+import 'core/network/warp_service.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
 
@@ -305,6 +306,10 @@ class _AppRootState extends State<AppRoot> {
       await Future.wait([
         _initWithTimeout(storageInit, 'StorageService.init'),
         _initWithTimeout(DohService.instance.init(), 'DohService.init'),
+        // WARP left on: bring the local proxy back up. Best-effort —
+        // a failed start must not break launch, and the start keeps
+        // running in the background past the 10 s timeout.
+        _initWithTimeout(WarpService.instance.init(), 'WarpService.init'),
         // Saved bot-check clearances; opens no browser.
         _initWithTimeout(Clearance.instance.init(), 'Clearance.init'),
         if (Platform.isAndroid)
