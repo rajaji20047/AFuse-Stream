@@ -948,9 +948,23 @@ globalThis[$installerKey] = function(__ssTok) {
     }
 
     List<Episode>? episodes;
-    if (isSeries) {
+    if (isSeries || type == MultimediaContentType.anime) {
       episodes = await _episodesFromLinkList(linkList);
+    } else if (type == MultimediaContentType.movie ||
+        type == MultimediaContentType.other) {
+      // A film has no episode list, but the details page's Play button is
+      // gated on `episodes` being non-empty — without one the button is
+      // dead and neither tap (direct play) nor hold (links sheet) works.
+      // A film is one episode: itself. The episodes section is gated on
+      // !isMovie, so this never draws episode UI for a film.
+      episodes = [
+        Episode(
+          name: (info['title'] as String?) ?? '',
+          url: url,
+        ),
+      ];
     }
+    // A livestream keeps episodes null, as before.
 
     // getMeta may return no image at all (empty string, not null) while
     // the listing that led here carried a poster — fall back to it so the
