@@ -514,7 +514,7 @@
   "@add": {
     "description": "Short action label for a confirm button, e.g. adding a repository."
   },
-  "extensionsSubtitle": "Fuse Repo, CloudStream (.cs3), Nuvio & Stremio",
+  "extensionsSubtitle": "Fuse Repo, Vega, CloudStream (.cs3), Nuvio & Stremio",
   "pluginsSegmentInstalled": "Installed",
   "pluginsSegmentAdd": "Add Plugins",
   "pluginsEmptyInstalledHint": "Open Add Plugins to add a repository and install extensions.",
@@ -886,6 +886,15 @@
   "episodes": "Episodes",
   "selectSourceToPlay": "Please select a source from 'Available Sources' above to play.",
   "episodeCountOnly": "{count, plural, =1{1 Episode} other{{count} Episodes}}",
+  "episodeWithNumber": "Episode {number}",
+  "@episodeWithNumber": {
+    "placeholders": {
+      "number": {
+        "type": "Object"
+      }
+    }
+  },
+  "findEpisode": "Find episode",
   "noEpisodesFound": "No episodes found",
   "local": "Local",
   "remote": "Remote",
@@ -1043,6 +1052,10 @@
   "showEpisodeNavigation": "Previous / next episode buttons",
   "@showEpisodeNavigation": {
     "description": "Player Controls toggle for previous and next episode transport buttons. The Episodes tab in Options remains available."
+  },
+  "showPlayerSwitchButton": "Player switch button",
+  "@showPlayerSwitchButton": {
+    "description": "Player Controls toggle for the top-row button that switches between the MPV and VLC engines. Off hides the button; the engine choice itself is unchanged."
   },
   "playerNoProviderSelected": "No provider selected.",
   "@playerNoProviderSelected": {

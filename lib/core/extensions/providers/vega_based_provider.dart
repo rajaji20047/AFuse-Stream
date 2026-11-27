@@ -1156,6 +1156,22 @@ globalThis[$installerKey] = function(__ssTok) {
       // another server.
     }
     _recordSkipIntervals(link, s['skip']);
+    // The provider's own display tag for this stream ("480p • MP4 •
+    // 310 MB"): quality, container and size in one label. `tag` is the
+    // joined string when present, else the `tags` list joined the same
+    // way; absent on providers that give neither.
+    String? tag;
+    final rawTag = s['tag'];
+    if (rawTag is String && rawTag.trim().isNotEmpty) {
+      tag = rawTag.trim();
+    } else if (s['tags'] is List) {
+      final parts = (s['tags'] as List)
+          .whereType<String>()
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) tag = parts.join(' • ');
+    }
     return StreamResult(
       url: link,
       source: server,
@@ -1166,6 +1182,7 @@ globalThis[$installerKey] = function(__ssTok) {
       drmKid: drmKid,
       drmKey: drmKey,
       licenseUrl: licenseUrl,
+      tag: tag,
     );
   }
 

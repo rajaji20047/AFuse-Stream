@@ -766,6 +766,12 @@ class StreamResult {
   final String? drmKey;
   final String? licenseUrl;
 
+  /// The provider's own display tag for this stream, when it gave one
+  /// (e.g. "480p • MP4 • 310 MB"): quality, container and size in one
+  /// label. Null when the provider gave no tag; the row then falls back
+  /// to the server + quality text.
+  final String? tag;
+
   const StreamResult({
     required this.url,
     required this.source,
@@ -776,6 +782,7 @@ class StreamResult {
     this.drmKid,
     this.drmKey,
     this.licenseUrl,
+    this.tag,
   });
 
   String get displaySource =>
@@ -791,6 +798,7 @@ class StreamResult {
     String? drmKid,
     String? drmKey,
     String? licenseUrl,
+    String? tag,
   }) {
     return StreamResult(
       url: url ?? this.url,
@@ -802,6 +810,7 @@ class StreamResult {
       drmKid: drmKid ?? this.drmKid,
       drmKey: drmKey ?? this.drmKey,
       licenseUrl: licenseUrl ?? this.licenseUrl,
+      tag: tag ?? this.tag,
     );
   }
 
@@ -815,6 +824,7 @@ class StreamResult {
     'drmKid': drmKid,
     'drmKey': drmKey,
     'licenseUrl': licenseUrl,
+    'tag': tag,
   };
 
   factory StreamResult.fromJson(Map<String, dynamic> json) {
@@ -838,6 +848,7 @@ class StreamResult {
       drmKid: json['drmKid'] as String?,
       drmKey: json['drmKey'] as String?,
       licenseUrl: json['licenseUrl'] as String?,
+      tag: json['tag'] as String?,
     );
   }
 }

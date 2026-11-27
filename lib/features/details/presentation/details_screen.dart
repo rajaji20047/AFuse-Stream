@@ -21,6 +21,7 @@ import '../../library/presentation/library_state.dart';
 import '../data/tmdb_details_provider.dart';
 import 'details_controller.dart';
 import "widgets/details_layout_widgets.dart";
+import "widgets/vega_details_widgets.dart";
 import "widgets/details_desktop_hero.dart";
 import "widgets/hero_details_widgets.dart";
 import "widgets/premium_details_widgets.dart";
@@ -512,6 +513,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     AppLocalizations l10n,
     List<TmdbCast>? tmdbCast,
   ) {
+    // Vega-only details UI, as on the phone page: every other provider
+    // renders the shared UI below exactly as before.
+    final isVega =
+        isVegaDetailsItem(item) ||
+        (details != null && isVegaDetailsItem(details));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -530,16 +536,26 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           )
         else if (!isMovie && details?.episodes != null)
-          DetailsSeasonListWrapper(itemUrl: widget.item.url),
+          if (isVega)
+            VegaSeriesEpisodesSection(
+              parentItem: item,
+              itemUrl: widget.item.url,
+            )
+          else
+            DetailsSeasonListWrapper(itemUrl: widget.item.url)
+        else if (isMovie && isVega)
+          VegaMovieQualitySection(item: item, details: details),
 
         const SizedBox(height: 16),
 
-        // Episode grid (non-sliver version)
-        DetailsDesktopEpisodeColumn(
-          parentItem: item,
-          itemUrl: widget.item.url,
-          isMovie: isMovie,
-        ),
+        // Episode grid (non-sliver version); a Vega series shows its own
+        // episode pills above.
+        if (!isVega || isMovie)
+          DetailsDesktopEpisodeColumn(
+            parentItem: item,
+            itemUrl: widget.item.url,
+            isMovie: isMovie,
+          ),
 
         const SizedBox(height: 32),
 
@@ -587,6 +603,12 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     final theme = Theme.of(context);
     final isLoading = detailsState is AsyncLoading;
     final provider = item.provider;
+    // Vega-only details UI (quality list for a film, episode pills for a
+    // series): every other provider renders the shared UI below exactly
+    // as before.
+    final isVega =
+        isVegaDetailsItem(item) ||
+        (details != null && isVegaDetailsItem(details));
     final infoColumns = detailsInfoColumns(
       l10n,
       item,
@@ -694,18 +716,29 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
                   ),
                 )
               else if (!isMovie && details?.episodes != null)
-                DetailsSeasonListWrapper(itemUrl: widget.item.url),
+                if (isVega)
+                  VegaSeriesEpisodesSection(
+                    parentItem: item,
+                    itemUrl: widget.item.url,
+                  )
+                else
+                  DetailsSeasonListWrapper(itemUrl: widget.item.url)
+              else if (isMovie && isVega)
+                VegaMovieQualitySection(item: item, details: details),
             ],
           ),
         ),
       ),
-      SliverToBoxAdapter(
-        child: DetailsEpisodeRowSection(
-          parentItem: item,
-          itemUrl: widget.item.url,
-          isMovie: isMovie,
+      // A Vega series shows its own episode pills above, so the shared
+      // episode rows stay hidden for it; every other title is unchanged.
+      if (!isVega || isMovie)
+        SliverToBoxAdapter(
+          child: DetailsEpisodeRowSection(
+            parentItem: item,
+            itemUrl: widget.item.url,
+            isMovie: isMovie,
+          ),
         ),
-      ),
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

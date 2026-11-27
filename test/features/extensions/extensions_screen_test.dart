@@ -202,7 +202,7 @@ void main() {
     expect(find.byType(TabBar), findsNothing);
     expect(find.text('Plugins'), findsOneWidget);
     expect(
-      find.text('Fuse Repo, CloudStream (.cs3), Nuvio & Stremio'),
+      find.text('Fuse Repo, Vega, CloudStream (.cs3), Nuvio & Stremio'),
       findsOneWidget,
     );
     expect(find.textContaining('RajajiX'), findsNothing);
