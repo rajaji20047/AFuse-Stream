@@ -8,12 +8,16 @@
 ///
 /// What it does NOT do (v1): a network-buffer size mapping (the
 /// settings' MB value has no ms equivalent in the package's buffering
-/// configuration, so the package default runs), an auto-advance countdown
-/// (the ended card offers Next and waits for the tap, where mpv counts
-/// down), and a manual cast button (no cast feature exists in the app).
-/// The fit button works through a Flutter wrapper, not the controller —
-/// the configuration's fit is fixed at creation, so the wrapper owns
-/// the shape (see [_fit]).
+/// configuration, so the package default runs), and a manual cast button
+/// (no cast feature exists in the app). The fit button works through a
+/// Flutter wrapper, not the controller — the configuration's fit is fixed
+/// at creation, so the wrapper owns the shape (see [_fit]).
+///
+/// The side-drawer panels (Sources, Quality, Audio, Subtitles, Episodes,
+/// Speed, Sleep) render VLC's own panel rows ([PanelRow] and friends),
+/// so the two players read the same. The next episode auto-advances like
+/// mpv/VLC (see [_onEnded]): the route's handed-in sources are for the
+/// first episode only (see [_preloaded]).
 library;
 
 import 'dart:async';
@@ -26,14 +30,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../../../core/network/link_probe_service.dart'
+    show resolutionLabelFor;
 import '../../../../../core/providers/device_info_provider.dart';
 import '../../../../../core/router/app_router.dart';
 import '../../../../../core/services/notification_service.dart';
+import '../../../../../core/storage/episode_watch_repository.dart';
+import '../../../../../core/storage/history_repository.dart';
 import '../../../../../l10n/generated/app_localizations.dart';
+import '../../../../../shared/focus/app_focus.dart';
 import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../details/data/metadata_resolution_service.dart';
 import '../../../settings/presentation/player_settings_provider.dart';
 import '../../domain/episode_navigator.dart';
+import '../../domain/hls_quality.dart';
+import '../../domain/next_episode_autoplay.dart';
 import '../../domain/playback_progress.dart';
 import '../../domain/playback_tracker.dart';
 import '../../domain/skip_segments.dart';
@@ -46,10 +57,15 @@ import '../player_brightness.dart';
 import '../player_platform_service.dart';
 import '../vlc/chrome_visibility_controller.dart';
 import '../vlc/ended_card.dart';
+import '../vlc/next_episode_countdown.dart';
+import '../vlc/panel/player_panel_labels.dart';
+import '../vlc/panel/player_panel_metrics.dart';
+import '../vlc/panel/player_panel_row.dart';
 import '../vlc/player_rail.dart';
 import '../vlc/player_startup_view.dart';
 import '../vlc/transient_overlay.dart';
 import '../widgets/engine_picker_sheet.dart';
+import '../widgets/hotstar_player_style.dart';
 import '../widgets/player_control_components.dart';
 import '../widgets/player_stream_widgets.dart';
 import '../widgets/resolve_diagnostic_text.dart';
@@ -90,6 +106,22 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
 
 enum _Stage { resolving, playing, failed }
 
+/// The up-next card's lead-in: it comes up this long before the end of
+/// the episode (VLC's `_kNextEpisodeLeadIn`), so the viewer decides
+/// during the credits rather than at the last frame.
+const Duration _kNextEpisodeLeadIn = Duration(seconds: 15);
+
+/// The quality tiers the Sources panel's filter strip can stand for, in
+/// the order the strip shows them (VLC's `_kTierOrder`).
+const List<String> _kSourceTierOrder = <String>[
+  '4K',
+  '2K',
+  '1080p',
+  '720p',
+  '480p',
+  '360p',
+];
+
 /// Which axis a pan has committed to: undecided until the finger has
 /// travelled 10 px, so a diagonal start never becomes two gestures.
 enum _PanAxis { none, horizontal, vertical }
@@ -116,11 +148,31 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   bool _startedPlaying = false;
   int _resolveToken = 0;
   Duration _openStart = Duration.zero;
+  /// The route's handed-in sources, for the FIRST resolve only. The route
+  /// sources belong to the first episode only (VLC's `_preloaded`): a
+  /// next episode that re-resolves from them gets the previous episode's
+  /// links — the list appears, but the next episode never plays — so
+  /// [_startEpisode] drops them before resolving.
+  List<StreamResult>? _preloaded;
+  /// Whether the quality filter matched nothing and was dropped, so the
+  /// Sources panel says why lower-quality sources are in the list.
+  bool _qualityFilteredFallback = false;
 
   // -- the episode -----------------------------------------------------------
   Episode? _currentEpisode;
   String _currentVideoUrl = '';
   bool _advancing = false;
+
+  // -- the next episode ------------------------------------------------------
+  /// The up-next card's episode, or null when no card is up (mpv/VLC's
+  /// `_nextEpisodeOffer`).
+  Episode? _nextEpisodeOffer;
+  /// The viewer cancelled the up-next card for this episode: no more
+  /// auto-advance until the next one (mpv/VLC's `_nextEpisodeDeclined`).
+  bool _nextEpisodeDeclined = false;
+  /// The card was raised before the end (the last-15-seconds lead-in), so
+  /// its countdown pauses with the video (mpv/VLC's `_offerBeforeEnd`).
+  bool _offerBeforeEnd = false;
 
   // -- the controller --------------------------------------------------------
   BetterPlayerController? _controller;
@@ -251,6 +303,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       ).next !=
       null;
 
+  /// "Auto-play next episode" (Settings → Player), read when it is needed
+  /// so a change applies to the episode on screen (mpv's `_autoPlayNext`).
+  bool get _autoPlayNext =>
+      ref.read(playerSettingsProvider).asData?.value.autoPlayNextEpisode ??
+      true;
+
   Episode? get _previousEpisode => previousEpisodeFor(
     item: widget.item,
     current: _currentEpisode,
@@ -303,6 +361,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     PlayerPlatformService.notePlayerEntry();
     _currentEpisode = widget.episode;
     _currentVideoUrl = widget.videoUrl;
+    // The handed-in sources are for this episode only (see [_preloaded]).
+    _preloaded = widget.preloadedStreams;
     _isLive = widget.item.contentType == MultimediaContentType.livestream;
     // Immersive, like the other players: the system bars stay hidden
     // while the video is up.
@@ -422,7 +482,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         read: _read,
         item: widget.item,
         videoUrl: _currentVideoUrl,
-        preloadedStreams: widget.preloadedStreams,
+        // The first episode's handed-in sources only (see [_preloaded]):
+        // a next episode resolves its own links.
+        preloadedStreams: _preloaded,
         isCancelled: () => _disposed || token != _resolveToken,
         onCandidates: (streams) {
           if (_disposed || token != _resolveToken) return;
@@ -446,6 +508,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       if (_disposed || token != _resolveToken) return;
       _streams = resolved.streams;
       _streamIndex = resolved.index;
+      _qualityFilteredFallback = resolved.qualityFilteredFallback;
       _resolveDone = true;
       // The tracker and recorder ride one session token, so a sample
       // from a stale open is discarded rather than written.
@@ -806,6 +869,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       _tracker?.onPaused();
       _flushProgress();
     }
+    // The up-next card's last-15-seconds lead-in (see
+    // [_maybeOfferNextEpisode]).
+    if (_isPlaying) _maybeOfferNextEpisode();
     if (mounted) setState(() {});
   }
 
@@ -910,12 +976,125 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     } catch (_) {}
     // The sleep timer forbids offering the next episode for this ending.
     if (_sleepTimer.consumeEpisodeEnd()) {
-      _showEnded(EndedKind.finished);
+      _nextEpisodeOffer = null;
+      _showEnded(_hasNextEpisode ? EndedKind.declinedNext : EndedKind.finished);
       return;
     }
-    // v1: no auto-advance countdown — the ended card offers Next, and
-    // the viewer taps it. (mpv counts down; Exo waits for the tap.)
-    _showEnded(_hasNextEpisode ? EndedKind.declinedNext : EndedKind.finished);
+    // mpv's one decision (see [endOfEpisodeAction]) — the 5 s card, a
+    // silent advance in picture-in-picture, or the ended card (with Next
+    // episode on it when auto-play is off or was cancelled). A film or a
+    // last episode never advances.
+    switch (endOfEpisodeAction(
+      hasNext: _hasNextEpisode && !_isLive,
+      autoPlay: _autoPlayNext,
+      declined: _nextEpisodeDeclined,
+      inPip: _inPip,
+    )) {
+      case EndOfEpisodeAction.countdown:
+        // A card raised at the lead-in is already counting; from here on
+        // it belongs to the ending (Cancel shows the ended card).
+        if (_nextEpisodeOffer != null) {
+          setState(() => _offerBeforeEnd = false);
+        } else {
+          _offerNextEpisodeNow(atEnd: true);
+        }
+      case EndOfEpisodeAction.advanceSilently:
+        // In PiP nothing of this screen is visible, so there is no card:
+        // the next episode opens in the same player.
+        if (_nextEpisodeOffer != null) {
+          setState(() => _nextEpisodeOffer = null);
+        }
+        unawaited(_advance());
+      case EndOfEpisodeAction.endedWithNext:
+        if (_nextEpisodeOffer != null) {
+          setState(() => _nextEpisodeOffer = null);
+        }
+        _showEnded(EndedKind.declinedNext);
+      case EndOfEpisodeAction.ended:
+        _showEnded(EndedKind.finished);
+    }
+  }
+
+  /// Raises the up-next countdown card for the following episode.
+  /// [atEnd]: the episode has ended; otherwise it is still playing (the
+  /// last-15-seconds lead-in).
+  void _offerNextEpisodeNow({bool atEnd = false}) {
+    if (_disposed || !mounted) return;
+    if (_advancing || _isLive) return;
+    final next = nextEpisodeFor(
+      item: widget.item,
+      current: _currentEpisode,
+      videoUrl: _currentVideoUrl,
+    ).next;
+    if (next == null) return;
+    setState(() {
+      _nextEpisodeDeclined = false;
+      _nextEpisodeOffer = next;
+      _offerBeforeEnd = !atEnd;
+    });
+  }
+
+  /// Raises the up-next card in the closing seconds of an episode.
+  ///
+  /// Position-driven rather than end-of-media driven, so the viewer
+  /// decides during the credits (VLC's `_maybeOfferNextEpisode`).
+  void _maybeOfferNextEpisode() {
+    // _advancing matters: the transition awaits a full resolve, and a late
+    // tick from the outgoing episode would re-arm the card over the episode
+    // already loading.
+    if (_nextEpisodeDeclined ||
+        _nextEpisodeOffer != null ||
+        _advancing ||
+        _isLive) {
+      return;
+    }
+    if (_duration - _position > _kNextEpisodeLeadIn) return;
+    final next = nextEpisodeFor(
+      item: widget.item,
+      current: _currentEpisode,
+      videoUrl: _currentVideoUrl,
+    ).next;
+    if (next == null || !mounted) return;
+    setState(() {
+      _nextEpisodeOffer = next;
+      _offerBeforeEnd = true;
+    });
+  }
+
+  /// The up-next card, with its countdown following actual playback.
+  Widget _nextEpisodeCard({required bool isTv}) {
+    final next = _nextEpisodeOffer!;
+    final runtime = next.runtime;
+    return NextEpisodeCountdown(
+      title: next.name,
+      posterUrl: next.posterUrl ?? widget.item.posterUrl,
+      season: next.season > 0 ? next.season : null,
+      episode: next.episode > 0 ? next.episode : null,
+      rating: next.rating,
+      runtime: runtime == null ? null : Duration(minutes: runtime),
+      description: next.description,
+      // 5 s. At the end of the episode there is nothing left to pause,
+      // so the countdown always runs; before the end it pauses with the
+      // video.
+      countdown: kNextEpisodeCountdown,
+      paused: _offerBeforeEnd && !_isPlaying,
+      isTv: isTv,
+      onPlayNext: () {
+        setState(() => _nextEpisodeOffer = null);
+        unawaited(_advance());
+      },
+      onCancel: () {
+        final beforeEnd = _offerBeforeEnd;
+        setState(() {
+          _nextEpisodeDeclined = true;
+          _nextEpisodeOffer = null;
+          _offerBeforeEnd = false;
+        });
+        // Cancelled while the episode is still playing: it just keeps
+        // playing; the ended card comes at the end.
+        if (!beforeEnd) _showEnded(EndedKind.declinedNext);
+      },
+    );
   }
 
   void _showEnded(EndedKind kind) {
@@ -932,6 +1111,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     if (_disposed) return;
     _sample = null;
     _sleepTimer.noteResumed();
+    // The refusal was made about the previous viewing of this episode.
+    // Left set, the whole re-watch runs with the auto-advance silently
+    // off. The offer goes with it: it belongs to the run that just ended.
+    _nextEpisodeDeclined = false;
+    _nextEpisodeOffer = null;
     unawaited(_openStream(_streamIndex, start: Duration.zero));
   }
 
@@ -993,6 +1177,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _crowdSkipSegments = const <SkipSegment>[];
     _skipSegmentsStreamUrl = null;
     _ended = null;
+    // The route's sources belonged to the episode that just ended, and
+    // both offers with it. The refusal especially: "not this time" must
+    // not silence the next episode's card.
+    _preloaded = null;
+    _qualityFilteredFallback = false;
+    _nextEpisodeOffer = null;
+    _nextEpisodeDeclined = false;
+    _offerBeforeEnd = false;
     _disposeController();
     await _resolveAndOpen();
   }
@@ -1198,64 +1390,41 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               children: [
                 if (mode != SleepTimerMode.off)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
                     child: Text(
                       remaining != null
                           ? l10n.playerSleepTimerRemaining(
                               formatSleepRemaining(remaining),
                             )
                           : l10n.playerSleepTimerEndOfEpisodeArmed,
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(
+                        color: HotstarPlayerStyle.mutedText,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 for (final minutes in <int>[15, 30, 45, 60])
-                  ListTile(
-                    dense: true,
-                    title: Text(
-                      l10n.playerSleepTimerMinutes(minutes),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    leading: Icon(
-                      _sleepTimer.selectedDuration ==
-                              Duration(minutes: minutes)
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: Colors.white70,
-                    ),
+                  _sheetRow(
+                    title: l10n.playerSleepTimerMinutes(minutes),
+                    selected:
+                        _sleepTimer.selectedDuration ==
+                        Duration(minutes: minutes),
                     onTap: () {
                       _sleepTimer.start(Duration(minutes: minutes));
                       Navigator.of(context).pop();
                     },
                   ),
-                ListTile(
-                  dense: true,
-                  title: Text(
-                    l10n.playerSleepTimerEndOfEpisode,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  leading: Icon(
-                    mode == SleepTimerMode.endOfEpisode
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: Colors.white70,
-                  ),
+                _sheetRow(
+                  title: l10n.playerSleepTimerEndOfEpisode,
+                  selected: mode == SleepTimerMode.endOfEpisode,
                   onTap: () {
                     _sleepTimer.armEndOfEpisode();
                     Navigator.of(context).pop();
                   },
                 ),
-                ListTile(
-                  dense: true,
-                  title: Text(
-                    l10n.playerSleepTimerOff,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  leading: Icon(
-                    mode == SleepTimerMode.off
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: Colors.white70,
-                  ),
+                _sheetRow(
+                  title: l10n.playerSleepTimerOff,
+                  selected: mode == SleepTimerMode.off,
                   onTap: () {
                     _sleepTimer.cancel();
                     Navigator.of(context).pop();
@@ -1274,8 +1443,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// The side drawer the player sheets share: a right-anchored panel
   /// sliding in from the right edge, the same presentation mpv's
   /// GoldenDrawer and VLC's PlayerPanel use — so the function boxes never
-  /// come up from below. Dense rows, white text, so every sheet reads as
-  /// a picker, not a screen.
+  /// come up from below. The rows are VLC's [PanelRow] (see [_sheetRow]),
+  /// so every sheet reads as a picker, not a screen.
   Future<void> _showListSheet({
     required String title,
     required List<Widget> children,
@@ -1308,117 +1477,246 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           final width = goldenDrawerWidth(
             MediaQuery.sizeOf(routeContext).width,
           );
+          // The panel is a PopupRoute and inherits nothing from the
+          // screen's tree, so its type scale is installed here — VLC's
+          // PlayerPanel does the same for its rows.
+          final profile = ref.read(deviceProfileProvider).asData?.value;
+          final isTv =
+              playerFormFactorOf(profile) == PlayerFormFactor.tv;
           return GoldenDrawer(
             title: title,
             onClose: () => Navigator.of(routeContext).pop(),
             width: width,
-            child: child,
+            child: PlayerPanelMetricsScope(
+              metrics: PlayerPanelMetrics.forTv(isTv),
+              child: child,
+            ),
           );
         },
       ),
     ).whenComplete(() => _chrome.release());
   }
 
-  /// One dense picker row: radio glyph, title, optional subtitle.
+  /// One VLC-style picker row: the same [PanelRow] VLC's panels use —
+  /// check tick when selected, label + detail, badges, selected fill —
+  /// so the two players read the same.
   ///
-  /// Hand-built (InkWell + Row + Text), not a [ListTile]: in build #11
-  /// the Sources/Quality/Audio drawers rendered their rows as error
-  /// views ("Null check operator used on a null value") while the
-  /// drawer's own header rendered fine, and every data read feeding the
-  /// rows is null-safe in source — so the row widget itself is replaced
-  /// with primitives that cannot throw from a framework null check.
-  /// Same look as before: dense row, radio glyph, white title.
+  /// Hand-built primitives, not a [ListTile]: in build #11 the
+  /// Sources/Quality/Audio drawers rendered their rows as error views
+  /// ("Null check operator used on a null value") while the drawer's own
+  /// header rendered fine — so the row stays a [PanelRow], whose Focus +
+  /// GestureDetector + Text build cannot throw from a framework null
+  /// check.
   Widget _sheetRow({
     required String title,
     String? subtitle,
     required bool selected,
     required VoidCallback onTap,
+    List<String> badges = const <String>[],
+    IconData? badgeIcon,
+    Color? badgeColor,
+    bool neutralBadges = false,
+    String? selectedLabel,
+    IconData? selectedLabelIcon,
+    String? status,
+    IconData? statusIcon,
+    Color? statusColor,
+    String? outcome,
+    IconData? outcomeIcon,
+    Color? outcomeColor,
+    IconData? icon,
+    Widget? leading,
   }) {
-    return InkWell(
+    return PanelRow(
+      label: title,
+      detail: subtitle,
+      badges: badges,
+      badgeIcon: badgeIcon,
+      badgeColor: badgeColor,
+      neutralBadges: neutralBadges,
+      selected: selected,
+      selectedLabel: selectedLabel,
+      selectedLabelIcon: selectedLabelIcon,
+      status: status,
+      statusIcon: statusIcon,
+      statusColor: statusColor,
+      outcome: outcome,
+      outcomeIcon: outcomeIcon,
+      outcomeColor: outcomeColor,
+      icon: icon,
+      leading: leading,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: Colors.white70,
-              size: 22,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   /// One disabled row for a panel whose list has not loaded yet: the
   /// panel opens with this instead of an empty drawer.
   Widget _sheetEmptyRow(String message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Text(
-        message,
-        style: const TextStyle(color: Colors.white54, fontSize: 14),
+    return PanelEmpty(text: message);
+  }
+
+  /// The resolved sources, so the viewer can move to another one without
+  /// leaving the player — VLC's Sources tab, in this drawer: the quality
+  /// filter strip above the list, and rows with the quality/size/seeders
+  /// badges, the reachability chip and the `Now playing` badge.
+  Future<void> _showSourcesSheet() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_streams.isEmpty) {
+      await _showListSheet(
+        title: l10n.sources,
+        children: [_sheetEmptyRow(l10n.playerNoStreamsFound)],
+      );
+      return;
+    }
+    // The probe map as it stands at open (VLC's panel reads it live;
+    // this drawer is a snapshot — the probes have settled by the time
+    // the viewer opens it).
+    final probes = <int, ProbeOutcome>{
+      for (var i = 0; i < _probes.length; i++)
+        if (_probes[i] != null) i: _probes[i]!,
+    };
+    final played = _startedPlaying ? <int>{_streamIndex} : <int>{};
+    final showBanner = _qualityFilteredFallback;
+    String? filter;
+    await _showSidePanel(
+      title: l10n.sources,
+      child: StatefulBuilder(
+        builder: (drawerContext, setDrawerState) {
+          // The tiers present in the list, in the strip's fixed order.
+          final present = <String>{
+            for (final stream in _streams)
+              ?sourceFactsOf(stream).quality,
+          };
+          final tiers = <String>[
+            for (final tier in _kSourceTierOrder)
+              if (present.contains(tier)) tier,
+          ];
+          // The filter actually in force: one no tier backs is no filter.
+          final activeFilter =
+              filter != null && tiers.contains(filter) ? filter : null;
+          final visible = <int>[
+            for (var i = 0; i < _streams.length; i++)
+              if (activeFilter == null ||
+                  sourceFactsOf(_streams[i]).quality == activeFilter)
+                i,
+          ];
+          // One tier is not a choice, and a strip with a single pill in
+          // it reads as a filter already applied.
+          final showStrip = tiers.length > 1;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (showStrip)
+                _SourcesQualityStrip(
+                  tiers: tiers,
+                  selected: activeFilter,
+                  onTap: (tier) => setDrawerState(
+                    () => filter = filter == tier ? null : tier,
+                  ),
+                ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // The banner only explains the list the resolver
+                      // handed over, so it is withheld once the viewer has
+                      // narrowed that list themselves.
+                      if (showBanner && activeFilter == null)
+                        _SourcesFallbackBanner(
+                          text: l10n.playerQualityFilterDropped,
+                        ),
+                      if (visible.isEmpty)
+                        _sheetEmptyRow(l10n.playerNoStreamsFound)
+                      else
+                        for (final i in visible)
+                          _sourcePanelRow(i, probes, played, l10n),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  /// The resolved sources, so the viewer can move to another one without
-  /// leaving the player.
-  Future<void> _showSourcesSheet() async {
-    final l10n = AppLocalizations.of(context)!;
-    await _showListSheet(
-      title: l10n.sources,
-      children: [
-        if (_streams.isEmpty)
-          _sheetEmptyRow(l10n.noResultsFound)
-        else
-          for (var i = 0; i < _streams.length; i++)
-            _sheetRow(
-              title: _startupRowLabel(_streams[i]),
-              subtitle: sourceServer(_streams[i]),
-              selected: i == _streamIndex,
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickSource(i);
-              },
-            ),
+  /// One Sources row, in VLC's terms: the facts lifted out of the label,
+  /// the provider under it, the badges, the reachability chip, and the
+  /// `Now playing` badge on the row that is on.
+  Widget _sourcePanelRow(
+    int index,
+    Map<int, ProbeOutcome> probes,
+    Set<int> played,
+    AppLocalizations l10n,
+  ) {
+    final stream = _streams[index];
+    final facts = sourceFactsOf(stream);
+    final selected = index == _streamIndex;
+    final reachability = sourceReachabilityOf(
+      stream,
+      probes[index],
+      hasPlayed: played.contains(index),
+    );
+    // Only a failure is worth a second chip here. The row being played
+    // already wears `Now playing`, and one being opened is the same row.
+    final hasFailed = _failedStreams.contains(index);
+    return _sheetRow(
+      title: facts.title,
+      subtitle: sourceProvider(stream),
+      badges: <String>[
+        ?facts.quality,
+        ?facts.size,
+        if (facts.seeders != null) l10n.playerSeeders(facts.seeders!),
       ],
+      neutralBadges: true,
+      selected: selected,
+      selectedLabel: l10n.playerNowPlaying,
+      selectedLabelIcon: Icons.play_arrow_rounded,
+      status: sourceReachabilityLabel(l10n, reachability),
+      statusIcon: _reachabilityIcon(reachability),
+      statusColor: _reachabilityColor(reachability),
+      outcome: hasFailed ? l10n.playerSourceUnplayable : null,
+      outcomeIcon: Icons.error_outline_rounded,
+      outcomeColor: HotstarPlayerStyle.statusBad,
+      // The tick sits where the icon would, so selected and unselected
+      // rows start their text in the same place.
+      icon: Icons.dns_outlined,
+      onTap: () {
+        Navigator.of(context).pop();
+        _pickSource(index);
+      },
     );
   }
 
+  static IconData _reachabilityIcon(SourceReachability status) =>
+      switch (status) {
+        SourceReachability.reachable => Icons.check_circle_outline_rounded,
+        SourceReachability.checking => Icons.sync_rounded,
+        SourceReachability.unseekable => Icons.info_outline_rounded,
+        SourceReachability.unreachable => Icons.help_outline_rounded,
+        SourceReachability.notVideo => Icons.error_outline_rounded,
+        SourceReachability.notChecked =>
+          Icons.radio_button_unchecked_rounded,
+      };
+
+  static Color? _reachabilityColor(SourceReachability status) =>
+      switch (status) {
+        SourceReachability.reachable => HotstarPlayerStyle.statusGood,
+        SourceReachability.unseekable ||
+        SourceReachability.unreachable => HotstarPlayerStyle.statusWarning,
+        SourceReachability.notVideo => HotstarPlayerStyle.statusBad,
+        SourceReachability.checking || SourceReachability.notChecked => null,
+      };
+
   /// The HLS/DASH renditions, with Auto on top. Only ever opened when
   /// there is a ladder to pick from (see the Quality button's gate).
+  /// VLC's Quality tab: Auto names the height it plays, each height the
+  /// stream offers follows, tallest first.
   Future<void> _showQualitySheet() async {
+    final l10n = AppLocalizations.of(context)!;
     final controller = _controller;
     if (controller == null) return;
     final tracks = controller.betterPlayerAsmsTracks;
@@ -1433,11 +1731,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     final heights = byHeight.keys.toList()
       ..sort((a, b) => b.compareTo(a));
     final selectedHeight = selected?.height ?? 0;
+    // The height actually on screen, for the Auto row's "playing"
+    // suffix — the picture's height as the engine reports it, matched
+    // to the nearest rung of the ladder.
+    final playing = nearestLadderHeight(_videoSize?.height, heights);
     await _showListSheet(
-      title: 'Quality',
+      title: l10n.playerQuality,
       children: [
         _sheetRow(
-          title: 'Auto',
+          title: playing == null
+              ? l10n.playerQualityAuto
+              : l10n.playerQualityAutoPlaying(resolutionLabelFor(playing)),
           selected: selectedHeight <= 0,
           onTap: () {
             Navigator.of(context).pop();
@@ -1448,7 +1752,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         ),
         for (final height in heights)
           _sheetRow(
-            title: '${height}p',
+            title: resolutionLabelFor(height),
             selected: selectedHeight == height,
             onTap: () {
               Navigator.of(context).pop();
@@ -1485,6 +1789,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       children: [
         _sheetRow(
           title: l10n.off,
+          icon: Icons.subtitles_off_outlined,
           selected: _selectedSubtitleName == null,
           onTap: () {
             Navigator.of(context).pop();
@@ -1492,16 +1797,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             controller.setupSubtitleSource(offSource);
           },
         ),
-        for (final source in named)
-          _sheetRow(
-            title: source.name ?? 'Subtitle',
-            selected: _selectedSubtitleName == source.name,
-            onTap: () {
-              Navigator.of(context).pop();
-              setState(() => _selectedSubtitleName = source.name);
-              controller.setupSubtitleSource(source);
-            },
-          ),
+        if (named.isEmpty)
+          _sheetEmptyRow(l10n.noSubtitlesFound)
+        else
+          for (final source in named)
+            _sheetRow(
+              title: source.name ?? 'Subtitle',
+              selected: _selectedSubtitleName == source.name,
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() => _selectedSubtitleName = source.name);
+                controller.setupSubtitleSource(source);
+              },
+            ),
       ],
     );
   }
@@ -1526,7 +1834,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
                   track.label ??
                   track.language ??
                   'Audio ${track.id ?? ''}',
-              subtitle: track.language,
+              subtitle: _audioTrackDetail(track),
               selected: selected?.id == track.id,
               onTap: () {
                 Navigator.of(context).pop();
@@ -1537,24 +1845,131 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     );
   }
 
-  /// The series' episodes, so the viewer can jump without leaving.
+  /// The audio row's second line: the language, unless the label already
+  /// says it — a detail that repeats the label is not a detail.
+  String? _audioTrackDetail(BetterPlayerAsmsAudioTrack track) {
+    final label = track.label ?? track.language;
+    final language = track.language;
+    if (language == null || language.isEmpty || language == label) {
+      return null;
+    }
+    return language;
+  }
+
+  /// The series' episodes, so the viewer can jump without leaving —
+  /// VLC's Episodes tab: a still on each row, the number first, air date
+  /// and runtime under it, a dub/sub badge, a dim and a `Watched` chip
+  /// on episodes already seen.
   Future<void> _showEpisodesSheet() async {
     final l10n = AppLocalizations.of(context)!;
     final episodes = effectiveEpisodes(widget.item, _currentEpisode);
     await _showListSheet(
       title: l10n.episodes,
       children: [
-        for (final episode in episodes)
-          _sheetRow(
-            title: 'S${episode.season} E${episode.episode} · ${episode.name}',
-            selected: episode == _currentEpisode,
-            onTap: () {
-              Navigator.of(context).pop();
-              unawaited(_pickEpisode(episode));
-            },
-          ),
+        if (episodes.isEmpty)
+          _sheetEmptyRow(l10n.noEpisodesFound)
+        else
+          for (final episode in episodes) _episodePanelRow(episode, l10n),
       ],
     );
+  }
+
+  /// One Episodes row, in VLC's terms.
+  Widget _episodePanelRow(Episode episode, AppLocalizations l10n) {
+    final current = episode == _currentEpisode;
+    // Once per built row: the lookup reads storage, so it is asked for
+    // the row on screen and no other.
+    final progress = _episodeProgressFor(episode);
+    return _sheetRow(
+      title: _episodePanelTitle(l10n, episode),
+      subtitle: _episodePanelDetail(l10n, episode),
+      badges: <String>[?_episodeDubBadge(l10n, episode)],
+      badgeIcon: switch (episode.dubStatus) {
+        DubStatus.dubbed => Icons.mic_rounded,
+        DubStatus.subbed => Icons.subtitles_rounded,
+        DubStatus.none => null,
+      },
+      badgeColor: HotstarPlayerStyle.badgeNeutral,
+      neutralBadges: true,
+      selected: current,
+      selectedLabel: l10n.playing,
+      selectedLabelIcon: Icons.play_arrow_rounded,
+      // The chip is not suppressed on the playing row, where the dim and
+      // the bar are: it says something the play glyph does not — that
+      // this is a re-watch.
+      status: progress.watched ? l10n.watched : null,
+      statusIcon: Icons.check_circle_outline_rounded,
+      statusColor: HotstarPlayerStyle.statusGood,
+      leading: _ExoEpisodeThumbnail(
+        posterUrl: episode.posterUrl,
+        isCurrent: current,
+        // Nothing is painted over the still of the episode that is on
+        // now: its stored position lags the recorder, so a stale
+        // half-bar under a `Playing` badge is worse than no bar. And a
+        // watched episode gets the dim and the chip, never a bar as well.
+        progress: current || progress.watched ? 0 : progress.fraction,
+        watched: !current && progress.watched,
+      ),
+      onTap: () {
+        Navigator.of(context).pop();
+        unawaited(_pickEpisode(episode));
+      },
+    );
+  }
+
+  /// `S2 E4 · The Body`. The number leads because that is what a viewer
+  /// is looking for, and plenty of plugins give every episode the same
+  /// name.
+  String _episodePanelTitle(AppLocalizations l10n, Episode episode) {
+    final name = episode.name.trim();
+    final number = episode.season > 0
+        ? l10n.playerSeasonEpisode(episode.season, episode.episode)
+        : (episode.episode > 0
+              ? l10n.playerEpisodeNumber(episode.episode)
+              : '');
+    if (number.isEmpty) return name.isEmpty ? l10n.unknown : name;
+    return name.isEmpty ? number : '$number · $name';
+  }
+
+  String? _episodePanelDetail(AppLocalizations l10n, Episode episode) {
+    final runtime = episode.runtime;
+    final aired = episode.airDate?.trim();
+    final parts = <String>[
+      if (aired != null && aired.isNotEmpty) aired,
+      if (runtime != null && runtime > 0) l10n.playerRuntimeMinutes(runtime),
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  String? _episodeDubBadge(AppLocalizations l10n, Episode episode) =>
+      switch (episode.dubStatus) {
+        DubStatus.dubbed => l10n.dub.toUpperCase(),
+        DubStatus.subbed => l10n.sub.toUpperCase(),
+        DubStatus.none => null,
+      };
+
+  /// Where the viewer got to in [episode]: watched, or how far through
+  /// (VLC's `_episodeProgressFor`, same repositories).
+  ({bool watched, double fraction}) _episodeProgressFor(Episode episode) {
+    final mainUrl = widget.item.url;
+    if (_read(episodeWatchRepositoryProvider).isWatched(mainUrl, episode)) {
+      return (watched: true, fraction: 0);
+    }
+    final history = _read(historyRepositoryProvider);
+    final duration = history.getEpisodeDuration(
+      episode.url,
+      mainUrl: mainUrl,
+      season: episode.season,
+      episode: episode.episode,
+    );
+    if (duration <= 0) return (watched: false, fraction: 0);
+    final position = history.getEpisodePosition(
+      episode.url,
+      mainUrl: mainUrl,
+      season: episode.season,
+      episode: episode.episode,
+    );
+    return (watched: false, fraction: (position / duration).clamp(0.0, 1.0));
   }
 
   /// The playback speeds, 0.25x–2x. The package refuses anything outside
@@ -1679,6 +2094,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
                   isTv: isTv,
                 ),
               ),
+
+            // The up-next countdown card, over the video.
+            if (_stage == _Stage.playing && _nextEpisodeOffer != null)
+              _nextEpisodeCard(isTv: isTv),
 
             // The Skip button, bottom-right and outside the chrome on
             // purpose: a band can start while the bars are hidden, and
@@ -2756,6 +3175,305 @@ class _SidePanelRoute extends PopupRoute<void> {
             CurvedAnimation(parent: animation, curve: Curves.fastOutSlowIn),
           ),
       child: child,
+    );
+  }
+}
+
+/// The row of quality pills above the source list (VLC's `_QualityStrip`).
+///
+/// A [Wrap], not a horizontal [Scrollable]: the panel keeps every strip
+/// above its lists scrollable-free because a [Scrollable] traps
+/// directional focus, and six pills of four characters fit a drawer in
+/// one run at every ramp.
+class _SourcesQualityStrip extends StatelessWidget {
+  const _SourcesQualityStrip({
+    required this.tiers,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final List<String> tiers;
+
+  /// The tier in force, or null for the unfiltered list.
+  final String? selected;
+
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: <Widget>[
+          for (final tier in tiers)
+            _SourcesQualityChip(
+              label: tier,
+              selected: tier == selected,
+              onTap: () => onTap(tier),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One quality pill. A filter, so it is a toggle: pressing the pill in
+/// force clears it and shows the whole list again.
+///
+/// One focus stop, activated by tap and by the same keys a [PanelRow]
+/// takes, because the panel's rule is that everything in it is reachable
+/// by remote and that nothing in it needs two presses to reach.
+class _SourcesQualityChip extends StatefulWidget {
+  const _SourcesQualityChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_SourcesQualityChip> createState() => _SourcesQualityChipState();
+}
+
+class _SourcesQualityChipState extends State<_SourcesQualityChip> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = PlayerPanelMetrics.of(context);
+    final active = widget.selected;
+    // Focus outranks selection: on a remote the pill the viewer is
+    // standing on has to be findable whether or not it is the one already
+    // applied.
+    final showFocus = showFocusIndicator(context, _focused);
+    final Color background = active
+        ? HotstarPlayerStyle.accent
+        : (showFocus || _hovered
+              ? HotstarPlayerStyle.panelElevated
+              : Colors.transparent);
+    return Semantics(
+      button: true,
+      selected: active,
+      label: widget.label,
+      child: Focus(
+        onFocusChange: (value) => setState(() => _focused = value),
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.select ||
+              key == LogicalKeyboardKey.enter ||
+              key == LogicalKeyboardKey.space ||
+              key == LogicalKeyboardKey.gameButtonA) {
+            widget.onTap();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: HotstarPlayerStyle.fastMotionDuration,
+              constraints: BoxConstraints(minHeight: metrics.chipMinHeight),
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.chipHorizontalPadding,
+              ),
+              decoration: BoxDecoration(
+                color: background,
+                // A pill, not a chip: fully rounded, so it cannot be
+                // mistaken for a badge on a row below it.
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  // Focus is white and selection is the accent, so a pill
+                  // that is both still says which is which.
+                  color: showFocus
+                      ? HotstarPlayerStyle.focusRing
+                      : (active
+                            ? HotstarPlayerStyle.accent
+                            : metrics.divider),
+                  width: showFocus ? HotstarPlayerStyle.focusRingWidth : 1,
+                ),
+              ),
+              child: Center(
+                widthFactor: 1,
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: active ? Colors.white : metrics.secondaryText,
+                    fontSize: metrics.chipLabelSize,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Says why sources the viewer's quality preference excludes are in the
+/// list (VLC's `_FallbackBanner`).
+///
+/// Without it the filter looks broken: somebody who asked for 1080p and
+/// is handed a 480p list has no way to know the title simply had nothing
+/// better.
+class _SourcesFallbackBanner extends StatelessWidget {
+  const _SourcesFallbackBanner({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = PlayerPanelMetrics.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0x1FFFC107),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0x66FFC107)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.filter_alt_off_rounded,
+            size: metrics.bannerIconSize,
+            color: const Color(0xFFFFC107),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: const Color(0xFFFFE082),
+                fontSize: metrics.bannerTextSize,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Poster still, with a play marker on the episode that is on now, a dim
+/// on one already seen and a bar across the foot of one part-way through
+/// (VLC's `_EpisodeThumbnail`).
+///
+/// The inner [Stack] is a leaf decoration on one 96x54 image, not panel
+/// layout: it never grows, so it cannot become one of the window-sized
+/// layers the compositing rules are about. Everything added here is a
+/// [ColoredBox] or a 3 px bar — no opacity layer, no filter.
+class _ExoEpisodeThumbnail extends StatelessWidget {
+  const _ExoEpisodeThumbnail({
+    required this.posterUrl,
+    required this.isCurrent,
+    this.progress = 0,
+    this.watched = false,
+  });
+
+  final String? posterUrl;
+  final bool isCurrent;
+
+  /// 0..1 of the episode reached. Only painted inside a dead band — see
+  /// [build].
+  final double progress;
+
+  /// Seen. Dims the still, the same 28 % black the details screen uses.
+  final bool watched;
+
+  @override
+  Widget build(BuildContext context) {
+    final poster = posterUrl;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 96,
+        height: 54,
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            if (poster != null && poster.isNotEmpty)
+              Image.network(
+                poster,
+                fit: BoxFit.cover,
+                // A still that will not load is not worth an error box in
+                // a list somebody is trying to read.
+                errorBuilder: (_, _, _) => const _ExoThumbPlaceholder(),
+                loadingBuilder: (context, child, progress) =>
+                    progress == null ? child : const _ExoThumbPlaceholder(),
+              )
+            else
+              const _ExoThumbPlaceholder(),
+            // 0x47 is 28 % black: the same dim the details screen puts
+            // over a seen episode, so the two lists agree at a glance.
+            if (watched) const ColoredBox(color: Color(0x47000000)),
+            if (isCurrent)
+              const ColoredBox(
+                color: Color(0x66000000),
+                child: Center(
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+            // A dead band at both ends. Below 2 % is a false start — a
+            // wrong pick, a stream that never played — and a sliver of a
+            // bar there reads as "you began this" when nobody did. Above
+            // 98 % the bar is indistinguishable from full, and a full bar
+            // on a row that is not marked watched reads as a bug rather
+            // than as information.
+            if (progress > 0.02 && progress < 0.98)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 3,
+                  backgroundColor: Colors.white24,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    HotstarPlayerStyle.accent,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExoThumbPlaceholder extends StatelessWidget {
+  const _ExoThumbPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0x14FFFFFF),
+      child: Center(
+        child: Icon(
+          Icons.movie_outlined,
+          color: HotstarPlayerStyle.mutedText,
+          size: 20,
+        ),
+      ),
     );
   }
 }
