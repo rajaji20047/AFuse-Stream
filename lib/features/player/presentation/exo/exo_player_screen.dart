@@ -46,6 +46,7 @@ import '../../domain/episode_navigator.dart';
 import '../../domain/hls_quality.dart';
 import '../../domain/next_episode_autoplay.dart';
 import '../../domain/playback_progress.dart';
+import '../../domain/playback_recovery.dart';
 import '../../domain/playback_tracker.dart';
 import '../../domain/skip_segments.dart';
 import '../../domain/sleep_timer.dart';
@@ -111,6 +112,14 @@ enum _Stage { resolving, playing, failed }
 /// the episode (VLC's `_kNextEpisodeLeadIn`), so the viewer decides
 /// during the credits rather than at the last frame.
 const Duration _kNextEpisodeLeadIn = Duration(seconds: 15);
+
+/// How long an opened stream gets to show playback before it counts as dead
+/// and the failover moves to the next candidate (MPV's `_kStartupWatchdog`).
+/// A torrent gets VLC's 3-minute budget instead ([kTorrentStallRecoverAfter]):
+/// a cold magnet waits on pieces arriving, which is measured in minutes, and
+/// the ordinary window would abandon every torrent before it had a chance
+/// to seed.
+const Duration _kStartupWatchdog = Duration(seconds: 12);
 
 /// The quality tiers the Sources panel's filter strip can stand for, in
 /// the order the strip shows them (VLC's `_kTierOrder`).
@@ -189,6 +198,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   bool _isLive = false;
   bool _inPip = false;
   int _openToken = 0;
+  // The startup watchdog (see [_armStartupWatchdog]): an open that shows
+  // no playback inside its window is a dead source. Cancelled the moment
+  // playback starts, on every new open, and on dispose.
+  Timer? _startupWatchdogTimer;
 
   // -- the chrome (the same pieces the VLC screen uses) ----------------------
   // The chrome clock: visible on entry, gone 3 s into playback, back on
@@ -389,6 +402,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   @override
   void dispose() {
     _disposed = true;
+    _startupWatchdogTimer?.cancel();
     _chrome.dispose();
     _sleepTimer.dispose();
     _locked.dispose();
@@ -584,6 +598,30 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // (VLC: autoPlay ? enable : disable.)
     unawaited(WakelockPlus.enable());
     final stream = _streams[index];
+    // The watchdog is armed before the torrent conversion below, so a
+    // conversion that never answers is covered too — a cold magnet gets
+    // the 3-minute torrent window, an ordinary stream 12 s (see
+    // [_armStartupWatchdog]).
+    _armStartupWatchdog(index, torrent: isTorrentSource(stream));
+    // A torrent has to be prepared and seeded before anything can open
+    // it (VLC's `playableUrlFor` call): the torrent service serves the
+    // magnet over loopback HTTP, and the engine plays that — opening on
+    // the magnet itself plays nothing, and an all-torrent list used to
+    // fail over through every source to "No working source found".
+    String playableUrl = stream.url;
+    if (isTorrentSource(stream)) {
+      final converted = await playableUrlFor(read: _read, stream: stream);
+      if (_disposed || token != _openToken) return;
+      if (converted == null) {
+        // VLC's conversion-failure behaviour: the source is dead, so it
+        // fails over to the next candidate (or the failed stage when the
+        // list is exhausted) rather than being handed to the engine.
+        _failedStreams.add(index);
+        _tryNextStream();
+        return;
+      }
+      playableUrl = converted;
+    }
     final settings =
         ref.read(playerSettingsProvider).value ?? const PlayerSettings();
     _applyVegaSkipSegments(stream.url);
@@ -607,7 +645,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         ),
         eventListener: _onBetterPlayerEvent,
       ),
-      betterPlayerDataSource: _buildDataSource(stream, settings),
+      betterPlayerDataSource: _buildDataSource(
+        stream,
+        settings,
+        playableUrl: playableUrl,
+      ),
     );
     if (_disposed || token != _openToken) {
       controller.dispose();
@@ -624,10 +666,18 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// other players open with — provider headers, stored clearance
   /// cookies and the browser UA — so a Vega file-host link keeps the
   /// same client identity it was probed with (the 60af065 lesson).
+  ///
+  /// [playableUrl] is the URL the engine actually opens: the stream's
+  /// own URL, or the torrent service's loopback URL for a torrent
+  /// (see [_openStream]) — the format hint is read off it, so a
+  /// loopback URL with no extension leaves the package to detect the
+  /// format itself.
   BetterPlayerDataSource _buildDataSource(
     StreamResult stream,
-    PlayerSettings settings,
-  ) {
+    PlayerSettings settings, {
+    String? playableUrl,
+  }) {
+    final url = playableUrl ?? stream.url;
     final subtitles = _subtitleSources(stream, settings);
     String? selectedName;
     for (final source in subtitles) {
@@ -638,7 +688,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     }
     _selectedSubtitleName = selectedName;
     return BetterPlayerDataSource.network(
-      stream.url,
+      url,
       headers: playbackHeaders(stream),
       subtitles: subtitles,
       // The network() factory leaves these null (== false) unless they
@@ -648,9 +698,31 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       useAsmsAudioTracks: true,
       useAsmsSubtitles: true,
       liveStream: _isLive,
-      videoFormat: _videoFormatFor(stream.url),
+      videoFormat: _videoFormatFor(url),
       drmConfiguration: _drmFor(stream),
     );
+  }
+
+  /// Arms the startup watchdog for the open of [index] (MPV's
+  /// `_armWatchdog`, same 12 s window): if playback has not started
+  /// when it fires, the source is dead and the failover moves on. The
+  /// timer belongs to the source it was armed for — a failover or an
+  /// episode switch that started a new open must not let it kill the
+  /// replacement — and it stands down the moment playback starts (see
+  /// [_onVideoValue]). A new open retires the previous source's timer.
+  void _armStartupWatchdog(int index, {required bool torrent}) {
+    _startupWatchdogTimer?.cancel();
+    final window = torrent ? kTorrentStallRecoverAfter : _kStartupWatchdog;
+    _startupWatchdogTimer = Timer(window, () {
+      if (_disposed || _startedPlaying) return;
+      if (index != _streamIndex) return;
+      // Nothing is playing after the budget: this source is dead.
+      if (kDebugMode) {
+        debugPrint('exo watchdog: no playback in $window');
+      }
+      _failedStreams.add(_streamIndex);
+      _tryNextStream();
+    });
   }
 
   /// The format hint, from the URL's own extension — the package detects
@@ -855,7 +927,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         _pendingSeekTargetSetAt = null;
       }
     }
-    if (_isPlaying && !_startedPlaying) _startedPlaying = true;
+    if (_isPlaying && !_startedPlaying) {
+      _startedPlaying = true;
+      // Playback started: the startup watchdog stands down (MPV cancels
+      // its timer on first play the same way).
+      _startupWatchdogTimer?.cancel();
+    }
     _syncWakelock();
     if (_isPlaying) {
       final sample = ProgressSample(
@@ -971,6 +1048,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
 
   void _onEnded() {
     if (_disposed) return;
+    // The ending settles this source either way: a watchdog left armed
+    // would fire over the ended card (or the next episode) and fail over
+    // a source that already ended.
+    _startupWatchdogTimer?.cancel();
     _flushProgress();
     try {
       _tracker?.finish();
@@ -979,6 +1060,28 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     if (_sleepTimer.consumeEpisodeEnd()) {
       _nextEpisodeOffer = null;
       _showEnded(_hasNextEpisode ? EndedKind.declinedNext : EndedKind.finished);
+      return;
+    }
+    // A finish far short of the known duration is a failure wearing an
+    // ending's clothes (MPV's false-end recovery, VLC's
+    // FailureSign.falseEnd): a truncated stream that ends minutes early
+    // must fail over, not advance or show the ended card. Live has no
+    // duration to fall short of, and an unknown duration (zero) cannot
+    // be measured — both fall through to the real ending below — and
+    // with no more streams left there is nothing to fail over to, so
+    // the last source ends the ordinary way. A real end sits within
+    // 2 s of its duration ([isFalseEnd]), so legitimate short content
+    // and a normal end-of-episode advance are untouched.
+    if (!_isLive &&
+        _duration > Duration.zero &&
+        isFalseEnd(position: _position, duration: _duration) &&
+        _streamIndex + 1 < _streams.length) {
+      // A card raised at the lead-in belongs to the run that just ended:
+      // the replacement source must not open under it.
+      _nextEpisodeOffer = null;
+      _offerBeforeEnd = false;
+      _failedStreams.add(_streamIndex);
+      _tryNextStream();
       return;
     }
     // mpv's one decision (see [endOfEpisodeAction]) — the 5 s card, a
