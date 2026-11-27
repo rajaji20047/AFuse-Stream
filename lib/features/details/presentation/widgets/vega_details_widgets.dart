@@ -367,7 +367,16 @@ class _VegaSeriesEpisodesSectionState
         borderRadius: BorderRadius.circular(12),
         selectedItemBuilder: (context) => [
           for (final s in seasons)
-            Text(labelFor(s), overflow: TextOverflow.ellipsis),
+            // Center: the Text alone would size to its content, so
+            // textAlign would not move it — the wrapper centers the
+            // whole label in the box (the dropdown arrow sits right).
+            Center(
+              child: Text(
+                labelFor(s),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
         ],
         items: [
           for (final s in seasons)
