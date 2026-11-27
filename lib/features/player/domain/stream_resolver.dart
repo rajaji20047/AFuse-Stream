@@ -141,11 +141,13 @@ final RegExp _vodMarkers = RegExp(r'/(vod|movies?|series)/');
 /// Deliberately narrower than "ends in .m3u8" — a VOD HLS ladder is also
 /// `.m3u8`, and calling those live would kill seeking and resume across a large
 /// slice of ordinary content. So: the path segments IPTV portals mount channels
-/// under, the two live-edge playlist names (`stream.m3u8` from most origins,
-/// `chunklist` from Wowza), and the Xtream Codes query that asks for a channel
-/// list rather than a file.
+/// under, the live-edge playlist name (`chunklist` from Wowza), and the Xtream
+/// Codes query that asks for a channel list rather than a file. `stream.m3u8`
+/// is NOT in the list on purpose: it is the single most common VOD
+/// master-playlist name, and genuine live `stream.m3u8` URLs sit under
+/// `/live/` or `/iptv/` (or an Xtream path) and still match.
 final RegExp _liveUrlShapes = RegExp(
-  r'/live/|/iptv/|stream\.m3u8|chunklist|(type|output)=m3u8',
+  r'/live/|/iptv/|chunklist|(type|output)=m3u8',
 );
 
 /// Whether this source should be treated as live.

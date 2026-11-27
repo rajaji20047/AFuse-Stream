@@ -1984,9 +1984,6 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // setMedia clears the controller's target, which [_onSeekSettled] would
     // otherwise take for a seek libVLC never took, and reopen at its distance.
     _liveSeek = null;
-    _videoLengthAsked = false;
-    _videoLength = null;
-    _openedPlaylist = null;
     _startAttemptClock();
 
     final stream = resolved.streams[index];
@@ -2127,6 +2124,16 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       preferenceHeight: _preferenceHeightAtOpen,
     );
 
+    // The length is a property of the content, identical across
+    // renditions: a same-source reopen (a quality pick) keeps the
+    // measured length instead of re-fetching the same master playlist
+    // for it. A measurement still in flight (or never taken) re-runs:
+    // its result was dropped with the old generation.
+    if (stream.url != _lastStreamUrl || _videoLength == null) {
+      _videoLengthAsked = false;
+      _videoLength = null;
+      _openedPlaylist = null;
+    }
     // A segment length read from another source's playlist says nothing
     // about this one's; a reopen of this one keeps it.
     if (stream.url != _lastStreamUrl) _liveSegment = null;
@@ -4805,12 +4812,16 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       preferenceHeight: _preferenceHeightAtOpen,
     );
     if (cap == _renditionCap) return;
+    // A pick is about the rendition, not about playing: a paused
+    // viewer stays paused through the reopen.
+    final wasPaused = _controller.value.state == VlcPlaybackState.paused;
     unawaited(
       _openAttempt(
         _attemptIndex,
         startAt: _reopenTarget(),
         reason: 'quality',
         keepPicture: true,
+        autoPlay: !wasPaused,
       ),
     );
   }

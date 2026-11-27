@@ -1424,6 +1424,16 @@ class _VlcPlayerController extends VlcPlayerController
     final published = value;
     if (!published.isPictureHeld || !_canStillLand(published.state)) return;
     _heldStart = true;
+    // The start is watched like an ordinary seek from here on: its
+    // origin is the top of the media and the sent target is the start
+    // itself, so the landing watch below can re-send it if libVLC
+    // drops it.
+    _seekOrigin = Duration.zero;
+    _seekLastSeen = published.position;
+    _seekMovesWithoutLanding = 0;
+    _seekResent = false;
+    _seekRefusalResends = 0;
+    _seekSentTarget = source.startPosition;
     _pendingSeekTarget.value = source.startPosition;
   }
 
@@ -1803,10 +1813,18 @@ class _VlcPlayerController extends VlcPlayerController
       // A held reopen's start lands with the hold's end - libVLC's first
       // time report, which comes only once playback runs from the start - or
       // never, when the media can no longer play.
-      if (!published.isPictureHeld || !_canStillLand(published.state)) {
+      if (published.isPictureHeld && _canStillLand(published.state)) return;
+      // The hold ended: judge the start like an ordinary seek instead
+      // of dropping it. A `:start-time` libVLC never took leaves
+      // playback at 0, and only the ordinary branch below re-sends it.
+      _heldStart = false;
+      if (!_canStillLand(published.state) ||
+          _seekLanded(published.position, target: target, origin: Duration.zero)) {
         _clearPendingSeek();
+        return;
       }
-      return;
+      // Not landed yet: fall through to the ordinary branch, which
+      // counts moves without landing and re-sends the seek once.
     }
     final origin = _seekOrigin;
     if (origin == null) return;

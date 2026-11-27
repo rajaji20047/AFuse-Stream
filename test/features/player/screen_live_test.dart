@@ -113,7 +113,7 @@ void main() {
       final engine = FakeVlcEngine();
       installEngineMocks(engine: engine);
       const alpha = 'https://example.com/film.mp4';
-      const beta = 'https://example.com/stream.m3u8';
+      const beta = 'https://example.com/live/stream.m3u8';
       await pumpPlayer(
         tester,
         item: MultimediaItem(
@@ -171,7 +171,7 @@ void main() {
     'no LIVE pill, the clock stays',
     variant: texturePlatform,
     (tester) async {
-      const beta = 'https://example.com/stream.m3u8';
+      const beta = 'https://example.com/live/stream.m3u8';
       await pumpPlayer(
         tester,
         item: MultimediaItem(

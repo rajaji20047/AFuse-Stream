@@ -934,7 +934,7 @@ void main() {
       for (final url in const [
         'https://portal.example/live/user/pass/1234.m3u8',
         'https://portal.example/iptv/channel/9.ts',
-        'https://edge.example/hls/stream.m3u8',
+        'https://edge.example/live/stream.m3u8',
         'https://edge.example/app/chunklist_w1234567.m3u8',
         'https://portal.example/get.php?username=u&password=p&type=m3u8',
         'https://portal.example/get.php?username=u&password=p&output=m3u8',
@@ -965,6 +965,7 @@ void main() {
         'https://cdn.example/assets/1234/index.m3u8',
         'https://cdn.example/assets/1234/playlist.m3u8',
         'https://cdn.example/assets/1234/720p/prog_index.m3u8',
+        'https://edge.example/hls/stream.m3u8',
         'https://cdn.example/title.m3u8',
         'https://cdn.example/deliver.mp4?output=mp4',
       ]) {
