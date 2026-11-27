@@ -366,6 +366,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// Candidates in failover order, and which one is open.
   List<StreamResult> _streams = const [];
 
+  /// The route's handed-in sources, for the FIRST resolve only. The route
+  /// sources belong to the first episode only (VLC's `_preloaded`): a
+  /// next episode that re-resolves from them gets the previous episode's
+  /// links — the list appears, but the next episode never plays — so
+  /// [_startEpisode] drops them before resolving.
+  List<StreamResult>? _preloaded;
+
   /// Index into [_streams] of the source this title last played on, as the
   /// resolver found it, or -1 (v7): the Sources drawer tags it "Last used".
   int _lastUsedIndex = -1;
@@ -1054,6 +1061,8 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     WidgetsBinding.instance.addObserver(this);
     _currentEpisode = widget.episode;
     _currentVideoUrl = widget.videoUrl;
+    // The handed-in sources are for this episode only (see [_preloaded]).
+    _preloaded = widget.preloadedStreams;
     // Fullscreen playback hides the Android status + navigation bars, so
     // the video fills the whole screen with nothing on top of it. The VLC
     // screen does the same in its own initState; the mpv screen never did,
@@ -3667,7 +3676,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         read: _read,
         item: widget.item,
         videoUrl: _currentVideoUrl,
-        preloadedStreams: widget.preloadedStreams,
+        // The first episode's handed-in sources only (see [_preloaded]):
+        // a next episode resolves its own links.
+        preloadedStreams: _preloaded,
       );
     } catch (_) {
       return;
@@ -3708,7 +3719,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         read: _read,
         item: widget.item,
         videoUrl: _currentVideoUrl,
-        preloadedStreams: widget.preloadedStreams,
+        // The first episode's handed-in sources only (see [_preloaded]):
+        // a next episode resolves its own links.
+        preloadedStreams: _preloaded,
         // A resolve superseded by a newer one (a tap, a switch, the
         // screen going away) aborts instead of running to completion.
         isCancelled: () => _disposed || token != _resolveToken,
@@ -6025,6 +6038,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _resolveToken++;
     _sample = null;
     _streams = const [];
+    // The route's sources belonged to the episode that just ended (see
+    // [_preloaded]): the next episode resolves its own links.
+    _preloaded = null;
     _streamIndex = 0;
     _lastUsedIndex = -1;
     _dataSaver = false;
