@@ -53,6 +53,7 @@ import '../../domain/source_row_status.dart';
 import '../../domain/stream_resolver.dart';
 import '../../../skip/data/skip_service.dart';
 import '../mpv/golden_drawer.dart';
+import '../mpv/golden_player_theme.dart';
 import '../player_brightness.dart';
 import '../player_platform_service.dart';
 import '../vlc/chrome_visibility_controller.dart';
@@ -1373,12 +1374,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   }
 
   /// The moon button's picker: 15/30/45/60 minutes, end of episode, off.
-  /// A side drawer like the other sheets, not a bottom sheet.
-  Future<void> _showSleepPicker() async {
+  /// One tab of the tabbed drawer now (see [_showTabbedPanel]).
+  Future<void> _showSleepPicker() => _showTabbedPanel(_ExoPanelTab.sleep);
+
+  /// The Sleep tab's body: the remaining-time line plus the duration rows.
+  Widget _sleepPanelContent() {
     final l10n = AppLocalizations.of(context)!;
-    await _showSidePanel(
-      title: l10n.playerSleepTimer,
-      child: ListenableBuilder(
+    return ListenableBuilder(
         listenable: _sleepTimer,
         builder: (context, _) {
           final mode = _sleepTimer.mode;
@@ -1434,41 +1436,73 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             ),
           );
         },
-      ),
-    );
+      );
   }
 
   // -- sheets ----------------------------------------------------------------
 
-  /// The side drawer the player sheets share: a right-anchored panel
-  /// sliding in from the right edge, the same presentation mpv's
-  /// GoldenDrawer and VLC's PlayerPanel use — so the function boxes never
-  /// come up from below. The rows are VLC's [PanelRow] (see [_sheetRow]),
-  /// so every sheet reads as a picker, not a screen.
-  Future<void> _showListSheet({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return _showSidePanel(
-      title: title,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        ),
-      ),
-    );
+  /// The tabs this drawer can show right now, in strip order — the same
+  /// gates the bottom bar uses for its buttons, so the strip never offers
+  /// a tab whose button is absent. Sources and Sleep are always there.
+  List<_ExoPanelTab> _availablePanelTabs() {
+    final controller = _controller;
+    final audioTracks = controller?.betterPlayerAsmsAudioTracks;
+    final hasAudio = audioTracks != null && audioTracks.length > 1;
+    final hasQuality = (controller?.betterPlayerAsmsTracks ?? const [])
+        .any((t) => (t.height ?? 0) > 0);
+    final hasSubtitles =
+        (_selected?.subtitles?.isNotEmpty ?? false) ||
+        (controller?.betterPlayerSubtitlesSourceList ?? const []).any(
+          (s) => s.type != BetterPlayerSubtitlesSourceType.none,
+        );
+    final settings =
+        ref.read(playerSettingsProvider).value ?? const PlayerSettings();
+    return <_ExoPanelTab>[
+      _ExoPanelTab.sources,
+      if (hasQuality) _ExoPanelTab.quality,
+      if (hasAudio) _ExoPanelTab.audio,
+      if (hasSubtitles) _ExoPanelTab.subtitles,
+      if (_isSeries) _ExoPanelTab.episodes,
+      // Speed is meaningless on a live edge, so the tab is absent there
+      // rather than present and inert — the bottom bar's gate.
+      if (!_isLive && settings.showPlaybackSpeed) _ExoPanelTab.speed,
+      _ExoPanelTab.sleep,
+    ];
   }
 
-  /// A right-anchored side drawer over the player, sliding in from the
-  /// right edge (mpv/VLC's presentation). The video keeps playing behind
-  /// it, a tap beside it closes it, and the chrome is held open while it
-  /// is up so the button that opened it is still there to take focus back.
-  Future<void> _showSidePanel({
-    required String title,
-    required Widget child,
-  }) {
+  /// The body of one tab, built the same way the old one-tab sheets built
+  /// theirs — the rows are VLC's [PanelRow] (see [_sheetRow]), so every
+  /// tab reads as a picker, not a screen.
+  Widget _panelTabContent(_ExoPanelTab tab) {
+    switch (tab) {
+      case _ExoPanelTab.sources:
+        return _sourcesPanelContent();
+      case _ExoPanelTab.quality:
+        return _qualityPanelContent();
+      case _ExoPanelTab.audio:
+        return _audioPanelContent();
+      case _ExoPanelTab.subtitles:
+        return _subtitlesPanelContent();
+      case _ExoPanelTab.episodes:
+        return _episodesPanelContent();
+      case _ExoPanelTab.speed:
+        return _speedPanelContent();
+      case _ExoPanelTab.sleep:
+        return _sleepPanelContent();
+    }
+  }
+
+  /// The side drawer the player sheets share: one right-anchored panel
+  /// sliding in from the right edge (mpv/VLC's presentation), with VLC's
+  /// tab strip across the top — Sources | Quality | Audio | Subtitles |
+  /// Episodes | Speed | Sleep, whichever are available — so the viewer
+  /// switches tabs inside the drawer instead of closing one sheet to open
+  /// another. The video keeps playing behind it, a tap beside it closes
+  /// it, and the chrome is held open while it is up so the button that
+  /// opened it is still there to take focus back.
+  Future<void> _showTabbedPanel(_ExoPanelTab initialTab) {
+    final tabs = _availablePanelTabs();
+    final initial = tabs.contains(initialTab) ? initialTab : tabs.first;
     _chrome.poke(hold: true);
     return Navigator.of(context).push<void>(
       _SidePanelRoute(
@@ -1483,13 +1517,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           final profile = ref.read(deviceProfileProvider).asData?.value;
           final isTv =
               playerFormFactorOf(profile) == PlayerFormFactor.tv;
-          return GoldenDrawer(
-            title: title,
-            onClose: () => Navigator.of(routeContext).pop(),
-            width: width,
-            child: PlayerPanelMetricsScope(
-              metrics: PlayerPanelMetrics.forTv(isTv),
-              child: child,
+          return PlayerPanelMetricsScope(
+            metrics: PlayerPanelMetrics.forTv(isTv),
+            child: _ExoTabbedPanel(
+              tabs: tabs,
+              initialTab: initial,
+              width: width,
+              onClose: () => Navigator.of(routeContext).pop(),
+              contentBuilder: _panelTabContent,
             ),
           );
         },
@@ -1559,14 +1594,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// leaving the player — VLC's Sources tab, in this drawer: the quality
   /// filter strip above the list, and rows with the quality/size/seeders
   /// badges, the reachability chip and the `Now playing` badge.
-  Future<void> _showSourcesSheet() async {
+  Future<void> _showSourcesSheet() => _showTabbedPanel(_ExoPanelTab.sources);
+
+  /// The Sources tab's body: the quality filter strip above the list.
+  Widget _sourcesPanelContent() {
     final l10n = AppLocalizations.of(context)!;
     if (_streams.isEmpty) {
-      await _showListSheet(
-        title: l10n.sources,
-        children: [_sheetEmptyRow(l10n.playerNoStreamsFound)],
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [_sheetEmptyRow(l10n.playerNoStreamsFound)],
+        ),
       );
-      return;
     }
     // The probe map as it stands at open (VLC's panel reads it live;
     // this drawer is a snapshot — the probes have settled by the time
@@ -1578,9 +1618,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     final played = _startedPlaying ? <int>{_streamIndex} : <int>{};
     final showBanner = _qualityFilteredFallback;
     String? filter;
-    await _showSidePanel(
-      title: l10n.sources,
-      child: StatefulBuilder(
+    return StatefulBuilder(
         builder: (drawerContext, setDrawerState) {
           // The tiers present in the list, in the strip's fixed order.
           final present = <String>{
@@ -1639,8 +1677,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   /// One Sources row, in VLC's terms: the facts lifted out of the label,
@@ -1715,10 +1752,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// there is a ladder to pick from (see the Quality button's gate).
   /// VLC's Quality tab: Auto names the height it plays, each height the
   /// stream offers follows, tallest first.
-  Future<void> _showQualitySheet() async {
+  Future<void> _showQualitySheet() => _showTabbedPanel(_ExoPanelTab.quality);
+
+  /// The Quality tab's body: Auto on top, then each height tallest first.
+  Widget _qualityPanelContent() {
     final l10n = AppLocalizations.of(context)!;
     final controller = _controller;
-    if (controller == null) return;
+    // Unreachable through the strip — the Quality tab only exists when
+    // there is a ladder, which needs a controller — but a tab body must
+    // still return something.
+    if (controller == null) return const SizedBox.shrink();
     final tracks = controller.betterPlayerAsmsTracks;
     final selected = controller.betterPlayerAsmsTrack;
     // One row per rendition height, tallest first; Auto is the
@@ -1735,9 +1778,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // suffix — the picture's height as the engine reports it, matched
     // to the nearest rung of the ladder.
     final playing = nearestLadderHeight(_videoSize?.height, heights);
-    await _showListSheet(
-      title: l10n.playerQuality,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         _sheetRow(
           title: playing == null
               ? l10n.playerQualityAuto
@@ -1762,16 +1807,21 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               }
             },
           ),
-      ],
+        ],
+      ),
     );
   }
 
   /// The external subtitles, plus Off. The package's list carries the
   /// selection; the screen tracks the name for the button's lit state.
-  Future<void> _showSubtitlesSheet() async {
+  Future<void> _showSubtitlesSheet() =>
+      _showTabbedPanel(_ExoPanelTab.subtitles);
+
+  /// The Subtitles tab's body: Off on top, then the named sources.
+  Widget _subtitlesPanelContent() {
     final l10n = AppLocalizations.of(context)!;
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null) return const SizedBox.shrink();
     final sources = controller.betterPlayerSubtitlesSourceList;
     final none = sources.where(
       (s) => s.type == BetterPlayerSubtitlesSourceType.none,
@@ -1784,9 +1834,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     final named = sources
         .where((s) => s.type != BetterPlayerSubtitlesSourceType.none)
         .toList(growable: false);
-    await _showListSheet(
-      title: l10n.subtitles,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         _sheetRow(
           title: l10n.off,
           icon: Icons.subtitles_off_outlined,
@@ -1810,21 +1862,27 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
                 controller.setupSubtitleSource(source);
               },
             ),
-      ],
+        ],
+      ),
     );
   }
 
   /// The HLS/DASH audio tracks, by language. Only ever opened when there
   /// is more than one to pick from (see the Audio button's gate).
-  Future<void> _showAudioSheet() async {
+  Future<void> _showAudioSheet() => _showTabbedPanel(_ExoPanelTab.audio);
+
+  /// The Audio tab's body: one row per track, by language.
+  Widget _audioPanelContent() {
     final l10n = AppLocalizations.of(context)!;
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null) return const SizedBox.shrink();
     final tracks = controller.betterPlayerAsmsAudioTracks ?? const [];
     final selected = controller.betterPlayerAsmsAudioTrack;
-    await _showListSheet(
-      title: l10n.audio,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         if (tracks.isEmpty)
           _sheetEmptyRow(l10n.noAudioTracks)
         else
@@ -1841,7 +1899,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
                 controller.setAudioTrack(track);
               },
             ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1860,17 +1919,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// VLC's Episodes tab: a still on each row, the number first, air date
   /// and runtime under it, a dub/sub badge, a dim and a `Watched` chip
   /// on episodes already seen.
-  Future<void> _showEpisodesSheet() async {
+  Future<void> _showEpisodesSheet() =>
+      _showTabbedPanel(_ExoPanelTab.episodes);
+
+  /// The Episodes tab's body: one row per episode.
+  Widget _episodesPanelContent() {
     final l10n = AppLocalizations.of(context)!;
     final episodes = effectiveEpisodes(widget.item, _currentEpisode);
-    await _showListSheet(
-      title: l10n.episodes,
-      children: [
-        if (episodes.isEmpty)
-          _sheetEmptyRow(l10n.noEpisodesFound)
-        else
-          for (final episode in episodes) _episodePanelRow(episode, l10n),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (episodes.isEmpty)
+            _sheetEmptyRow(l10n.noEpisodesFound)
+          else
+            for (final episode in episodes) _episodePanelRow(episode, l10n),
+        ],
+      ),
     );
   }
 
@@ -1974,25 +2040,31 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
 
   /// The playback speeds, 0.25x–2x. The package refuses anything outside
   /// that range, so the list never offers one.
-  Future<void> _showSpeedSheet() async {
+  Future<void> _showSpeedSheet() => _showTabbedPanel(_ExoPanelTab.speed);
+
+  /// The Speed tab's body: 0.25x–2x.
+  Widget _speedPanelContent() {
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null) return const SizedBox.shrink();
     final current =
         controller.videoPlayerController?.value.speed ?? 1.0;
     const speeds = <double>[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-    await _showListSheet(
-      title: 'Speed',
-      children: [
-        for (final speed in speeds)
-          _sheetRow(
-            title: _formatSpeed(speed),
-            selected: current == speed,
-            onTap: () {
-              Navigator.of(context).pop();
-              unawaited(controller.setSpeed(speed));
-            },
-          ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final speed in speeds)
+            _sheetRow(
+              title: _formatSpeed(speed),
+              selected: current == speed,
+              onTap: () {
+                Navigator.of(context).pop();
+                unawaited(controller.setSpeed(speed));
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -3175,6 +3247,321 @@ class _SidePanelRoute extends PopupRoute<void> {
             CurvedAnimation(parent: animation, curve: Curves.fastOutSlowIn),
           ),
       child: child,
+    );
+  }
+}
+
+/// The tabs of the one tabbed side drawer (see `_ExoPlayerScreenState.
+/// _showTabbedPanel`): VLC's PlayerPanel tab strip, with Exo's own
+/// Speed and Sleep tabs added — every panel this screen has, in one
+/// drawer, so the viewer switches between them without closing and
+/// reopening.
+enum _ExoPanelTab {
+  sources,
+  quality,
+  audio,
+  subtitles,
+  episodes,
+  speed,
+  sleep;
+
+  /// One tab's label in the strip, in VLC's tab order.
+  String label(AppLocalizations l10n) => switch (this) {
+    _ExoPanelTab.sources => l10n.sources,
+    _ExoPanelTab.quality => l10n.playerQuality,
+    _ExoPanelTab.audio => l10n.audio,
+    _ExoPanelTab.subtitles => l10n.subtitles,
+    _ExoPanelTab.episodes => l10n.episodes,
+    _ExoPanelTab.speed => 'Speed',
+    _ExoPanelTab.sleep => l10n.playerSleepTimer,
+  };
+}
+
+/// The tabbed side drawer: VLC's PlayerPanel tab strip over one tab's
+/// body, in the same right-anchored shell mpv's GoldenDrawer uses — the
+/// same panel, the same width, the same slide, only the header is the
+/// strip (tabs + close) instead of a title.
+///
+/// The shell is mirrored here rather than reused from [GoldenDrawer]
+/// because that header is a title string; the strip needs the header
+/// row itself. The colours, radii and border are GoldenDrawer's own, so
+/// the two drawers still read as one.
+class _ExoTabbedPanel extends StatefulWidget {
+  const _ExoTabbedPanel({
+    required this.tabs,
+    required this.initialTab,
+    required this.width,
+    required this.onClose,
+    required this.contentBuilder,
+  });
+
+  final List<_ExoPanelTab> tabs;
+  final _ExoPanelTab initialTab;
+  final double width;
+  final VoidCallback onClose;
+  final Widget Function(_ExoPanelTab tab) contentBuilder;
+
+  @override
+  State<_ExoTabbedPanel> createState() => _ExoTabbedPanelState();
+}
+
+class _ExoTabbedPanelState extends State<_ExoTabbedPanel> {
+  late _ExoPanelTab _tab = widget.initialTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final metrics = PlayerPanelMetrics.of(context);
+    final labels = <String>[for (final tab in widget.tabs) tab.label(l10n)];
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        width: widget.width,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          color: GoldenPlayerColors.backgroundSecondary,
+          border: Border(
+            left: GoldenPlayerColors.drawerBorder,
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(GoldenPlayerRadii.drawer),
+            bottomLeft: Radius.circular(GoldenPlayerRadii.drawer),
+          ),
+        ),
+        child: SafeArea(
+          left: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 4, 4),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          Widget tabButton(int index) => _ExoPanelTabButton(
+                            label: labels[index],
+                            selected: widget.tabs[index] == _tab,
+                            onPressed: () => setState(
+                              () => _tab = widget.tabs[index],
+                            ),
+                          );
+                          if (_tabsFit(
+                            context,
+                            labels,
+                            metrics,
+                            constraints.maxWidth,
+                          )) {
+                            return Row(
+                              children: <Widget>[
+                                for (var i = 0; i < widget.tabs.length; i++)
+                                  Expanded(child: tabButton(i)),
+                              ],
+                            );
+                          }
+                          return Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: <Widget>[
+                              for (var i = 0; i < widget.tabs.length; i++)
+                                tabButton(i),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    GoldenIconButton(
+                      icon: Icons.close_rounded,
+                      onPressed: widget.onClose,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      size: 36,
+                      iconSize: 20,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(
+                height: 1,
+                color: GoldenPlayerColors.divider,
+              ),
+              Expanded(
+                // A key per tab so switching gives the new list a fresh
+                // viewport rather than the previous tab's scroll offset.
+                child: KeyedSubtree(
+                  key: ValueKey<_ExoPanelTab>(_tab),
+                  child: widget.contentBuilder(_tab),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Whether every one of [labels] fits an equal share of [available] —
+  /// VLC's PlayerPanel measurement, same rule: laid out for real with a
+  /// [TextPainter], in this locale's script and under this device's text
+  /// scale, because a threshold on the label count cannot know that
+  /// `Subtitles` and `ಉಪಶೀರ್ಷಿಕೆಗಳು` are the same one tab.
+  static bool _tabsFit(
+    BuildContext context,
+    List<String> labels,
+    PlayerPanelMetrics metrics,
+    double available,
+  ) {
+    if (labels.isEmpty || !available.isFinite) return false;
+    final share = available / labels.length - 2 * metrics.tabHorizontalPadding;
+    if (share <= 0) return false;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final painter = TextPainter(
+      textDirection: direction,
+      textScaler: textScaler,
+      maxLines: 1,
+    );
+    try {
+      for (final label in labels) {
+        painter.text = TextSpan(
+          text: label,
+          // The selected weight, which is the wider of the two: a tab that
+          // fits unselected and ellipsises the moment it is chosen is the
+          // failure this measurement exists to avoid.
+          style: TextStyle(
+            fontSize: metrics.tabLabelSize,
+            fontWeight: FontWeight.w800,
+          ),
+        );
+        painter.layout();
+        if (painter.width > share) return false;
+      }
+    } finally {
+      painter.dispose();
+    }
+    return true;
+  }
+}
+
+/// One tab in the strip — VLC's `_PanelTabButton`, same look and
+/// behaviour: a focusable button (not a [TabBar], so directional focus
+/// never gets trapped), the active tab underlined in accent, 2.5 px.
+class _ExoPanelTabButton extends StatefulWidget {
+  const _ExoPanelTabButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  State<_ExoPanelTabButton> createState() => _ExoPanelTabButtonState();
+}
+
+class _ExoPanelTabButtonState extends State<_ExoPanelTabButton> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.selected;
+    final metrics = PlayerPanelMetrics.of(context);
+    return Semantics(
+      button: true,
+      selected: active,
+      label: widget.label,
+      child: Focus(
+        onFocusChange: (value) => setState(() => _focused = value),
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.select ||
+              key == LogicalKeyboardKey.enter ||
+              key == LogicalKeyboardKey.space ||
+              key == LogicalKeyboardKey.gameButtonA) {
+            widget.onPressed();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onPressed,
+            // A floor on the width, because a Wrap gives a tab exactly the
+            // width of its word: `Files` is 37 dp of Roboto at the touch
+            // ramp's 13 sp, and three of those 4 dp apart is a mis-tap
+            // rather than a tab strip. In the equal-column strip the
+            // [Expanded] above is already wider than this, so it binds
+            // only in the [Wrap].
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: metrics.tabMinWidth),
+              child: AnimatedContainer(
+                duration: HotstarPlayerStyle.fastMotionDuration,
+                padding: EdgeInsets.symmetric(
+                  horizontal: metrics.tabHorizontalPadding,
+                  vertical: metrics.tabVerticalPadding,
+                ),
+                // Fill and target are the whole column; the indicator below
+                // is not. Hover and focus want every pixel a pointer or a
+                // remote can land on.
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: showFocusIndicator(context, _focused)
+                      ? HotstarPlayerStyle.focusFill
+                      : (_hovered
+                            ? const Color(0xFF151A22)
+                            : Colors.transparent),
+                ),
+                // The indicator sits under the word, not under the column:
+                // an accent rule the full width of an equal share reads as
+                // a filled segment rather than as a tab marker, and in the
+                // [Wrap] the two are the same thing anyway.
+                child: Center(
+                  widthFactor: 1,
+                  child: Container(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: active
+                              ? HotstarPlayerStyle.accent
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: active
+                            ? HotstarPlayerStyle.primaryText
+                            : metrics.secondaryText,
+                        fontSize: metrics.tabLabelSize,
+                        fontWeight: active
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
