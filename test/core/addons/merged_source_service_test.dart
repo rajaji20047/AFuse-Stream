@@ -210,9 +210,11 @@ void main() {
         ),
         'data',
       );
+      // No episodes means the plugin gave nothing to hand `loadLinks`: the
+      // details-page URL is not its data token, so it contributes nothing.
       expect(
         playUrlFor(_item('Inception', url: 'page'), isSeries: false),
-        'page',
+        isNull,
       );
     });
 

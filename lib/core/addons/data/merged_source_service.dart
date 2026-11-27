@@ -607,7 +607,10 @@ String? playUrlFor(
 }) {
   final episodes = details.episodes ?? const <Episode>[];
   if (!isSeries || season == null || episode == null) {
-    return episodes.isNotEmpty ? episodes.first.url : details.url;
+    // No episodes means the plugin gave nothing to hand `loadLinks`: the
+    // details-page URL is not its data token, so the plugin contributes
+    // nothing rather than receiving a garbage data token.
+    return episodes.isNotEmpty ? episodes.first.url : null;
   }
   for (final e in episodes) {
     if (e.season == season && e.episode == episode) return e.url;
