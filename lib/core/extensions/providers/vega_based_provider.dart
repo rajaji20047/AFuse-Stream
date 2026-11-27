@@ -786,6 +786,19 @@ globalThis[$installerKey] = function(__ssTok) {
             ]);
             if (meta is Map) {
               final info = Map<String, dynamic>.from(meta);
+              final links = _allStreamLinks(info);
+              if (links.isNotEmpty) {
+                // A details URL (a movie): resolve EVERY direct link,
+                // not just the first one. One link used to hand the
+                // player exactly one stream, which the health probe
+                // skips (single stream) and which left VLC with no
+                // failover when that one stream was bad. Many streams
+                // let the probe + failover do their job.
+                final type = (info['type'] as String?) ?? 'movie';
+                return _streamsFromLinks(links, type, isDownload);
+              }
+              // No direct links at all: fall back to the single-link
+              // resolution (which also tries a season's episodesLink).
               final resolved = await _firstStreamLink(info);
               if (resolved != null) {
                 streamLink = resolved;
@@ -1239,6 +1252,64 @@ globalThis[$installerKey] = function(__ssTok) {
       }
     }
     return null;
+  }
+
+  /// Every direct link in an Info's linkList, across all entries (every
+  /// quality group), deduped. A movie's details URL resolves through all
+  /// of these so the player gets many streams; the single-link path used
+  /// to hand it exactly one. Entries with no direct links are skipped —
+  /// a season's episodesLink is not a movie stream, and calling
+  /// getEpisodes per entry here could hang the resolution.
+  List<String> _allStreamLinks(Map<String, dynamic> info) {
+    final links = <String>[];
+    final seen = <String>{};
+    final linkList = (info['linkList'] as List?) ?? const [];
+    for (final entry in linkList) {
+      if (entry is! Map) continue;
+      final directLinks = (entry['directLinks'] as List?) ?? const [];
+      for (final dl in directLinks) {
+        if (dl is Map) {
+          final link = (dl['link'] as String?) ?? '';
+          if (link.isNotEmpty && seen.add(link)) links.add(link);
+        }
+      }
+    }
+    return links;
+  }
+
+  /// Resolve every direct link of a details URL (a movie) through
+  /// `getStream` and combine the results, deduped by stream URL and
+  /// bounded by [_kVegaMaxStreamsPerCall]. One bad link must not kill
+  /// the whole movie: a getStream that throws is skipped and the other
+  /// links' streams are kept.
+  Future<List<StreamResult>> _streamsFromLinks(
+    List<String> links,
+    String type,
+    bool isDownload,
+  ) async {
+    final seen = <String>{};
+    final streams = <StreamResult>[];
+    for (final link in links) {
+      if (streams.length >= _kVegaMaxStreamsPerCall) break;
+      dynamic result;
+      try {
+        result = await _jsEngine.invokeAsync(_fn('getStream'), [
+          {'link': link, 'type': type, 'isDownload': isDownload},
+        ]);
+      } catch (_) {
+        continue;
+      }
+      if (result is! List) continue;
+      for (final entry in result) {
+        if (entry is! Map) continue;
+        final stream = _streamToResult(Map<String, dynamic>.from(entry));
+        if (stream == null) continue;
+        if (!seen.add(stream.url)) continue;
+        streams.add(stream);
+        if (streams.length >= _kVegaMaxStreamsPerCall) break;
+      }
+    }
+    return streams;
   }
 
   StreamResult? _streamToResult(Map<String, dynamic> s) {
