@@ -2329,7 +2329,13 @@ class _BottomBar extends StatelessWidget {
                       onSeekUpdate: onSeekUpdate,
                       onSeekEnd: onSeekEnd,
                     )
-                  : const _LiveBadge(),
+                  // LIVE only for a real livestream: a film or episode
+                  // whose duration has not arrived yet is not live — it
+                  // just has no seekbar to show. The empty box keeps the
+                  // row's height, so nothing jumps when the seekbar lands.
+                  : isLive
+                      ? const _LiveBadge()
+                      : const SizedBox(height: 28),
             ),
             const SizedBox(width: 8),
             SizedBox(
