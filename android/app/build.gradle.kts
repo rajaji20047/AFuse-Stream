@@ -27,7 +27,11 @@ android {
         applicationId = "com.raja.fuse"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // minSdk 24 (not flutter.minSdkVersion, 21): better_player_plus
+        // (the ExoPlayer engine) declares minSdk 24 in its Android
+        // plugin, and the manifest merger fails the build when the app
+        // asks for less. Android 7.0+ only from here on.
+        minSdk = 24
         targetSdk = rootProject.extra["projectTargetSdk"] as Int
         versionCode = flutter.versionCode
         versionName = flutter.versionName

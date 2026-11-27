@@ -863,9 +863,11 @@ String getPlayerDisplayName(
     // never read "Internal (VLC)" while the engine is libmpv Golden
     // (v4). The engine defaults to libmpv, so a caller that does not
     // pass one gets the mpv label.
-    return engine == PlayerEngine.vlc
-        ? l10n.internalPlayer
-        : l10n.internalPlayerMpv;
+    return switch (engine ?? PlayerEngine.mpv) {
+      PlayerEngine.mpv => l10n.internalPlayerMpv,
+      PlayerEngine.vlc => l10n.internalPlayer,
+      PlayerEngine.exo => l10n.internalPlayerExo,
+    };
   }
   final player = ExternalPlayerService.instance.getPlayerById(playerId);
   return player?.displayName ?? playerId;
@@ -1279,10 +1281,16 @@ void showDefaultPlayerDialog(
       ? currentPlayerId
       : null;
 
-  // The radio group's choice: 'internal-mpv' / 'internal-vlc' for the two
-  // internal rows, an external player's id otherwise.
-  final currentChoice = currentPlayerId ??
-      (currentEngine == PlayerEngine.mpv ? 'internal-mpv' : 'internal-vlc');
+  // The radio group's choice: 'internal-mpv' / 'internal-vlc' /
+  // 'internal-exo' for the three internal rows, an external player's id
+  // otherwise.
+  final currentChoice =
+      currentPlayerId ??
+      switch (currentEngine) {
+        PlayerEngine.mpv => 'internal-mpv',
+        PlayerEngine.vlc => 'internal-vlc',
+        PlayerEngine.exo => 'internal-exo',
+      };
 
   Future<void> applyChoice(String choice) async {
     final notifier = ref.read(playerSettingsProvider.notifier);
@@ -1292,6 +1300,9 @@ void showDefaultPlayerDialog(
     } else if (choice == 'internal-vlc') {
       await notifier.setPreferredPlayer(null);
       await notifier.setPlayerEngine(PlayerEngine.vlc);
+    } else if (choice == 'internal-exo') {
+      await notifier.setPreferredPlayer(null);
+      await notifier.setPlayerEngine(PlayerEngine.exo);
     } else {
       await notifier.setPreferredPlayer(choice);
     }
@@ -1340,6 +1351,20 @@ void showDefaultPlayerDialog(
                   trailing: const Icon(Icons.play_circle_filled_rounded),
                   onTap: () async {
                     await applyChoice('internal-vlc');
+                    if (context.mounted) Navigator.pop<void>(context);
+                  },
+                ),
+              ),
+              currentOption(
+                isCurrent: currentChoice == 'internal-exo',
+                child: ListTile(
+                  autofocus: currentChoice == 'internal-exo',
+                  title: Text(l10n.internalPlayerExo),
+                  subtitle: Text(l10n.builtInPlayer),
+                  leading: const Radio<String>(value: 'internal-exo'),
+                  trailing: const Icon(Icons.play_circle_filled_rounded),
+                  onTap: () async {
+                    await applyChoice('internal-exo');
                     if (context.mounted) Navigator.pop<void>(context);
                   },
                 ),
@@ -1447,6 +1472,16 @@ void showPlayerEngineDialog(
                   subtitle: Text(l10n.playerEngineVlcDetail),
                   leading: const Radio<PlayerEngine>(value: PlayerEngine.vlc),
                   onTap: () => unawaited(choose(ctx, PlayerEngine.vlc)),
+                ),
+              ),
+              currentOption(
+                isCurrent: current == PlayerEngine.exo,
+                child: ListTile(
+                  autofocus: current == PlayerEngine.exo,
+                  title: const Text('ExoPlayer'),
+                  subtitle: Text(l10n.playerEngineExoDetail),
+                  leading: const Radio<PlayerEngine>(value: PlayerEngine.exo),
+                  onTap: () => unawaited(choose(ctx, PlayerEngine.exo)),
                 ),
               ),
               Padding(

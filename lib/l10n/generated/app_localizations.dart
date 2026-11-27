@@ -483,6 +483,12 @@ abstract class AppLocalizations {
   /// **'libVLC'**
   String get playerEngineVlc;
 
+  /// Label of the ExoPlayer engine segment in Player settings.
+  ///
+  /// In en, this message translates to:
+  /// **'ExoPlayer'**
+  String get playerEngineExo;
+
   /// Label of the mpv PiP-mode segment in Player settings.
   ///
   /// In en, this message translates to:
@@ -506,6 +512,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PiP on Android & iOS'**
   String get playerEngineVlcDetail;
+
+  /// No description provided for @playerEngineExoDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Media3 · Widevine DRM · PiP on Android'**
+  String get playerEngineExoDetail;
 
   /// No description provided for @playerEngineNextVideo.
   ///
@@ -1232,6 +1244,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Internal (mpv)'**
   String get internalPlayerMpv;
+
+  /// The built-in player using the ExoPlayer engine, in the Default Player picker and its Settings row. The mirror of internalPlayer (VLC).
+  ///
+  /// In en, this message translates to:
+  /// **'Internal (ExoPlayer)'**
+  String get internalPlayerExo;
 
   /// No description provided for @builtInPlayer.
   ///

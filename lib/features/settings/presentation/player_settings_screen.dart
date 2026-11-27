@@ -112,6 +112,10 @@ class PlayerSettingsScreen extends ConsumerWidget {
                               value: PlayerEngine.vlc,
                               label: l10n.playerEngineVlc,
                             ),
+                            FuseSegment<PlayerEngine>(
+                              value: PlayerEngine.exo,
+                              label: l10n.playerEngineExo,
+                            ),
                           ],
                           selected: playerSettings.playerEngine,
                           onChanged: (engine) => ref
@@ -120,9 +124,14 @@ class PlayerSettingsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          playerSettings.playerEngine == PlayerEngine.mpv
-                              ? 'libmpv · ${l10n.playerEngineMpvDetail}'
-                              : 'libVLC · ${l10n.playerEngineVlcDetail}',
+                          switch (playerSettings.playerEngine) {
+                            PlayerEngine.mpv =>
+                              'libmpv · ${l10n.playerEngineMpvDetail}',
+                            PlayerEngine.vlc =>
+                              'libVLC · ${l10n.playerEngineVlcDetail}',
+                            PlayerEngine.exo =>
+                              'ExoPlayer · ${l10n.playerEngineExoDetail}',
+                          },
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: Theme.of(

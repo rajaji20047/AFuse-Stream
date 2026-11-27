@@ -978,7 +978,7 @@ void main() {
       expect(_selectedRadioValues(tester), <String>['mx_player']);
     });
 
-    testWidgets('both internal rows are offered', (tester) async {
+    testWidgets('all three internal rows are offered', (tester) async {
       await _pumpOpener(
         tester,
         open: (context, ref) =>
@@ -987,6 +987,7 @@ void main() {
 
       expect(find.text('Internal (mpv)'), findsOneWidget);
       expect(find.text('Internal (VLC)'), findsOneWidget);
+      expect(find.text('Internal (ExoPlayer)'), findsOneWidget);
       expect(_selectedRadioValues(tester), <String>['internal-mpv']);
     });
 

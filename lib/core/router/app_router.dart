@@ -16,6 +16,7 @@ import 'package:raja/features/settings/presentation/settings_screen.dart';
 // for libmpv, VlcPlayerScreen for libVLC. See _PlayerEngineScreen below.
 import 'package:raja/features/player/presentation/vlc/vlc_player_screen.dart';
 import 'package:raja/features/player/presentation/mpv/mpv_player_screen.dart';
+import 'package:raja/features/player/presentation/exo/exo_player_screen.dart';
 import 'package:raja/features/settings/presentation/player_settings_provider.dart';
 import '../../features/extensions/screens/extensions_screen.dart';
 import '../../features/extensions/screens/settings_extensions_screen.dart';
@@ -640,10 +641,10 @@ class PlayerRoute extends GoRouteData with $PlayerRoute {
 ///
 /// Reads the Player Engine setting ONCE, when the route is created, and
 /// shows the matching screen: the Golden mpv player for libmpv (the
-/// default), the libVLC player for libVLC. A change to the setting while a
-/// video is playing never swaps the engine under it — it takes effect on
-/// the NEXT play. Both screens take the same route extra, so the switch is
-/// only which screen is built.
+/// default), the libVLC player for libVLC, the ExoPlayer player for Exo.
+/// A change to the setting while a video is playing never swaps the engine
+/// under it — it takes effect on the NEXT play. All three screens take the
+/// same route extra, so the switch is only which screen is built.
 class _PlayerEngineScreen extends ConsumerStatefulWidget {
   const _PlayerEngineScreen({required this.extra});
 
@@ -675,6 +676,12 @@ class _PlayerEngineScreenState extends ConsumerState<_PlayerEngineScreen> {
         preloadedStreams: widget.extra.preloadedStreams,
       ),
       PlayerEngine.vlc => VlcPlayerScreen(
+        item: widget.extra.item,
+        videoUrl: widget.extra.videoUrl,
+        episode: widget.extra.episode,
+        preloadedStreams: widget.extra.preloadedStreams,
+      ),
+      PlayerEngine.exo => ExoPlayerScreen(
         item: widget.extra.item,
         videoUrl: widget.extra.videoUrl,
         episode: widget.extra.episode,

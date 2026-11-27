@@ -27,6 +27,18 @@ Future<PlayerEngine?> showEnginePickerSheet(
     isScrollControlled: true,
     builder: (sheetContext) {
       final l10n = AppLocalizations.of(sheetContext)!;
+      // The engine names, in the settings' own words — the picker mirrors
+      // the Player settings row, so the two never drift apart.
+      String engineName(PlayerEngine engine) => switch (engine) {
+        PlayerEngine.mpv => l10n.playerEngineMpv,
+        PlayerEngine.vlc => l10n.playerEngineVlc,
+        PlayerEngine.exo => l10n.playerEngineExo,
+      };
+      String engineDetail(PlayerEngine engine) => switch (engine) {
+        PlayerEngine.mpv => l10n.playerEngineMpvDetail,
+        PlayerEngine.vlc => l10n.playerEngineVlcDetail,
+        PlayerEngine.exo => l10n.playerEngineExoDetail,
+      };
       return SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -57,15 +69,11 @@ Future<PlayerEngine?> showEnginePickerSheet(
                   color: Colors.white70,
                 ),
                 title: Text(
-                  engine == PlayerEngine.mpv
-                      ? l10n.playerEngineMpv
-                      : l10n.playerEngineVlc,
+                  engineName(engine),
                   style: const TextStyle(color: Colors.white),
                 ),
                 subtitle: Text(
-                  engine == PlayerEngine.mpv
-                      ? l10n.playerEngineMpvDetail
-                      : l10n.playerEngineVlcDetail,
+                  engineDetail(engine),
                   style: const TextStyle(color: Colors.white70),
                 ),
                 onTap: () => Navigator.of(sheetContext).pop(engine),

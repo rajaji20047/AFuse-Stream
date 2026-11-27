@@ -167,6 +167,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get playerEngineVlc => 'libVLC';
 
   @override
+  String get playerEngineExo => 'ExoPlayer';
+
+  @override
   String get pipModeMpv => 'mpv';
 
   @override
@@ -177,6 +180,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get playerEngineVlcDetail => 'PiP on Android & iOS';
+
+  @override
+  String get playerEngineExoDetail => 'Media3 · Widevine DRM · PiP on Android';
 
   @override
   String get playerEngineNextVideo => 'Takes effect on the next video';
@@ -582,6 +588,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get internalPlayerMpv => 'Internal (mpv)';
+
+  @override
+  String get internalPlayerExo => 'Internal (ExoPlayer)';
 
   @override
   String get builtInPlayer => 'Yerleşik oynatıcı';

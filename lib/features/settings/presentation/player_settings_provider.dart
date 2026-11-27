@@ -145,6 +145,11 @@ enum PlayerEngine {
 
   /// libVLC — the v16/v17 engine. PiP on Android and iOS.
   vlc,
+
+  /// ExoPlayer via better_player_plus (Media3 on Android) — the third
+  /// engine. PiP on Android through the package's own PiP; iOS plays
+  /// through AVPlayer behind the same controller.
+  exo,
 }
 
 /// Which Picture-in-Picture implementation the iOS player uses.

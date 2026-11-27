@@ -107,6 +107,9 @@ dependencies:
   # The player engine.
   vlc_player:
     path: packages/vlc_player
+  # ExoPlayer (Media3) via better_player_plus — the third engine. Its
+  # Android plugin needs minSdk 24 (see android/app/build.gradle.kts).
+  better_player_plus: ^2.0.1
   flutter_cache_manager: ^3.4.1
   path: ^1.9.1
   http: ^1.6.0

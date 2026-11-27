@@ -30,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the picker lists both engines with the current one marked', (
+  testWidgets('the picker lists all three engines with the current one marked', (
     tester,
   ) async {
     PlayerEngine? picked;
@@ -39,15 +39,25 @@ void main() {
     expect(find.text('Player Engine'), findsOneWidget);
     expect(find.text('libmpv Golden'), findsOneWidget);
     expect(find.text('libVLC'), findsOneWidget);
+    expect(find.text('ExoPlayer'), findsOneWidget);
     expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
     expect(
       find.byIcon(Icons.radio_button_unchecked_rounded),
-      findsOneWidget,
+      findsNWidgets(2),
     );
 
     await tester.tap(find.text('libVLC'));
     await tester.pumpAndSettle();
     expect(picked, PlayerEngine.vlc);
+  });
+
+  testWidgets('picking ExoPlayer returns it', (tester) async {
+    PlayerEngine? picked;
+    await pumpOpener(tester, PlayerEngine.mpv, (p) => picked = p);
+
+    await tester.tap(find.text('ExoPlayer'));
+    await tester.pumpAndSettle();
+    expect(picked, PlayerEngine.exo);
   });
 
   testWidgets('picking the engine already playing returns it', (

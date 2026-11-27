@@ -139,6 +139,10 @@
   "@playerEngineVlc": {
     "description": "Label of the libVLC engine segment in Player settings."
   },
+  "playerEngineExo": "ExoPlayer",
+  "@playerEngineExo": {
+    "description": "Label of the ExoPlayer engine segment in Player settings."
+  },
   "pipModeMpv": "mpv",
   "@pipModeMpv": {
     "description": "Label of the mpv PiP-mode segment in Player settings."
@@ -149,6 +153,7 @@
   },
   "playerEngineMpvDetail": "Golden player · PiP on Android",
   "playerEngineVlcDetail": "PiP on Android",
+  "playerEngineExoDetail": "Media3 · Widevine DRM · PiP on Android",
   "playerEngineNextVideo": "Takes effect on the next video",
   "leftGesture": "Left Gesture",
   "rightGesture": "Right Gesture",
@@ -366,6 +371,10 @@
   "internalPlayerMpv": "Internal (mpv)",
   "@internalPlayerMpv": {
     "description": "The built-in player using the mpv engine, in the Default Player picker and its Settings row. The mirror of internalPlayer (VLC)."
+  },
+  "internalPlayerExo": "Internal (ExoPlayer)",
+  "@internalPlayerExo": {
+    "description": "The built-in player using the ExoPlayer engine, in the Default Player picker and its Settings row. The mirror of internalPlayer (VLC)."
   },
   "builtInPlayer": "Built-in player",
   "homeProviderSelect": "Select",
