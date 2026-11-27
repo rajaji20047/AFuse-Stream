@@ -375,11 +375,17 @@ class ViewAllRouteExtra {
     required this.initialMediaList,
     required this.category,
     this.onTap,
+    this.providerPackageName,
   });
   final String title;
   final List<MultimediaItem> initialMediaList;
   final ViewAllCategory category;
   final void Function(MultimediaItem item)? onTap;
+
+  /// The provider the initial items came from (Home rows only). The View
+  /// All page paginates the section through this provider's catalog when
+  /// it supports it (Vega); null means no pagination.
+  final String? providerPackageName;
 }
 
 // --- Route Extra Codec ---
@@ -427,6 +433,7 @@ class _RouteExtraEncoder extends Converter<Object?, Object?> {
         'initialMediaList':
             input.initialMediaList.map((e) => e.toJson()).toList(),
         'category': input.category.name,
+        'providerPackageName': input.providerPackageName,
         // onTap is a callback — cannot be serialized; will be null on restore.
       };
     }
@@ -489,6 +496,7 @@ class _RouteExtraDecoder extends Converter<Object?, Object?> {
               (c) => c.name == map['category'],
               orElse: () => ViewAllCategory.trending,
             ),
+            providerPackageName: map['providerPackageName'] as String?,
             // onTap cannot be restored — callers must handle null.
           );
         default:
@@ -567,6 +575,7 @@ class ViewAllRoute extends GoRouteData with $ViewAllRoute {
       initialMediaList: $extra.initialMediaList,
       category: $extra.category,
       onTap: $extra.onTap,
+      providerPackageName: $extra.providerPackageName,
     );
   }
 

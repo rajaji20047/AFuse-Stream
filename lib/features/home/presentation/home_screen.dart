@@ -605,6 +605,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     mediaList: data[rowId] ?? const [],
                     category: ViewAllCategory.providerContent,
                     showViewAll: true,
+                    // The row belongs to the active provider — the View All
+                    // page paginates its section through that provider.
+                    providerPackageName:
+                        ref.read(activeProviderProvider)?.packageName,
                     // Build 112: Home rows start at the left screen edge.
                     flushLeft: true,
                     onTap: (item) {

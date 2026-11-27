@@ -30,6 +30,10 @@ const int _kVegaMaxSkipUrls = 500;
 /// [VegaBasedProvider._listingImages]).
 const int _kVegaMaxListingImages = 500;
 
+/// Cap on the catalog section filters remembered per provider session (see
+/// [VegaBasedProvider._catalogFilters]).
+const int _kVegaMaxCatalogFilters = 200;
+
 /// One skip interval (intro / recap / credits) a Vega stream reported, in
 /// seconds. Parsed and validated by [VegaBasedProvider]; the player does not
 /// consume these yet (see [VegaBasedProvider.skipIntervalsFor]).
@@ -181,6 +185,12 @@ class VegaBasedProvider extends SkyStreamProvider {
   /// details hero is not left on the placeholder. Bounded (see
   /// [_kVegaMaxListingImages]).
   final Map<String, String> _listingImages = {};
+
+  /// Catalog section filters seen by [getHome] this session, keyed by the
+  /// section title (the Home row title). [getCatalogPage] resolves a
+  /// section's filter from this cache so the Home "View All" page can load
+  /// page 2+. Bounded (see [_kVegaMaxCatalogFilters]).
+  final Map<String, String> _catalogFilters = {};
 
   VegaBasedProvider(
     this._jsEngine, {
@@ -614,6 +624,12 @@ globalThis[$installerKey] = function(__ssTok) {
           final title = (entry['title'] as String?) ?? '';
           final filter = (entry['filter'] as String?) ?? '';
           if (title.isEmpty) continue;
+          // Remember the section's filter for [getCatalogPage] (the Home
+          // "View All" page). The filter may legitimately be ''.
+          if (_catalogFilters.length >= _kVegaMaxCatalogFilters) {
+            _catalogFilters.clear();
+          }
+          _catalogFilters[title] = filter;
           try {
             final posts = await _jsEngine.invokeAsync(_fn('getPosts'), [
               {'filter': filter, 'page': 1, 'providerValue': _value},
@@ -645,6 +661,76 @@ globalThis[$installerKey] = function(__ssTok) {
         throw Exception('Failed to load home content: $e');
       }
     });
+  }
+
+  /// One page of a catalog section's posts, for the Home "View All" page.
+  /// [sectionTitle] is the catalog entry's title (the Home row title); the
+  /// filter is resolved from [_catalogFilters], re-reading the catalog on a
+  /// miss. Returns [] for an unknown section or any error — the caller
+  /// treats an empty page as the end of the list. Page numbers are 1-based,
+  /// like the provider's `getPosts`.
+  Future<List<MultimediaItem>> getCatalogPage(
+    String sectionTitle,
+    int page,
+  ) async {
+    try {
+      await _ensureReady();
+    } catch (_) {
+      return <MultimediaItem>[];
+    }
+    if (_error != null) return <MultimediaItem>[];
+    return _serializedInvoke(() async {
+      try {
+        var filter = _catalogFilters[sectionTitle];
+        if (filter == null) {
+          await _refreshCatalogFilters();
+          filter = _catalogFilters[sectionTitle];
+        }
+        if (filter == null) return <MultimediaItem>[];
+        final posts = await _jsEngine.invokeAsync(_fn('getPosts'), [
+          {'filter': filter, 'page': page, 'providerValue': _value},
+        ]);
+        if (posts is! List) return <MultimediaItem>[];
+        return posts
+            .whereType<Map<dynamic, dynamic>>()
+            .map((e) => _postToItem(Map<String, dynamic>.from(e)))
+            .where((item) => item.url.isNotEmpty)
+            .toList(growable: false);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            'VegaBasedProvider: getCatalogPage error for $packageName: $e',
+          );
+        }
+        return <MultimediaItem>[];
+      }
+    });
+  }
+
+  /// Re-reads the provider's catalog and rebuilds [_catalogFilters].
+  /// Used when [getCatalogPage] is asked for a section title the cache
+  /// does not know (e.g. the provider instance was recreated since Home
+  /// loaded). Returns true when the map was rebuilt.
+  Future<bool> _refreshCatalogFilters() async {
+    try {
+      final catalog = await _jsEngine.invokeAsync(_fn('getCatalog'));
+      if (catalog is! List) return false;
+      _catalogFilters.clear();
+      for (final entry in catalog.whereType<Map<dynamic, dynamic>>()) {
+        final title = (entry['title'] as String?) ?? '';
+        if (title.isEmpty) continue;
+        if (_catalogFilters.length >= _kVegaMaxCatalogFilters) break;
+        _catalogFilters[title] = (entry['filter'] as String?) ?? '';
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          'VegaBasedProvider: catalog refresh failed for $packageName: $e',
+        );
+      }
+      return false;
+    }
   }
 
   @override

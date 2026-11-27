@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/domain/entity/multimedia_item.dart';
+import '../../../../core/extensions/extension_manager.dart';
+import '../../../../core/extensions/providers/vega_based_provider.dart';
 import '../../data/explore_tmdb_provider.dart';
 import '../../data/explore_language_provider.dart';
 import '../../data/explore_filter_provider.dart';
@@ -15,12 +17,20 @@ class ViewAllState {
   final bool isLoading;
   final bool hasMore;
 
+  /// The provider a providerContent page came from, and the catalog
+  /// section title (the Home row title). Null for TMDB categories and for
+  /// provider rows that do not paginate.
+  final String? providerPackageName;
+  final String? sectionTitle;
+
   const ViewAllState({
     this.category,
     this.items = const [],
     this.page = 1,
     this.isLoading = false,
     this.hasMore = true,
+    this.providerPackageName,
+    this.sectionTitle,
   });
 
   ViewAllState copyWith({
@@ -29,6 +39,8 @@ class ViewAllState {
     int? page,
     bool? isLoading,
     bool? hasMore,
+    String? providerPackageName,
+    String? sectionTitle,
   }) {
     return ViewAllState(
       category: category ?? this.category,
@@ -36,6 +48,8 @@ class ViewAllState {
       page: page ?? this.page,
       isLoading: isLoading ?? this.isLoading,
       hasMore: hasMore ?? this.hasMore,
+      providerPackageName: providerPackageName ?? this.providerPackageName,
+      sectionTitle: sectionTitle ?? this.sectionTitle,
     );
   }
 }
@@ -49,12 +63,35 @@ class ViewAllController extends _$ViewAllController {
     return ViewAllState(category: category);
   }
 
-  void init(List<MultimediaItem> initialItems) {
+  void init(
+    List<MultimediaItem> initialItems, {
+    String? providerPackageName,
+    String? sectionTitle,
+  }) {
     if (state.items.isEmpty && state.page == 1) {
-      // Provider content has no TMDB pagination — show only the initial items.
-      final noMore = category == ViewAllCategory.providerContent;
-      state = state.copyWith(items: List.from(initialItems), hasMore: !noMore);
+      // Provider content has no TMDB pagination. A Vega section paginates
+      // through the provider's catalog instead; anything else shows only
+      // the initial items.
+      final hasMore = category == ViewAllCategory.providerContent
+          ? providerPackageName != null &&
+              _vegaProvider(providerPackageName) != null
+          : true;
+      state = state.copyWith(
+        items: List.from(initialItems),
+        hasMore: hasMore,
+        providerPackageName: providerPackageName,
+        sectionTitle: sectionTitle,
+      );
     }
+  }
+
+  /// The installed Vega provider for [packageName], or null when it is not
+  /// installed or is not a Vega provider (e.g. a .sky plugin, which has no
+  /// catalog paging API).
+  VegaBasedProvider? _vegaProvider(String packageName) {
+    final provider =
+        ref.read(extensionManagerProvider.notifier).getProvider(packageName);
+    return provider is VegaBasedProvider ? provider : null;
   }
 
   Future<void> fetchNextPage() async {
@@ -153,9 +190,24 @@ class ViewAllController extends _$ViewAllController {
           );
           break;
         case ViewAllCategory.providerContent:
-          // Provider content is fully loaded at init — no pagination.
-          state = state.copyWith(hasMore: false, isLoading: false);
-          return;
+          final providerPackageName = state.providerPackageName;
+          final sectionTitle = state.sectionTitle;
+          if (providerPackageName == null || sectionTitle == null) {
+            // No paginatable source (e.g. a .sky row): fully loaded at init.
+            state = state.copyWith(hasMore: false, isLoading: false);
+            return;
+          }
+          final provider = _vegaProvider(providerPackageName);
+          if (provider == null) {
+            state = state.copyWith(hasMore: false, isLoading: false);
+            return;
+          }
+          newItems = await provider.getCatalogPage(sectionTitle, nextPage);
+          // A provider may repeat items across pages: only new URLs join
+          // the list, so a page of pure repeats reads as the end.
+          final seenUrls = state.items.map((i) => i.url).toSet();
+          newItems = newItems.where((i) => !seenUrls.contains(i.url)).toList();
+          break;
       }
 
       if (newItems.isEmpty) {

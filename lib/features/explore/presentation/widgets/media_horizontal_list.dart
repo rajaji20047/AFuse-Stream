@@ -25,6 +25,11 @@ class MediaHorizontalList extends StatefulWidget {
   final String? heroTagPrefix;
   final VoidCallback? onViewAll;
 
+  /// The provider this row's items came from (Home rows only). The View All
+  /// page uses it to paginate the section through that provider's catalog;
+  /// null means the row is not paginatable (e.g. TMDB rows).
+  final String? providerPackageName;
+
   /// Build 112: when true (Home rows only), the section heading and the
   /// poster rail start exactly at the left screen edge — left inset 0,
   /// right inset stays spacingMd. Defaults to false so Browse / Addons /
@@ -41,6 +46,7 @@ class MediaHorizontalList extends StatefulWidget {
     this.heroTagPrefix,
     this.onViewAll,
     this.flushLeft = false,
+    this.providerPackageName,
   });
 
   @override
@@ -245,6 +251,7 @@ class _MediaHorizontalListState extends State<MediaHorizontalList> {
                         initialMediaList: widget.mediaList,
                         category: widget.category,
                         onTap: widget.onTap,
+                        providerPackageName: widget.providerPackageName,
                       ),
                     ).push<void>(context);
                   },

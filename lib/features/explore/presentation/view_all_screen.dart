@@ -24,8 +24,9 @@ enum ViewAllCategory {
   trending,
   trendingTV,
 
-  /// Provider-sourced content from the home screen.
-  /// No TMDB pagination — shows only the initial list.
+  /// Provider-sourced content from the home screen. Vega sections
+  /// paginate through the provider's catalog; other providers have no
+  /// paging API and show only the initial list.
   providerContent,
 }
 
@@ -38,12 +39,17 @@ class ViewAllScreen extends ConsumerStatefulWidget {
   /// DetailsRoute instead of TmdbDetailsRoute).
   final void Function(MultimediaItem item)? onTap;
 
+  /// The provider the initial items came from (Home rows only). Passed to
+  /// the controller so a Vega section can paginate its catalog.
+  final String? providerPackageName;
+
   const ViewAllScreen({
     super.key,
     required this.title,
     required this.initialMediaList,
     required this.category,
     this.onTap,
+    this.providerPackageName,
   });
 
   @override
@@ -64,7 +70,11 @@ class _ViewAllScreenState extends ConsumerState<ViewAllScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(viewAllControllerProvider(widget.category).notifier)
-          .init(widget.initialMediaList);
+          .init(
+            widget.initialMediaList,
+            providerPackageName: widget.providerPackageName,
+            sectionTitle: widget.title,
+          );
       _checkInitialFill();
     });
   }
