@@ -98,6 +98,7 @@ import '../../../settings/presentation/player_settings_provider.dart';
 import '../../../skip/data/aniskip_service.dart';
 import '../../../skip/data/skip_service.dart';
 import '../../../tracking/data/simkl_service.dart';
+import '../../domain/clear_key.dart';
 import '../../domain/episode_navigator.dart';
 import '../../domain/hls_fmp4_detection.dart';
 import '../../domain/hls_quality.dart'
@@ -3973,12 +3974,40 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _openStart = start != null && start > Duration.zero
           ? start
           : Duration.zero;
+      // ClearKey content is decrypted in the local proxy and handed to
+      // the engine as plaintext — libmpv cannot decrypt CENC any more
+      // than libVLC can, so this mirrors VLC's open path (see
+      // [_decryptingUri] below). fetchClearKey answers inline keys
+      // without a round trip and never throws, so this costs nothing
+      // on the ordinary path; a Widevine or PlayReady stream answers
+      // null and opens as before, for failover to abandon. A local
+      // temp file is already plaintext, so it skips the fetch.
+      final clearKey = localFileUrl == null
+          ? await fetchClearKey(stream)
+          : null;
+      if (_disposed || resolveToken != _resolveToken) return;
+      // A torrent has to be prepared and seeded before anything can
+      // open it: the torrent service serves it over loopback HTTP,
+      // the same conversion VLC makes through [playableUrlFor]. A
+      // magnet handed to libmpv verbatim opens nothing, which is how
+      // an all-torrent list ended at "No working source found". A
+      // failed preparation fails this candidate over to the next one,
+      // as VLC does — there is no raw URL worth falling back to.
+      // A local temp file already holds the film, so it skips this.
+      var mediaUrl = stream.url;
+      if (localFileUrl == null && isTorrentSource(stream)) {
+        final playable = await playableUrlFor(read: _read, stream: stream);
+        if (_disposed || resolveToken != _resolveToken) return;
+        if (playable == null) {
+          throw StateError('torrent could not be prepared');
+        }
+        mediaUrl = playable;
+      }
       // Build 77: a plain film file on the iPhone opens through the
       // stream cache proxy, so a renderer move finds its bytes on the
       // phone. Anything else — and any failure to get a proxied
       // address — opens the film's own address, as before.
       final previousProxy = _proxyHandle;
-      var mediaUrl = stream.url;
       StreamCacheHandle? proxied;
       // Build 107: a reopen on the local temp file skips the proxy
       // entirely — the film plays from the phone, where seeking is
@@ -4097,6 +4126,23 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         _proxySlowWatch.disarm();
         return;
       }
+      // A ClearKey DASH manifest opens through the decrypting proxy,
+      // mirroring VLC's `_decryptingUri`: the proxy serves the manifest
+      // with its segments decrypted, so mpv sees plaintext. Only a
+      // DASH address is rewritten — HLS keeps its own proxy above,
+      // and a local temp file is already plaintext. A stream with no
+      // usable key (Widevine, PlayReady, an unanswered licence
+      // server) opens as before, for failover to abandon.
+      if (clearKey != null && localFileUrl == null) {
+        final dashUri = Uri.tryParse(mediaUrl);
+        if (dashUri != null && _isDashAddress(dashUri)) {
+          mediaUrl = (await _decryptingUri(
+            dashUri,
+            playbackHeaders(stream),
+            clearKey,
+          )).toString();
+        }
+      }
       // The pick's cap governs the file being opened (mpv reads
       // `hls-bitrate` when it loads the playlist), so it is set before
       // the open, like the hwdec mode below.
@@ -4159,6 +4205,35 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       headers: stream.headers,
       options: ProxyOptions(keepCookies: _cookieNames(stream.headers)),
     );
+  }
+
+  /// Routes an encrypted DASH manifest through the decrypting proxy,
+  /// mirroring VLC's `_decryptingUri`: the proxy serves the manifest
+  /// with its segments decrypted, so the engine sees plaintext.
+  /// [clearKey] is ClearKey only — Widevine and PlayReady never reach
+  /// here, because [fetchClearKey] answers null for them.
+  Future<Uri> _decryptingUri(
+    Uri uri,
+    Map<String, String> headers,
+    ClearKey clearKey,
+  ) async {
+    await LocalProxyService.instance.startServer();
+    return Uri.parse(
+      LocalProxyService.instance.getDecryptingDashUrl(
+        uri.toString(),
+        key: clearKey.key,
+        keyId: clearKey.keyId,
+        headers: headers,
+      ),
+    );
+  }
+
+  /// Whether [uri] names a DASH manifest: the `.mpd` path or query the
+  /// stream-cache bypass rule already uses (see
+  /// [streamProxyBypassReason]).
+  bool _isDashAddress(Uri uri) {
+    if (uri.path.toLowerCase().endsWith('.mpd')) return true;
+    return uri.query.toLowerCase().contains('.mpd');
   }
 
   /// Build 100: applies the hardware-decode mode for this open, before
