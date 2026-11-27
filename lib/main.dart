@@ -277,9 +277,9 @@ class _AppRootState extends State<AppRoot> {
 
       // The user's own TMDB key, saved in Settings: mirror it into
       // TmdbConfig's static cache so the first TMDB request after launch
-      // already has it. The tile reads the same value from storage, so
-      // without this the row says 'Custom key' while every TMDB call sees
-      // an empty key and silently returns nothing. The mirror used to live
+      // already has it. The tile reads the effective key from this cache,
+      // so without this mirror the row says 'Disconnected' after every
+      // restart even though the key is still saved. The mirror used to live
       // in the Bootstrap provider, which nothing watches anymore, so the
       // key only worked until the next restart, when only the save path had
       // set the static (user 2026-11-26: the key dies on every restart).

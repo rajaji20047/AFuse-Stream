@@ -654,11 +654,15 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                     reicon: Reicon.key,
                     title: 'TMDB API key',
                     subtitle: 'Posters, logos & metadata',
-                    value: generalSettings.tmdbApiKey.isNotEmpty
-                        ? 'Custom key'
-                        : (TmdbConfig.buildTimeApiKey.isNotEmpty
-                              ? 'Built-in key'
-                              : 'Not set'),
+                    // Connected means a key is actually in effect right
+                    // now (the saved key, mirrored at boot) — not just
+                    // stored. The old 'Custom key' label said the key was
+                    // saved while every TMDB call could still see an empty
+                    // key, so a restart looked like a reset with no way to
+                    // tell (user 2026-11-27).
+                    value: TmdbConfig.apiKey.isNotEmpty
+                        ? 'Connected'
+                        : 'Disconnected',
                     onTap: () => showTmdbApiKeyDialog(context, ref),
                   ),
                   SettingsTile(
