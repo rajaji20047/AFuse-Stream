@@ -638,7 +638,14 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
                       controller: _addRepoController,
                       keyboardType: TextInputType.url,
                       autocorrect: false,
-                      enableSuggestions: false,
+                      // Suggestions stay ON: with them off, Flutter's
+                      // Android engine asks for a visible-password field
+                      // (the "secure" keyboard), which overrides the URL
+                      // keyboard and its "/" and ".com" keys. Autocorrect
+                      // off alone does not do that — it only stops the
+                      // URL being "corrected" — so the address still
+                      // types verbatim on the normal keyboard.
+                      enableSuggestions: true,
                       decoration: const InputDecoration(
                         hintText: 'https://…/repo.json',
                         border: OutlineInputBorder(),
