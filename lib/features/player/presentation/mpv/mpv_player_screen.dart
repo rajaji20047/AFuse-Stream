@@ -374,6 +374,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// [_startEpisode] drops them before resolving.
   List<StreamResult>? _preloaded;
 
+  /// Whether the stream playing when the last episode advanced came from
+  /// Nuvio: the next episode re-resolves through Nuvio, not the active
+  /// plugin (see [isNuvioStream]). Set in [_startEpisode] from the stream
+  /// that was playing; false until the first advance.
+  bool _advanceFromNuvio = false;
+
   /// Index into [_streams] of the source this title last played on, as the
   /// resolver found it, or -1 (v7): the Sources drawer tags it "Last used".
   int _lastUsedIndex = -1;
@@ -3680,6 +3686,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         // The first episode's handed-in sources only (see [_preloaded]):
         // a next episode resolves its own links.
         preloadedStreams: _preloaded,
+        // An episode reached by advancing from a Nuvio stream re-asks
+        // Nuvio for its own season/episode (see [_advanceFromNuvio]).
+        fromNuvio: _advanceFromNuvio,
       );
     } catch (_) {
       return;
@@ -3723,6 +3732,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         // The first episode's handed-in sources only (see [_preloaded]):
         // a next episode resolves its own links.
         preloadedStreams: _preloaded,
+        // An episode reached by advancing from a Nuvio stream re-asks
+        // Nuvio for its own season/episode (see [_advanceFromNuvio]).
+        fromNuvio: _advanceFromNuvio,
         // A resolve superseded by a newer one (a tap, a switch, the
         // screen going away) aborts instead of running to completion.
         isCancelled: () => _disposed || token != _resolveToken,
@@ -6112,6 +6124,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // from here on (see [_resolveToken]).
     _resolveToken++;
     _sample = null;
+    // The stream that was playing decides the next episode's source: a
+    // Nuvio row advances through Nuvio for the new season/episode, a
+    // plugin row through its plugin. Read before the lists below are
+    // cleared (see [isNuvioStream]).
+    _advanceFromNuvio =
+        _streamIndex >= 0 &&
+        _streamIndex < _streams.length &&
+        isNuvioStream(_read, _streams[_streamIndex]);
     _streams = const [];
     // The route's sources belonged to the episode that just ended (see
     // [_preloaded]): the next episode resolves its own links.

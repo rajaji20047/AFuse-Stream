@@ -164,6 +164,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// links — the list appears, but the next episode never plays — so
   /// [_startEpisode] drops them before resolving.
   List<StreamResult>? _preloaded;
+
+  /// Whether the stream playing when the last episode advanced came from
+  /// Nuvio: the next episode re-resolves through Nuvio, not the active
+  /// plugin (see [isNuvioStream]). Set in [_startEpisode] from the stream
+  /// that was playing; false until the first advance.
+  bool _advanceFromNuvio = false;
+
   /// Whether the quality filter matched nothing and was dropped, so the
   /// Sources panel says why lower-quality sources are in the list.
   bool _qualityFilteredFallback = false;
@@ -500,6 +507,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         // The first episode's handed-in sources only (see [_preloaded]):
         // a next episode resolves its own links.
         preloadedStreams: _preloaded,
+        // An episode reached by advancing from a Nuvio stream re-asks
+        // Nuvio for its own season/episode (see [_advanceFromNuvio]).
+        fromNuvio: _advanceFromNuvio,
         isCancelled: () => _disposed || token != _resolveToken,
         onCandidates: (streams) {
           if (_disposed || token != _resolveToken) return;
@@ -1264,6 +1274,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _currentEpisode = next;
     _currentVideoUrl = next.url;
     _sample = null;
+    // The stream that was playing decides the next episode's source: a
+    // Nuvio row advances through Nuvio for the new season/episode, a
+    // plugin row through its plugin. Read before the lists below are
+    // cleared (see [isNuvioStream]).
+    _advanceFromNuvio =
+        _streamIndex >= 0 &&
+        _streamIndex < _streams.length &&
+        isNuvioStream(_read, _streams[_streamIndex]);
     _streams = const [];
     _streamIndex = 0;
     _failedStreams.clear();

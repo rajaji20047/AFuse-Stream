@@ -36,6 +36,9 @@ import '../../../core/storage/settings_repository.dart';
 import '../../../core/network/http_defaults.dart';
 import '../../../core/network/clearance/clearance.dart';
 import '../../../core/network/probe_answer.dart';
+import '../../../core/nuvio/data/nuvio_repository.dart';
+import '../../../core/nuvio/data/nuvio_stream_service.dart';
+import '../../../core/nuvio/models/nuvio_models.dart';
 import '../../../core/utils/app_utils.dart';
 import '../../../core/utils/stream_quality_sorter.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -294,6 +297,11 @@ List<StreamResult> rotateStreamToFirst(List<StreamResult> streams, int index) {
 /// re-sorted, re-filtered nor overridden by watch history — so its first entry
 /// is what opens.
 ///
+/// [fromNuvio] says the episode that just ended played a Nuvio stream, so
+/// this resolve asks Nuvio for the new episode instead of the active plugin
+/// (see [isNuvioStream]). False for anything else — including a first
+/// episode, which arrives with its own preloaded list.
+///
 /// [probeCandidates] is how many candidates are health-checked at once, in
 /// priority order, with a dead one's place going to the next in line until a
 /// healthy one is known - so a dead link fails over before the engine spins on
@@ -316,6 +324,7 @@ Future<ResolvedPlayback> resolvePlayback({
   required MultimediaItem item,
   required String videoUrl,
   List<StreamResult>? preloadedStreams,
+  bool fromNuvio = false,
   int probeCandidates = 3,
   Duration probeBudget = kProbeBudget,
   bool Function()? isCancelled,
@@ -336,7 +345,7 @@ Future<ResolvedPlayback> resolvePlayback({
   // play) - for an episode after the first too - never from a plugin.
   final addon = _addonOf(read, item);
   final provider = _resolveProvider(read, item);
-  if (provider == null && addon == null && preloaded.isEmpty) {
+  if (provider == null && addon == null && preloaded.isEmpty && !fromNuvio) {
     throw const StreamResolutionException(StreamResolutionFailure.noProvider);
   }
   if (videoUrl.isEmpty && preloaded.isEmpty) {
@@ -356,17 +365,32 @@ Future<ResolvedPlayback> resolvePlayback({
     raw = preloaded;
   } else if (addon != null) {
     raw = await _addonStreams(read, addon, item, videoUrl);
-  } else {
+  } else if (fromNuvio) {
+    // The episode that just ended played a Nuvio row: the new episode is
+    // asked of Nuvio for its own season/episode, never of the active
+    // plugin (see [_nuvioStreams]). Null means Nuvio cannot be asked for
+    // this episode at all, and the resolve falls back to the plugin path
+    // — today's behaviour.
+    List<StreamResult>? nuvio;
     try {
-      raw = await provider!.loadStreams(videoUrl, isDownload: false);
-    } on ExtensionScreenEnded {
-      throw const StreamResolutionException(StreamResolutionFailure.extensionScreen);
+      nuvio = await _nuvioStreams(read, item, videoUrl);
     } catch (e) {
       throw StreamResolutionException(
         StreamResolutionFailure.loadFailed,
         detail: '$e',
       );
     }
+    if (nuvio != null) {
+      raw = nuvio;
+    } else if (provider != null) {
+      raw = await _providerStreams(provider, videoUrl);
+    } else {
+      throw const StreamResolutionException(
+        StreamResolutionFailure.noProvider,
+      );
+    }
+  } else {
+    raw = await _providerStreams(provider!, videoUrl);
   }
   if (isCancelled?.call() ?? false) {
     throw const StreamResolutionException(StreamResolutionFailure.cancelled);
@@ -536,6 +560,96 @@ Future<List<StreamResult>> _addonStreams(
   final top = await viaDebrid(read, links.first);
   return read(addonStreamConverterProvider)
       .toStreamResults(links, selected: top);
+}
+
+/// [provider]'s links for [videoUrl], with its own failure wording.
+Future<List<StreamResult>> _providerStreams(
+  SkyStreamProvider provider,
+  String videoUrl,
+) async {
+  try {
+    return await provider.loadStreams(videoUrl, isDownload: false);
+  } on ExtensionScreenEnded {
+    throw const StreamResolutionException(
+      StreamResolutionFailure.extensionScreen,
+    );
+  } catch (e) {
+    throw StreamResolutionException(
+      StreamResolutionFailure.loadFailed,
+      detail: '$e',
+    );
+  }
+}
+
+/// Whether [stream] came from a Nuvio provider: the provider name it
+/// carries is an enabled Nuvio scraper's name. The name is the only origin
+/// a handed-in [StreamResult] still carries — the sheets drop the `nuvio:`
+/// id when they convert rows — so the check is against the repository's
+/// live scraper list, not a stored flag. The runtime stamps every
+/// Nuvio result with its scraper's repository name, so the match is exact.
+///
+/// A name an installed plugin also carries stays with the plugin path:
+/// the two cannot be told apart by name, and the plugin path is today's
+/// behaviour, so an ambiguous name degrades to "not fixed" rather than
+/// to "wrong source".
+bool isNuvioStream(ProviderReader read, StreamResult stream) {
+  final base = stream.providerName.split(' · ').first.trim();
+  if (base.isEmpty) return false;
+  final scrapers = read(nuvioRepositoryProvider).activeScrapers;
+  if (!scrapers.any((entry) => entry.scraper.name == base)) return false;
+  final plugins = read(extensionManagerProvider.notifier).getAllProviders();
+  if (plugins.any((plugin) => plugin.name == base)) return false;
+  return true;
+}
+
+/// The new episode's links from Nuvio, best first, or null when Nuvio
+/// cannot be asked for it: the episode is not in the item's list, so its
+/// season/episode are unknown, or the title has no TMDB/IMDb id to ask
+/// with. Null is "fall back to the plugin path", not "nothing found": an
+/// empty list is what an asked Nuvio that answered nothing returns.
+///
+/// The ask mirrors the merged sheet's — Nuvio by TMDB id for `tv` with
+/// the episode's own season/episode — and the answers convert the same
+/// way the sheet's rows do.
+Future<List<StreamResult>?> _nuvioStreams(
+  ProviderReader read,
+  MultimediaItem item,
+  String videoUrl,
+) async {
+  final episode = item.episodes?.firstWhereOrNull((e) => e.url == videoUrl);
+  final season = episode?.season;
+  final episodeNumber = episode?.episode;
+  if (season == null || episodeNumber == null) return null;
+  final id = _nuvioIdFor(item);
+  if (id == null) return null;
+  var last = const NuvioProgress();
+  await for (final progress in read(nuvioStreamServiceProvider).resolve(
+    tmdbId: id,
+    mediaType: 'tv',
+    season: season,
+    episode: episodeNumber,
+    personWaiting: true,
+  )) {
+    last = progress;
+  }
+  return [for (final result in last.streams) result.toStreamResult()];
+}
+
+/// The id Nuvio providers are asked with, mirroring the merged sheet's
+/// `nuvioIdFor`: the title's own TMDB id first — the providers are
+/// written against a numeric TMDB id — else an IMDb id, else the id
+/// carried in the title URL.
+String? _nuvioIdFor(MultimediaItem item) {
+  if (item.tmdbId != null) return '${item.tmdbId}';
+  final imdb = item.imdbId?.trim();
+  if (imdb != null && imdb.startsWith('tt')) return imdb;
+  final base = item.url.split(':').first.trim();
+  if (RegExp(r'^tt\d').hasMatch(base)) return base;
+  if (item.url.startsWith('tmdb:')) {
+    final id = item.url.split(':').elementAtOrNull(1);
+    if (id != null && id.isNotEmpty) return id;
+  }
+  return null;
 }
 
 /// Settings can still be loading when playback starts. Silently skipping the

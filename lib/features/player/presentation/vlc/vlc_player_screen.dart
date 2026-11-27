@@ -411,6 +411,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// so advancing must drop them or the next episode plays this one's streams.
   List<StreamResult>? _preloaded;
 
+  /// Whether the stream playing when the last episode advanced came from
+  /// Nuvio: the next episode re-resolves through Nuvio, not the active
+  /// plugin (see [isNuvioStream]). Set in [_startEpisode] from the stream
+  /// that was playing; false until the first advance.
+  bool _advanceFromNuvio = false;
+
   /// One advance at a time. The engine's ended event, a retry and any future
   /// button can all land within the same second.
   bool _advancing = false;
@@ -1700,6 +1706,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         item: widget.item,
         videoUrl: _videoUrl,
         preloadedStreams: _preloaded,
+        // An episode reached by advancing from a Nuvio stream re-asks
+        // Nuvio for its own season/episode (see [_advanceFromNuvio]).
+        fromNuvio: _advanceFromNuvio,
         isCancelled: () => _disposed,
         onCandidates: (streams) => _onCandidates(generation, streams),
         onProbe: (index, outcome) => _onProbe(generation, index, outcome),
@@ -3451,6 +3460,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         item: widget.item,
         videoUrl: _videoUrl,
         preloadedStreams: null,
+        // The episode this refreshes was reached by advancing from a
+        // Nuvio stream, so its fresh links come from Nuvio too (see
+        // [_advanceFromNuvio]); false on the first episode, as before.
+        fromNuvio: _advanceFromNuvio,
         isCancelled: () => _disposed,
         onCandidates: (streams) => _onCandidates(generation, streams),
         onProbe: (index, outcome) => _onProbe(generation, index, outcome),
@@ -5260,6 +5273,16 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
 
   /// Swaps this session onto [next] on the controller it already owns.
   Future<void> _startEpisode(Episode next) async {
+    // The stream that was playing decides the next episode's source: a
+    // Nuvio row advances through Nuvio for the new season/episode, a
+    // plugin row through its plugin. Read before [_resolved] is cleared
+    // below (see [isNuvioStream]).
+    final resolved = _resolved;
+    _advanceFromNuvio =
+        resolved != null &&
+        _attemptIndex >= 0 &&
+        _attemptIndex < resolved.streams.length &&
+        isNuvioStream(_read, resolved.streams[_attemptIndex]);
     // Per-episode reset. _token, _recorder, _tracker and _initialResume are
     // rebuilt by _start(); _generation and the attempt/edge flags by
     // _openAttempt(). These four are the ones nothing else clears.
