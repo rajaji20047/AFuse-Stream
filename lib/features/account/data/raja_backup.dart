@@ -32,8 +32,9 @@ class RajaBackup {
 
   /// The additive revision of the format: 1 = history, library, plugins
   /// (v8 and before); 2 = + add-ons, Nuvio, settings (v9); 3 = + the
-  /// profile the backup belongs to (profiles, Build 1).
-  static const int currentSchema = 3;
+  /// profile the backup belongs to (profiles, Build 1); 4 = + Vega
+  /// repositories and providers.
+  static const int currentSchema = 4;
 
   const RajaBackup({
     this.version = currentVersion,
@@ -52,6 +53,9 @@ class RajaBackup {
     this.settingsUpdatedAt = 0,
     this.addonsSkippedForSecrets = 0,
     this.profileId,
+    this.vegaRepos = const [],
+    this.vegaPlugins = const [],
+    this.vegaDisabled = const [],
     this.droppedEntries = 0,
   });
 
@@ -119,6 +123,17 @@ class RajaBackup {
   /// `{'internalName', 'name', 'url', 'repositoryUrl'}`.
   final List<Map<String, String>> cloudstreamPlugins;
 
+  /// Vega repository manifest URLs.
+  final List<String> vegaRepos;
+
+  /// Installed Vega providers: `{'value', 'repositoryUrl'}`. The bundles
+  /// themselves live on disk and are re-downloaded on restore.
+  final List<Map<String, String>> vegaPlugins;
+
+  /// Installed Vega providers the user disabled, by package name
+  /// (`vega.<value>`): installed on disk, not published.
+  final List<String> vegaDisabled;
+
   Map<String, dynamic> toJson() => {
     'format': format,
     'version': version,
@@ -129,6 +144,9 @@ class RajaBackup {
     'zoroxPlugins': rajaPlugins,
     'cloudstreamRepos': cloudstreamRepos,
     'cloudstreamPlugins': cloudstreamPlugins,
+    'vegaRepos': vegaRepos,
+    'vegaPlugins': vegaPlugins,
+    'vegaDisabled': vegaDisabled,
     'schema': schema,
     'stremioAddons': stremioAddons,
     'nuvioRepos': nuvioRepos,
@@ -190,6 +208,19 @@ class RajaBackup {
           if (e is Map)
             {for (final kv in e.entries) '${kv.key}': '${kv.value}'},
       ],
+      vegaRepos: [
+        for (final e in (json['vegaRepos'] as List?) ?? const [])
+          if (e is String) e,
+      ],
+      vegaPlugins: [
+        for (final e in (json['vegaPlugins'] as List?) ?? const [])
+          if (e is Map)
+            {for (final kv in e.entries) '${kv.key}': '${kv.value}'},
+      ],
+      vegaDisabled: [
+        for (final e in (json['vegaDisabled'] as List?) ?? const [])
+          if (e is String) e,
+      ],
       schema: (json['schema'] as num?)?.toInt() ?? 1,
       stremioAddons: [
         for (final e in (json['stremioAddons'] as List?) ?? const [])
@@ -243,6 +274,8 @@ class RajaRestoreReport {
     this.rajaPluginsRestored = 0,
     this.cloudstreamReposRestored = 0,
     this.cloudstreamPluginsRestored = 0,
+    this.vegaReposRestored = 0,
+    this.vegaPluginsRestored = 0,
     this.addonsRestored = 0,
     this.nuvioReposRestored = 0,
     this.settingsChanged = 0,
@@ -269,6 +302,8 @@ class RajaRestoreReport {
   final int rajaPluginsRestored;
   final int cloudstreamReposRestored;
   final int cloudstreamPluginsRestored;
+  final int vegaReposRestored;
+  final int vegaPluginsRestored;
   final List<String> errors;
 
   /// True when nothing at all came back (an empty or foreign backup).
@@ -277,6 +312,7 @@ class RajaRestoreReport {
       libraryRestored == 0 &&
       rajaPluginsRestored == 0 &&
       cloudstreamPluginsRestored == 0 &&
+      vegaPluginsRestored == 0 &&
       addonsRestored == 0 &&
       nuvioReposRestored == 0 &&
       settingsChanged == 0;
@@ -287,8 +323,8 @@ class RajaRestoreReport {
         '$historyRestored history item${historyRestored == 1 ? '' : 's'}',
       if (libraryRestored > 0)
         '$libraryRestored bookmark${libraryRestored == 1 ? '' : 's'}',
-      if (rajaPluginsRestored > 0 || cloudstreamPluginsRestored > 0)
-        '${rajaPluginsRestored + cloudstreamPluginsRestored} plugin${rajaPluginsRestored + cloudstreamPluginsRestored == 1 ? '' : 's'}',
+      if (rajaPluginsRestored + cloudstreamPluginsRestored + vegaPluginsRestored > 0)
+        '${rajaPluginsRestored + cloudstreamPluginsRestored + vegaPluginsRestored} plugin${rajaPluginsRestored + cloudstreamPluginsRestored + vegaPluginsRestored == 1 ? '' : 's'}',
       if (addonsRestored + nuvioReposRestored > 0)
         '${addonsRestored + nuvioReposRestored} add-on${addonsRestored + nuvioReposRestored == 1 ? '' : 's'}',
       if (settingsChanged > 0) 'settings',

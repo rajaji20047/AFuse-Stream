@@ -13,6 +13,8 @@ import '../../../core/cloudstream/cloudstream_models.dart';
 import '../../../core/cloudstream/cloudstream_repository.dart';
 import '../../../core/providers/locale_provider.dart';
 import '../../../core/extensions/models/extension_plugin.dart';
+import '../../../core/extensions/models/vega_models.dart';
+import '../../../core/extensions/vega_repository.dart';
 import '../../../core/logger/app_logger.dart';
 import '../../../core/nuvio/data/nuvio_repository.dart';
 import '../../../core/router/app_router.dart';
@@ -188,6 +190,21 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     // v9: add-ons and synced settings too, on the same 10 s debounce.
     ref.listen(addonRepositoryProvider, (_, _) => requestAutoSync());
     ref.listen(nuvioRepositoryProvider, (_, _) => requestAutoSync());
+    // A profile becoming active is when that profile's cloud backup can
+    // first be read. The login download ran with no profile active, so it
+    // fetched the legacy key — and picking a profile only re-read the
+    // local (empty) boxes, so Continue Watching stayed empty until the
+    // next cold start or a manual sync. Run a full round (download first,
+    // then upload) so the picked profile's history, library and the rest
+    // arrive on their own. The round is throttled (10 minutes) and
+    // guarded, so rapid switches do not hammer the server.
+    ref.listen(
+      fuseProfilesProvider.select((s) => s.activeProfileId),
+      (prev, next) {
+        if (next == null || next == prev) return;
+        unawaited(autoSync(playerOnTop: _playerOnTop));
+      },
+    );
     _watchSyncedSettings();
     return const RajaAccountState();
   }
@@ -1026,6 +1043,31 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       talker.warning('[Raja Account] Nuvio repositories not backed up: $e');
     }
 
+    // Vega repositories and their installed providers (schema 4): the
+    // source list (manifest URLs) and, per installed provider, its value
+    // + the repository it came from, plus which installed providers are
+    // disabled. The bundles themselves live on disk
+    // (extensions/vega/<value>/) and are re-downloaded on restore.
+    var vegaRepos = <String>[];
+    var vegaPlugins = <Map<String, String>>[];
+    var vegaDisabled = <String>[];
+    try {
+      final vega = ref.read(vegaRepositoryProvider.notifier);
+      await vega.ensureInitialized();
+      final vegaState = ref.read(vegaRepositoryProvider);
+      vegaRepos = [for (final repo in vegaState.repos) repo.manifestUrl];
+      vegaPlugins = [
+        for (final installed in vegaState.installed)
+          {
+            'value': installed.entry.value,
+            'repositoryUrl': installed.repositoryUrl,
+          },
+      ];
+      vegaDisabled = vegaState.disabled.toList()..sort();
+    } catch (e) {
+      talker.warning('[Raja Account] Vega providers not backed up: $e');
+    }
+
     // v9: the allow-listed settings, and when they last changed here.
     Map<String, dynamic>? settings;
     try {
@@ -1042,6 +1084,9 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       rajaPlugins: rajaPlugins,
       cloudstreamRepos: cloudstreamRepos,
       cloudstreamPlugins: cloudstreamPlugins,
+      vegaRepos: vegaRepos,
+      vegaPlugins: vegaPlugins,
+      vegaDisabled: vegaDisabled,
       stremioAddons: stremioAddons,
       nuvioRepos: nuvioRepos,
       nuvioEnabled: nuvioEnabled,
@@ -1100,6 +1145,8 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
     var rajaPluginsRestored = 0;
     var cloudstreamReposRestored = 0;
     var cloudstreamPluginsRestored = 0;
+    var vegaReposRestored = 0;
+    var vegaPluginsRestored = 0;
 
     // History: newest timestamp wins, per box key.
     final storage = ref.read(storageServiceProvider);
@@ -1253,6 +1300,77 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       errors.add('CloudStream plugins were not restored: $e');
     }
 
+    // Vega repositories, then their providers, then the disabled set.
+    // A provider is re-downloaded from its repository (the bundles live
+    // on disk, not in the backup); one no longer listed is reported, not
+    // silently dropped. Disabled providers come back disabled — an
+    // install alone would publish them.
+    try {
+      final vega = ref.read(vegaRepositoryProvider.notifier);
+      await vega.ensureInitialized();
+      var vegaState = ref.read(vegaRepositoryProvider);
+      for (final url in backup.vegaRepos) {
+        if (vegaState.repos.any((repo) => repo.manifestUrl == url)) {
+          continue;
+        }
+        try {
+          await vega.addSource(url);
+          vegaReposRestored++;
+        } catch (e) {
+          errors.add('Could not add Vega repository $url: $e');
+        }
+        vegaState = ref.read(vegaRepositoryProvider);
+      }
+      for (final saved in backup.vegaPlugins) {
+        final value = saved['value'];
+        final repositoryUrl = saved['repositoryUrl'];
+        if (value == null || value.isEmpty) continue;
+        if (vegaState.installed.any((p) => p.entry.value == value)) {
+          continue;
+        }
+        if (repositoryUrl == null || repositoryUrl.isEmpty) {
+          errors.add(
+            'Vega provider $value was not restored: its repository is missing from the backup.',
+          );
+          continue;
+        }
+        final entries = vegaState.available[repositoryUrl] ?? const [];
+        VegaManifestEntry? entry;
+        for (final e in entries) {
+          if (e.value == value) entry = e;
+        }
+        if (entry == null) {
+          errors.add(
+            'Vega provider $value is no longer listed by its repository, so it was not restored.',
+          );
+          continue;
+        }
+        try {
+          await vega.installProvider(entry, repositoryUrl);
+          vegaPluginsRestored++;
+        } catch (e) {
+          errors.add('Could not install Vega provider ${entry.displayName}: $e');
+        }
+        vegaState = ref.read(vegaRepositoryProvider);
+      }
+      for (final packageName in backup.vegaDisabled) {
+        final value = packageName.startsWith('vega.')
+            ? packageName.substring('vega.'.length)
+            : packageName;
+        if (value.isEmpty) continue;
+        if (!vegaState.installed.any((p) => p.entry.value == value)) {
+          continue;
+        }
+        try {
+          await vega.setProviderEnabled(packageName, false);
+        } catch (e) {
+          errors.add('Could not disable Vega provider $packageName: $e');
+        }
+      }
+    } catch (e) {
+      errors.add('Vega providers were not restored: $e');
+    }
+
     // v9: Stremio add-ons. Only the missing ones are installed; an add-on
     // already here keeps its own on/off state and position.
     var addonsRestored = 0;
@@ -1367,6 +1485,8 @@ class RajaAccountNotifier extends Notifier<RajaAccountState> {
       rajaPluginsRestored: rajaPluginsRestored,
       cloudstreamReposRestored: cloudstreamReposRestored,
       cloudstreamPluginsRestored: cloudstreamPluginsRestored,
+      vegaReposRestored: vegaReposRestored,
+      vegaPluginsRestored: vegaPluginsRestored,
       addonsRestored: addonsRestored,
       nuvioReposRestored: nuvioReposRestored,
       settingsChanged: settingsChanged,
