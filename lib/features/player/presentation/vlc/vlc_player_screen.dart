@@ -2061,6 +2061,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       _startedTorrent = true;
       _startTorrentPolling();
     }
+    if (!isTorrent && _torrentFileIndex == null) {
+      // The torrent is behind this attempt (a failover or a pick left
+      // it): its poll and the pack it listed belong to the old source,
+      // not this one — left standing, the Files tab keeps offering the
+      // old pack and tapping one swaps playback back to it. A picked
+      // pack file keeps both (see [_applyTorrentFile]).
+      _torrentStatus = null;
+      _torrentPoll?.cancel();
+      _torrentPoll = null;
+      _publishPanelData();
+    }
     // A magnet's sizes reach the torrent server before it is added: its
     // write happens at its start, before the first add, and drops every
     // torrent it holds (spec 5). A pack file picked out of a loaded torrent
@@ -2437,8 +2448,16 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       return;
     }
     if (active == _subtitleOffAsked) return;
-    _subtitleOffAsked = active;
-    unawaited(_disableSubtitles());
+    final asked = active;
+    _subtitleOffAsked = asked;
+    // A disable that fails (a detached controller in the remount window)
+    // must not retire the latch: clear it so the next tick retries,
+    // instead of leaving the subtitle on for the rest of the media.
+    unawaited(
+      _disableSubtitles().then((ok) {
+        if (!ok && _subtitleOffAsked == asked) _subtitleOffAsked = null;
+      }),
+    );
   }
 
   /// Watches which tracks are on, and puts them back after a reopen.
@@ -2911,12 +2930,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// the playing stage, and on the tick path it is unawaited, so a backend
   /// that will not answer would take the whole attempt down or reach the zone.
   /// A subtitle that would not turn off is a wrong default, not a dead player,
-  /// and the viewer can still turn it off by hand.
-  Future<void> _disableSubtitles() async {
+  /// and the viewer can still turn it off by hand. Reports whether the
+  /// disable landed, so [_applySubtitleDefault] can retry a failed one
+  /// instead of retiring its latch.
+  Future<bool> _disableSubtitles() async {
     try {
       await _controller.disableSubtitle();
+      return true;
     } on Object {
-      return;
+      return false;
     }
   }
 
@@ -3388,6 +3410,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     final resolved = _resolved;
     if (resolved == null) return;
     _markFailed(_attemptIndex);
+    // A failover leaves the season-pack torrent behind, as a source pick
+    // does: the file index belongs to the torrent, and a plain source
+    // reached by failover would otherwise keep its poll, its buffer plan
+    // and its Files tab (see [_openAttempt]).
+    _torrentFileIndex = null;
+    _torrentFileLabel = null;
     if (revert) {
       _notify(
         _l10n?.playerSourceRestoredPrevious ??
@@ -5904,12 +5932,21 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         .read(playerSettingsProvider.notifier)
         .setPlayerEngine(target);
     if (!mounted) return;
+    // The dispose that follows this replacement must not release the
+    // new player's landscape pin (see [_handBack]).
+    _leavingForEngineSwitch = true;
     PlayerRoute(
       $extra: PlayerRouteExtra(
         item: widget.item,
         videoUrl: _videoUrl,
         episode: _currentEpisode,
-        preloadedStreams: _candidates.isEmpty ? null : _candidates,
+        // The playing source rides first: the resolver treats a
+        // handed-in list as already ranked and probes from its head, so
+        // an unrotated list reopens on source #1 instead of the source
+        // that was playing.
+        preloadedStreams: _candidates.isEmpty
+            ? null
+            : rotateStreamToFirst(_candidates, _attemptIndex),
       ),
     ).pushReplacement(context);
   }
@@ -6549,6 +6586,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// Gives the device back as the rest of the app wants it: the handset's
   /// rotation, the system bars, a desktop window out of full screen.
   ///
+  /// An engine switch is under way: [_switchEngine] set this before the
+  /// replacement route, so [_handBack] (in dispose) knows the delayed pin
+  /// release must not run — the new player's entry pin is the one that
+  /// must stand.
+  bool _leavingForEngineSwitch = false;
+
   /// From Back, before the pop, so all three start with the route's exit
   /// transition (300 to 500 ms) rather than after it; and from [dispose], for
   /// a route that went any other way. Once only.
@@ -6592,10 +6635,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       unawaited(
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
       );
-      Future.delayed(const Duration(seconds: 1), () {
-        if (PlayerPlatformService.playerEntryGeneration != generation) return;
-        unawaited(SystemChrome.setPreferredOrientations(const []));
-      });
+      // An engine switch hands the player to a new screen: its entry pin
+      // is the one that must stand, and this exit's delayed release would
+      // clear it ~1 s later — the new screen's initState runs before
+      // this dispose, so the generation guard cannot tell them apart.
+      if (!_leavingForEngineSwitch) {
+        Future.delayed(const Duration(seconds: 1), () {
+          if (PlayerPlatformService.playerEntryGeneration != generation) {
+            return;
+          }
+          unawaited(SystemChrome.setPreferredOrientations(const []));
+        });
+      }
     }
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,

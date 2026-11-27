@@ -270,6 +270,23 @@ extension ProbeOutcomeReach on ProbeOutcome {
       this == ProbeOutcome.healthy || this == ProbeOutcome.unseekable;
 }
 
+/// Puts the stream at [index] first, keeping the rest in order: the
+/// resolver treats a handed-in list as already ranked and probes from
+/// its head, so an engine switch hands the playing source first instead
+/// of reopening on source #1 (see `PlayerRouteExtra.preloadedStreams`).
+List<StreamResult> rotateStreamToFirst(List<StreamResult> streams, int index) {
+  if (streams.isEmpty) return streams;
+  var start = index;
+  if (start < 0) start = 0;
+  if (start >= streams.length) start = streams.length - 1;
+  if (start == 0) return streams;
+  return <StreamResult>[
+    streams[start],
+    ...streams.sublist(0, start),
+    ...streams.sublist(start + 1),
+  ];
+}
+
 /// Resolves [videoUrl] for [item] into playable streams.
 ///
 /// [preloadedStreams] short-circuits the plugin call, for callers that have

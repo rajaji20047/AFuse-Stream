@@ -2214,12 +2214,18 @@ class _VlcPlayerController extends VlcPlayerController
     }
     final pending = List<Uri>.of(_pendingSubtitles);
     _pendingSubtitles.clear();
-    for (final uri in pending) {
+    for (var i = 0; i < pending.length; i++) {
       if (_isDisposed || _viewId == null) {
+        // A remount detached the view mid-flush: the tail is re-queued
+        // for the next attach instead of being dropped silently.
+        _pendingSubtitles.insertAll(0, pending.sublist(i));
         return;
       }
       try {
-        await _invoke('addSubtitle', <String, Object?>{'uri': uri.toString()});
+        await _invoke(
+          'addSubtitle',
+          <String, Object?>{'uri': pending[i].toString()},
+        );
       } catch (_) {
         // Ignored on purpose - see above.
       }

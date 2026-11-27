@@ -593,7 +593,7 @@ class RecoveryPolicy {
     final since = recovery.noAnswerSince ??= now;
     final hostDown = _hostDown(recovery, now);
     if (hostDown != null) return hostDown;
-    recovery.nextCheckAt = began.add(
+    recovery.nextCheckAt = now.add(
       now.difference(since) < limits.fastChecksFor
           ? limits.fastChecks
           : limits.slowChecks,

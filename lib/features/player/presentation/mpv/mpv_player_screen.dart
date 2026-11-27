@@ -71,6 +71,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart'
     show ProviderListenable;
+import 'package:collection/collection.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:vlc_player/vlc_player.dart';
@@ -113,6 +114,7 @@ import '../../domain/source_row_status.dart';
 import '../../domain/stream_resolver.dart';
 import '../../domain/temp_download.dart';
 import '../../domain/subtitle_search_target.dart';
+import '../../domain/track_language.dart';
 import '../../domain/track_memory.dart';
 import '../player_platform_service.dart';
 import '../vlc/chrome_visibility_controller.dart';
@@ -437,6 +439,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// Orders overlapping opens: only the newest goes on after the
   /// proxy has answered.
   int _proxyOpenToken = 0;
+
+  /// Orders overlapping resolves and episode switches: a resolve or an
+  /// open captured an older value is stale and must not overwrite the
+  /// episode the viewer is on now. Bumped in [_startEpisode] and at
+  /// every [_resolveAndOpen] entry; [_openStream] captures it on entry
+  /// and checks it after each await.
+  int _resolveToken = 0;
 
   /// A straight-from-the-host retry is being decided: further failure
   /// reports for the same open wait for it.
@@ -763,6 +772,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// post-frame sync pushes it to the view.
   double _drawerOpenWidth = 0;
 
+  /// Back closes an open golden drawer before it leaves the player: the
+  /// drawers are overlays, not routes, so the screen's PopScope would
+  /// otherwise exit the film with one open. Bumped on Back; the controls
+  /// listen and close (see [GoldenPlayerControls.drawerCloseSignal]).
+  final ValueNotifier<int> _closeDrawerSignal = ValueNotifier<int>(0);
+
   /// The screen height last seen in build. The padding sync runs from a
   /// post-frame callback and from the chrome listener — outside build —
   /// so it reads the height from here instead of calling MediaQuery
@@ -874,6 +889,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// The settings, live, for the panel's Subtitle style page. Updated from
   /// the provider (see [_init]); the panel reads this, not the provider.
   late final ValueNotifier<PlayerSettings> _playerSettings;
+
+  /// The live-settings subscription: kept so [dispose] can close it —
+  /// an unclosed `listenManual` keeps the disposed screen reachable
+  /// from the provider container, once per player open.
+  ProviderSubscription<AsyncValue<PlayerSettings>>?
+      _playerSettingsSubscription;
 
   /// Last position-update setState, so mpv's frequent ticks do not rebuild
   /// the whole screen at full rate.
@@ -1106,6 +1127,8 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _locked.dispose();
     _videoIsHdr.dispose();
     _panelData.dispose();
+    _closeDrawerSignal.dispose();
+    _playerSettingsSubscription?.close();
     _playerSettings.dispose();
     _switchToken++;
     if (_engineReady) {
@@ -1553,6 +1576,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     );
   }
 
+  /// An engine switch is under way: [_switchEngine] set this before the
+  /// replacement route, so [_restoreOrientation] (in dispose) knows the
+  /// delayed pin release must not run — the new player's entry pin is
+  /// the one that must stand.
+  bool _leavingForEngineSwitch = false;
+
   void _restoreOrientation() {
     // Force portrait on the way out: the player is the only landscape
     // screen, and DeviceOrientation.values (all) does NOT rotate the
@@ -1573,10 +1602,18 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       unawaited(
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
       );
-      Future.delayed(const Duration(seconds: 1), () {
-        if (PlayerPlatformService.playerEntryGeneration != generation) return;
-        unawaited(SystemChrome.setPreferredOrientations(const []));
-      });
+      // An engine switch hands the player to a new screen: its entry pin
+      // is the one that must stand, and this exit's delayed release would
+      // clear it ~1 s later — the new screen's initState runs before
+      // this dispose, so the generation guard cannot tell them apart.
+      if (!_leavingForEngineSwitch) {
+        Future.delayed(const Duration(seconds: 1), () {
+          if (PlayerPlatformService.playerEntryGeneration != generation) {
+            return;
+          }
+          unawaited(SystemChrome.setPreferredOrientations(const []));
+        });
+      }
       return;
     }
     unawaited(SystemChrome.setPreferredOrientations(const []));
@@ -1657,8 +1694,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (!_canSeek) return;
     var target = _position + delta;
     if (target < Duration.zero) target = Duration.zero;
-    if (_duration > Duration.zero && target > _duration) {
-      target = _duration;
+    if (_duration > Duration.zero && target >= _duration) {
+      // One second short of the end (see StepSeekCoalescer): landing
+      // exactly on the duration trips the end-of-media handler and
+      // advances an episode the viewer only meant to skip forward in.
+      target = _duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
     }
     // Build 107: the +10 s / -10 s buttons go through the same seek
     // handler as the bar — a downloaded target reopens the local temp
@@ -1682,12 +1723,21 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         .read(playerSettingsProvider.notifier)
         .setPlayerEngine(target);
     if (!mounted) return;
+    // The dispose that follows this replacement must not release the
+    // new player's landscape pin (see [_restoreOrientation]).
+    _leavingForEngineSwitch = true;
     PlayerRoute(
       $extra: PlayerRouteExtra(
         item: widget.item,
         videoUrl: _currentVideoUrl,
         episode: _currentEpisode,
-        preloadedStreams: _streams.isEmpty ? null : _streams,
+        // The playing source rides first: the resolver treats a
+        // handed-in list as already ranked and probes from its head, so
+        // an unrotated list reopens on source #1 instead of the source
+        // that was playing.
+        preloadedStreams: _streams.isEmpty
+            ? null
+            : rotateStreamToFirst(_streams, _streamIndex),
       ),
     ).pushReplacement(context);
   }
@@ -2171,13 +2221,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         ref.read(playerSettingsProvider).asData?.value ??
         const PlayerSettings();
     _playerSettings = ValueNotifier<PlayerSettings>(settings);
-    ref.listenManual<AsyncValue<PlayerSettings>>(playerSettingsProvider, (
-      _,
-      next,
-    ) {
-      final value = next.asData?.value;
-      if (value != null && !_disposed) _playerSettings.value = value;
-    });
+    _playerSettingsSubscription =
+        ref.listenManual<AsyncValue<PlayerSettings>>(playerSettingsProvider, (
+          _,
+          next,
+        ) {
+          final value = next.asData?.value;
+          if (value != null && !_disposed) _playerSettings.value = value;
+        });
 
     // iOS mpv PiP (+28): when the viewer turned it on AND the PiP mode is
     // mpv, the player runs the software renderer — GPU work is not allowed
@@ -3596,6 +3647,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
 
   Future<void> _resolveAndOpen() async {
     if (_disposed) return;
+    final token = ++_resolveToken;
     // A fresh resolve: no probes yet, no pick, no row "being opened".
     _probes.clear();
     _pickedIndex = null;
@@ -3606,6 +3658,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // screen. When it is not there (or does not cover the resume
     // point), the normal resolve below runs.
     if (await _tryOpenKeptTempFile()) return;
+    if (token != _resolveToken) return;
     try {
       final resolved = await resolvePlayback(
         read: _read,
@@ -3620,24 +3673,25 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         // read blank. Now the candidates land early and each probe answer
         // rebuilds the list, exactly as the stock screen narrates them.
         onCandidates: (streams) {
-          if (_disposed) return;
+          if (_disposed || token != _resolveToken) return;
           _streams = streams;
           _publishPanelData();
           if (mounted) setState(() {});
         },
         onProbe: (index, outcome) {
-          if (_disposed) return;
+          if (_disposed || token != _resolveToken) return;
           _probes[index] = outcome;
           if (mounted) setState(() {});
         },
       );
+      if (token != _resolveToken) return;
       final resume = await resolveResumePoint(
         read: _read,
         item: widget.item,
         episode: _currentEpisode,
         videoUrl: _currentVideoUrl,
       );
-      if (_disposed) return;
+      if (_disposed || token != _resolveToken) return;
       _streams = resolved.streams;
       _lastUsedIndex = resolved.lastUsedIndex;
       _dataSaver = resolved.dataSaver;
@@ -3661,7 +3715,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       // paint, then hold it for a beat before the first source auto-plays.
       if (mounted) setState(() {});
       await WidgetsBinding.instance.endOfFrame;
-      if (_disposed) return;
+      if (_disposed || token != _resolveToken) return;
       final listPaintedAt = DateTime.now();
       unawaited(_loadSkipSegments(_currentEpisode));
       _tracker = PlaybackTracker(
@@ -3682,7 +3736,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       if (listVisibleFor < _kMinListVisible) {
         await Future<void>.delayed(_kMinListVisible - listVisibleFor);
       }
-      if (_disposed) return;
+      if (_disposed || token != _resolveToken) return;
       // A row tapped during the hold already opened its source; do not
       // overrule the viewer's pick with the auto-pick.
       if (_streamIndex != resolved.index) return;
@@ -3716,6 +3770,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     String? localFileUrl,
   }) async {
     if (_disposed || _streams.isEmpty) return;
+    // A new open retires the previous source's watchdog: its 12 s budget
+    // belongs to the source it was armed for, and a slow open of the
+    // replacement must not be killed by it (see [_armWatchdog]).
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
+    // The resolve generation this open belongs to: an episode switch
+    // that starts a new resolve invalidates this one (see [_resolveToken]).
+    final resolveToken = _resolveToken;
     // A genuinely different source (failover / source pick) ends the old
     // subtitle pick: the adapter's anchor belongs to the old media. A
     // same-index re-open (stall recovery) keeps it — the media is the
@@ -3862,8 +3924,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         if (bypass == null) {
           final openToken = ++_proxyOpenToken;
           proxied = await StreamCacheService.instance.open(stream.url);
-          if (_disposed || openToken != _proxyOpenToken) {
-            // Left, or a newer open overtook this one while waiting.
+          if (_disposed ||
+              openToken != _proxyOpenToken ||
+              resolveToken != _resolveToken) {
+            // Left, a newer open overtook this one while waiting, or a
+            // newer episode's resolve superseded it.
             if (proxied != null)
               StreamCacheService.instance.close(proxied.token);
             return;
@@ -3936,6 +4001,23 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
           headers: stream.headers ?? const <String, String>{},
           source: stream.url,
         );
+      }
+      if (resolveToken != _resolveToken) {
+        // Superseded by a newer episode's resolve after the proxy/HLS
+        // awaits: this open's media is for the episode the viewer
+        // already left. Close the proxy it took, and the previous one
+        // it replaced, and leave without opening anything.
+        if (proxied != null) {
+          StreamCacheService.instance.close(proxied.token);
+        }
+        if (previousProxy != null &&
+            previousProxy.token != proxied?.token) {
+          StreamCacheService.instance.close(previousProxy.token);
+        }
+        _proxyHandle = null;
+        _proxyIndex = -1;
+        _proxySlowWatch.disarm();
+        return;
       }
       // The pick's cap governs the file being opened (mpv reads
       // `hls-bitrate` when it loads the playlist), so it is set before
@@ -5006,8 +5088,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
 
   void _armWatchdog() {
     _watchdogTimer?.cancel();
+    final index = _streamIndex;
     _watchdogTimer = Timer(_kStartupWatchdog, () {
       if (_disposed || _startedPlaying) return;
+      // The timer belongs to the source it was armed for: a failover or
+      // an episode switch that started a new open must not let this one
+      // kill the replacement.
+      if (index != _streamIndex) return;
       // Nothing is playing after the budget: this source is dead.
       if (kDebugMode) {
         debugPrint('mpv watchdog: no playback in $_kStartupWatchdog');
@@ -5412,6 +5499,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// first (usually the right language), else the first embedded track.
   /// Runs once per source, when mpv reports its tracks — and never over a
   /// pick the viewer already made.
+  /// A forced track carries only the lines in another language than the
+  /// film's — its title says so, as libVLC's does (see the VLC screen's
+  /// _pickPreferredSubtitle, mirrored below).
+  bool _isForcedSubtitle(SubtitleTrack track) =>
+      (track.title ?? '').toLowerCase().contains('forced');
+
   void _applySubtitleAutoSelect() {
     if (_disposed || _subtitleAppliedFor == _streamIndex) return;
     if (_rememberedSubtitleId != null) {
@@ -5435,6 +5528,89 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (stream == null) return;
     final embedded = _player.state.tracks.subtitle;
     final external = stream.subtitles ?? const [];
+    // The engine's list leads with the `auto` and `no` sentinels, which
+    // are not tracks: setting the first of them left the state on 'auto'
+    // while mpv played its pick, so the drawer read "Off" under a
+    // rendering subtitle.
+    final real = embedded
+        .where((t) => t.id != 'auto' && t.id != 'no')
+        .toList(growable: false);
+    final mode =
+        ref.read(playerSettingsProvider).asData?.value.subtitleDefault ??
+        SubtitleDefault.auto;
+    // Every mode but Off used to fall through to the same pick below, so
+    // the setting silently did nothing on this engine: English got the
+    // plugin's first file, Forced-only got a full subtitle, Same-as-audio
+    // got the plugin's first file. Mirrors the VLC screen's
+    // _pickPreferredSubtitle.
+    if (mode == SubtitleDefault.forcedOnly) {
+      final forced =
+          real.where(_isForcedSubtitle).toList(growable: false);
+      if (forced.isNotEmpty) {
+        final pick = forced.first;
+        if (_player.state.track.subtitle.id != pick.id) {
+          unawaited(_player.setSubtitleTrack(pick));
+        }
+        _subtitleAppliedFor = _streamIndex;
+        return;
+      }
+      // No forced track: a full subtitle the engine put on by itself
+      // comes off — "forced only" means no other subtitle shows. A
+      // side-car is never a forced track (it carries no forced flag).
+      final current = _player.state.track.subtitle;
+      final currentIsForced = current.id != 'no' &&
+          real.any((t) => t.id == current.id && _isForcedSubtitle(t));
+      if (current.id != 'no' && !currentIsForced) {
+        unawaited(_player.setSubtitleTrack(SubtitleTrack.no()));
+      }
+      _subtitleAppliedFor = _streamIndex;
+      return;
+    }
+    String? want;
+    if (mode == SubtitleDefault.english) {
+      want = 'en';
+    } else if (mode == SubtitleDefault.sameAsAudio) {
+      // The language the viewer is hearing, read off the active audio
+      // track; unknown audio means no pick here (falls through to Auto
+      // below, as today).
+      want = languageCodeOf(_player.state.track.audio.language);
+    }
+    if (want != null) {
+      final matches = real
+          .where((t) => languageCodeOf(t.language) == want)
+          .toList(growable: false);
+      // A forced track carries only the foreign lines, so a full one is
+      // the better answer where there is one.
+      final best = matches.where((t) => !_isForcedSubtitle(t)).firstOrNull ??
+          matches.firstOrNull;
+      if (best != null) {
+        if (_player.state.track.subtitle.id != best.id) {
+          unawaited(_player.setSubtitleTrack(best));
+        }
+        _subtitleAppliedFor = _streamIndex;
+        return;
+      }
+      final file = external
+          .where((f) => languageCodeOf(f.lang) == want)
+          .firstOrNull;
+      if (file != null) {
+        final current = _player.state.track.subtitle;
+        if (!(current.uri == true && current.id == file.url)) {
+          unawaited(
+            _player.setSubtitleTrack(
+              SubtitleTrack.uri(file.url, title: file.label),
+            ),
+          );
+        }
+        _subtitleAppliedFor = _streamIndex;
+        return;
+      }
+      // No track in the wanted language: leave the engine's pick alone,
+      // and do not mark applied — a later tracks update retries.
+      return;
+    }
+    // Auto: the old behaviour — the plugin's first side-car, else the
+    // default-flagged (or first) embedded track.
     if (external.isNotEmpty) {
       final first = external.first;
       // The adapter's `setSubtitleTrack` is idempotent and this selector
@@ -5453,27 +5629,19 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _subtitleAppliedFor = _streamIndex;
       return;
     }
-    if (embedded.isNotEmpty) {
-      // The engine's list leads with the `auto` and `no` sentinels,
-      // which are not tracks: setting the first of them left the state
-      // on 'auto' while mpv played its pick, so the drawer read "Off"
-      // under a rendering subtitle. The default-flagged track is mpv's
-      // own pick with no language preference set; else the first real
-      // track — and the state is concrete from here on, so the drawer
-      // shows the track that is actually playing.
-      final real = embedded
-          .where((t) => t.id != 'auto' && t.id != 'no')
-          .toList(growable: false);
-      if (real.isNotEmpty) {
-        final def = real.indexWhere((t) => t.isDefault == true);
-        final pick = real[def >= 0 ? def : 0];
-        // As above: skip when the pick is already the current track, so a
-        // re-run of this selector never issues a second set for it.
-        if (_player.state.track.subtitle.id != pick.id) {
-          unawaited(_player.setSubtitleTrack(pick));
-        }
-        _subtitleAppliedFor = _streamIndex;
+    if (real.isNotEmpty) {
+      // The default-flagged track is mpv's own pick with no language
+      // preference set; else the first real track — and the state is
+      // concrete from here on, so the drawer shows the track that is
+      // actually playing.
+      final def = real.indexWhere((t) => t.isDefault == true);
+      final pick = real[def >= 0 ? def : 0];
+      // As above: skip when the pick is already the current track, so a
+      // re-run of this selector never issues a second set for it.
+      if (_player.state.track.subtitle.id != pick.id) {
+        unawaited(_player.setSubtitleTrack(pick));
       }
+      _subtitleAppliedFor = _streamIndex;
     }
   }
 
@@ -5746,6 +5914,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   }
 
   Future<void> _startEpisode(Episode next) async {
+    // A resolve or an open still in flight for the old episode is stale
+    // from here on (see [_resolveToken]).
+    _resolveToken++;
     _sample = null;
     _streams = const [];
     _streamIndex = 0;
@@ -5758,6 +5929,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _pickedIndex = null;
     _resolveDone = false;
     _startedPlaying = false;
+    // The old episode's watchdog belongs to the old episode: a new
+    // episode opens on the same stream index, so its timer would kill
+    // the new episode's first source (see [_armWatchdog]).
+    _watchdogTimer?.cancel();
+    _watchdogTimer = null;
     // Recovery budgets are per-episode, not per-session: a new episode
     // opens on the same stream index as the last one's first source, so
     // the _openStream reset (which fires only on a different index)
@@ -6493,6 +6669,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       canPop: defaultTargetPlatform != TargetPlatform.android,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        // A drawer open over the video closes first: it is an overlay,
+        // not a route, so Back would otherwise exit the film with one
+        // open.
+        if (_drawerOpenWidth > 0) {
+          _closeDrawerSignal.value++;
+          return;
+        }
         _goBack();
       },
       child: Scaffold(
@@ -6774,6 +6957,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
                     if (!mounted) return;
                     setState(() => _drawerOpenWidth = width);
                   },
+                  drawerCloseSignal: _closeDrawerSignal,
                 ),
               ),
 

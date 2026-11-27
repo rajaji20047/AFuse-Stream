@@ -918,10 +918,22 @@ class MpvVlcController implements VlcPlayerController {
   Future<void> seekTo(Duration position) async {
     // Build 72: no engine to command while a renderer move is in flight.
     if (timelineHeld) return;
+    var target = position < Duration.zero ? Duration.zero : position;
+    // One second short of the end (see StepSeekCoalescer): landing
+    // exactly on the duration trips the end-of-media handler. The
+    // duration is read as [publish] reads it, cap included. Parked
+    // before the temp-download handler, so it gets the same target.
+    final duration = _durationCap != null &&
+            _player.state.duration > _durationCap!
+        ? _durationCap!
+        : _player.state.duration;
+    if (duration > Duration.zero && target >= duration) {
+      target = duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
+    }
     // Build 107: a temp download may already hold the target.
-    if (await onSeekRequested?.call(position) ?? false) return;
+    if (await onSeekRequested?.call(target) ?? false) return;
     _seekRequests++;
-    final target = position < Duration.zero ? Duration.zero : position;
     _pendingSeekTarget.value = target;
     await _player.seek(target);
   }

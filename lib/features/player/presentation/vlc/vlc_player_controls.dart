@@ -706,6 +706,11 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     // old episode's bands, so it must not carry over.
     if (!identical(oldWidget.skipSegments, widget.skipSegments)) {
       _autoSkippedSegment = null;
+      // The last playing position belongs to the old episode's bands too:
+      // without this, the new episode's first tick reads the old
+      // episode's final position as its "previous" and [_maybeAutoSkip]'s
+      // guard misjudges it.
+      _previousAutoSkipPosition = null;
     }
     if (oldWidget.hasSubtitles != widget.hasSubtitles) {
       oldWidget.hasSubtitles?.removeListener(_onHasSubtitlesChanged);
@@ -796,9 +801,13 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     // scrubbed back to rewatch an intro, a recap, an outro — stays there.
     final start =
         Duration(milliseconds: (segment.startTime * 1000).round());
-    if (previous != null &&
-        (previous >= start ||
-            start - previous > const Duration(seconds: 2))) {
+    if (previous == null) {
+      // The first playing tick has no previous: it may only fire when
+      // playback began at the band's start (a fresh start into an intro
+      // at 0:00), not when it resumed deep inside one.
+      if (position - start > const Duration(seconds: 2)) return;
+    } else if (previous >= start ||
+        start - previous > const Duration(seconds: 2)) {
       return;
     }
     final bool advances =

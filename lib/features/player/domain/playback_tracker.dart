@@ -167,7 +167,12 @@ class PlaybackTracker {
   /// has been reported unchanged several times running.
   void _settleDuration(Duration duration) {
     if (duration <= Duration.zero) return;
-    if (_settledDuration != null) return;
+    if (_settledDuration != null && duration >= _settledDuration!) return;
+    // A shorter stable value re-settles: a cap can only shrink the
+    // duration (VLC caps an inflated HLS length after it settled), and
+    // without this every later sample carries the capped length, which
+    // never equals the settled one — so completion never evaluates and
+    // the finished episode is never marked watched.
     if (_durationCandidate == duration) {
       _durationTicks++;
       if (_durationTicks >= _kDurationSettleTicks) _settledDuration = duration;

@@ -291,9 +291,11 @@ class PlayerTracksTab extends StatelessWidget {
             autofocus: autofocus && anchor == 0,
             onTap: () => unawaited(
               _setTrack(context, () async {
-                onSubtitleOffPicked?.call();
                 await sideCars?.select(null);
                 await controller.disableSubtitle();
+                // Only on success: a refused disable must not park an
+                // Off the engine never took.
+                onSubtitleOffPicked?.call();
               }),
             ),
           ),
@@ -317,17 +319,21 @@ class PlayerTracksTab extends StatelessWidget {
               onTap: () => unawaited(
                 _setTrack(context, () async {
                   if (_isAudio) {
+                    await controller.setAudioTrack(track.id);
+                    // Only on success, as for subtitles below.
                     onAudioPicked?.call(
                       withTrackLanguage(track, _infoFor(index)),
                     );
-                    await controller.setAudioTrack(track.id);
                     return;
                   }
+                  await sideCars?.select(null);
+                  await controller.setSubtitleTrack(track.id);
+                  // Only on success: a refused set must not park a track
+                  // the engine never took (the next reopen would restore
+                  // it over the media that is actually playing).
                   onSubtitlePicked?.call(
                     withTrackLanguage(track, _infoFor(index)),
                   );
-                  await sideCars?.select(null);
-                  await controller.setSubtitleTrack(track.id);
                 }),
               ),
             ),
@@ -410,7 +416,7 @@ class PlayerTracksTab extends StatelessWidget {
   ) async {
     try {
       await call();
-    } on VlcPlayerException catch (_) {
+    } on Object catch (_) {
       // The panel can be closed, or the list already re-read under us, while
       // the call is in flight; a reload then belongs to nobody.
       if (context.mounted) onTracksChanged();
@@ -425,7 +431,7 @@ class PlayerTracksTab extends StatelessWidget {
     final shown = files.select(file, from: controller.value.position);
     try {
       await controller.disableSubtitle();
-    } on VlcPlayerException catch (_) {
+    } on Object catch (_) {
       // The screen keeps libVLC's subtitle off under a file anyway; this only
       // saves the wait for its next tick.
     }
@@ -453,7 +459,7 @@ class PlayerTracksTab extends StatelessWidget {
   Future<void> _step(Future<void> Function() call) async {
     try {
       await call();
-    } on VlcPlayerException catch (_) {
+    } on Object catch (_) {
       // Absorbed on purpose: see above.
     }
   }
@@ -574,7 +580,7 @@ class PlayerTracksTab extends StatelessWidget {
     if (path == null) return;
     try {
       await _addFile(Uri.file(path), label: picked?.name);
-    } on VlcPlayerException catch (_) {
+    } on Object catch (_) {
       // A file the engine will not take. Absorbed like every other engine
       // call here (see [_setTrack]): the handler is unawaited, and the list is
       // about to say the track is not there.

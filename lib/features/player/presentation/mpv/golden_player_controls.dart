@@ -190,6 +190,7 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
     this.videoIsHdr,
     this.sleepTimer,
     this.onDrawerChanged,
+    this.drawerCloseSignal,
     super.key,
   });
 
@@ -205,6 +206,12 @@ class GoldenPlayerControls extends ConsumerStatefulWidget {
   /// drawer, not only Subtitle style: every drawer hides the caption's
   /// right half the same way.
   final ValueChanged<double>? onDrawerChanged;
+
+  /// The screen's "close the drawer" signal: bumped when Android Back
+  /// arrives with a drawer open. The drawers are overlays, not routes,
+  /// so without this Back would exit the player instead of closing the
+  /// panel. A plain counter: the value itself means nothing.
+  final ValueNotifier<int>? drawerCloseSignal;
 
   /// The mpv-backed controller (the adapter).
   final VlcPlayerController controller;
@@ -734,6 +741,7 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.drawerCloseSignal?.addListener(_onDrawerCloseSignal);
     _stepSeeks = StepSeekCoalescer(
       onCommit: (target) {
         // One keyframe seek to the final target (see
@@ -1225,6 +1233,10 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
       );
     }
   }
+
+  /// The screen's Back with a drawer open: close it instead of
+  /// leaving the player (see [GoldenPlayerControls.drawerCloseSignal]).
+  void _onDrawerCloseSignal() => _closeDrawer();
 
   void _closeDrawer() {
     if (_drawer == _GoldenDrawerKind.none) return;
@@ -1897,6 +1909,7 @@ class _GoldenPlayerControlsState extends ConsumerState<GoldenPlayerControls>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.drawerCloseSignal?.removeListener(_onDrawerCloseSignal);
     // A drawer left open holds the chrome; a dispose must not leave the
     // hold standing on the screen's controller.
     if (_drawer != _GoldenDrawerKind.none) {
