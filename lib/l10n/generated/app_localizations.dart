@@ -1740,7 +1740,7 @@ abstract class AppLocalizations {
   /// Subtitle under the Extensions title: which plugin sources the screen lists.
   ///
   /// In en, this message translates to:
-  /// **'Fuse Repo, CloudStream (.cs3), Nuvio & Stremio'**
+  /// **'Fuse Repo, Vega, CloudStream (.cs3), Nuvio & Stremio'**
   String get extensionsSubtitle;
 
   /// No description provided for @pluginsSegmentInstalled.

@@ -858,7 +858,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get extensionsSubtitle =>
-      'Fuse Repo, CloudStream (.cs3), Nuvio & Stremio';
+      'Fuse Repo, Vega, CloudStream (.cs3), Nuvio & Stremio';
 
   @override
   String get pluginsSegmentInstalled => 'Installed';
