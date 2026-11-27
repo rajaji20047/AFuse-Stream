@@ -119,8 +119,22 @@ const Map<String, String> kMpvAndroidOptions = <String, String>{
 /// the `hwdec` option back so the log shows what was set. A single
 /// option failing must not break the open: each set is its own
 /// try/catch, and the whole call is best-effort.
-Future<void> applyMpvAndroidOptions(NativePlayer platform) async {
-  for (final entry in kMpvAndroidOptions.entries) {
+///
+/// When [bufferOverrideMb] is given (the Network buffer setting,
+/// Settings → Player → Network buffer), it replaces the 256MiB
+/// `demuxer-max-bytes` cap with the viewer's size, so the setting
+/// governs MPV too — VLC already reads it via `bufferPlanFor`, but MPV
+/// never did, which is why the setting looked dead on the default
+/// engine. Null (Auto) keeps the 256MiB default.
+Future<void> applyMpvAndroidOptions(
+  NativePlayer platform, {
+  int? bufferOverrideMb,
+}) async {
+  final options = Map<String, String>.from(kMpvAndroidOptions);
+  if (bufferOverrideMb != null) {
+    options['demuxer-max-bytes'] = '${bufferOverrideMb}MiB';
+  }
+  for (final entry in options.entries) {
     try {
       await platform.setProperty(entry.key, entry.value);
     } catch (e) {

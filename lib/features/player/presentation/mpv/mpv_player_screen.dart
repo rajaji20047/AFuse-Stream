@@ -2414,7 +2414,10 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (defaultTargetPlatform == TargetPlatform.android) {
       final platform = player.platform;
       if (platform is NativePlayer) {
-        await applyMpvAndroidOptions(platform);
+        await applyMpvAndroidOptions(
+          platform,
+          bufferOverrideMb: settings.bufferOverrideMb,
+        );
         // v2: the Video drawer's HDR choice and PICTURE sliders on
         // Android too. Android renders through mpv's own GPU output
         // (vo=gpu), which applies `tone-mapping` and the brightness /
