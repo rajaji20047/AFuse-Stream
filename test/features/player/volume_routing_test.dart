@@ -138,6 +138,27 @@ void main() {
       );
     });
 
+    test('a boosted level reads the system stream the rocker moved', () {
+      // The rocker moves the system stream behind the app's back while the
+      // engine stays boosted: the number on screen is the two together.
+      expect(
+        joinVolume(
+          routing: VolumeRouting.systemThenBoost,
+          engine: 150,
+          system: 0.8,
+        ),
+        120,
+      );
+      expect(
+        joinVolume(
+          routing: VolumeRouting.systemThenBoost,
+          engine: 150,
+          system: 0,
+        ),
+        0,
+      );
+    });
+
     test('before the platform has answered it falls back to the engine', () {
       expect(
         joinVolume(routing: VolumeRouting.systemThenBoost, engine: 100),

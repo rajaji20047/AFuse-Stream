@@ -196,7 +196,11 @@ internal class VlcPlayerPlatformView(
         }
 
         override fun onAudioFocusDuck() {
-            if (disposed || !mediaPlayer.isPlaying) {
+            // No isPlaying gate: a navigation prompt during the opening
+            // fill must still apply the duck, or the film starts at full
+            // volume over it. The gain path restores it, and setSource
+            // clears the interruption.
+            if (disposed) {
                 return
             }
             // Ducking beats pausing for a navigation prompt: the film keeps
@@ -338,8 +342,11 @@ internal class VlcPlayerPlatformView(
             // User-Agent and Referer; there is no `http-header` option, and
             // emitting one here silently dropped every header.
             val source = Source(uri, mediaOptions, startPosition)
-            load(source)
+            // Before load(): if load throws, lastSource must still describe
+            // the source asked for — otherwise a later stop() reloads the
+            // previous film onto the fresh player.
             lastSource = source
+            load(source)
             errorCode = null
             errorDescription = null
             lastSentEvent = null
@@ -1096,7 +1103,19 @@ internal class VlcPlayerPlatformView(
             }
             MediaPlayer.Event.Playing -> {
                 bufferingProgress = null
-                updateState(STATE_PLAYING)
+                // An interruption that arrived during the opening fill is
+                // already recorded: honour it now, or the film starts with
+                // sound over the call — or on the speaker after the
+                // headphones came out. Ducking is not a pause, so it keeps
+                // its own path (the volume stays ducked until the gain).
+                if (interruption == INTERRUPTION_FOCUS_LOST_TRANSIENT ||
+                    interruption == INTERRUPTION_FOCUS_LOST ||
+                    interruption == INTERRUPTION_BECAME_NOISY) {
+                    mediaPlayer.pause()
+                    updateState(STATE_PAUSED)
+                } else {
+                    updateState(STATE_PLAYING)
+                }
             }
             MediaPlayer.Event.Paused -> {
                 bufferingProgress = null
@@ -1214,6 +1233,17 @@ internal class VlcPlayerPlatformView(
             sendSnapshot()
             return
         }
+        if (state == STATE_OPENING || state == STATE_BUFFERING) {
+            // Opening, not paused: libVLC has not played yet (isPlaying is
+            // false through the first fill), so the interruption above would
+            // be dropped and the film would start with sound over the call
+            // — or on the speaker after the headphones came out — the moment
+            // the fill completes. Record it now; the Playing branch honours
+            // it by pausing instead of reporting PLAYING.
+            interruption = reason
+            sendSnapshot()
+            return
+        }
         // Nothing was playing and nothing had interrupted it. Reporting one
         // would make a player the viewer paused themselves look system-paused,
         // and invite a resume they never asked for.
@@ -1243,6 +1273,15 @@ internal class VlcPlayerPlatformView(
 
     private fun updateState(state: String) {
         this.state = state
+        // An error belongs to the state that reported it: once the player
+        // leaves ERROR, the stale code would ride every later snapshot and
+        // make a healthy player look failed to any consumer reading it.
+        // (The error setters run before updateState(STATE_ERROR), so the
+        // transition into ERROR keeps its error.)
+        if (state != STATE_ERROR) {
+            errorCode = null
+            errorDescription = null
+        }
         sendSnapshot()
     }
 

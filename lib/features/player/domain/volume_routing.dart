@@ -131,7 +131,8 @@ int joinVolume({
     return engine < routing.minimum ? routing.minimum : engine;
   }
   // Above unity the engine is the level and the system is pinned at full, so
-  // the engine is what to read. At or below it, the reverse.
-  if (engine > 100) return engine;
+  // the engine is what to read — but the hardware rocker moves the system
+  // stream behind the app's back, so the level is the two together.
+  if (engine > 100) return (system * engine).round();
   return (system * 100).round();
 }

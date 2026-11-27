@@ -1029,6 +1029,9 @@ class MpvVlcController implements VlcPlayerController {
   void notePictureInPictureImminent() {}
 
   @override
+  void notePictureInPictureChanged(bool inPip) {}
+
+  @override
   Future<void> stopPictureInPicture() async {}
 
   // -- media (the screen drives mpv directly; these are not used) ----------

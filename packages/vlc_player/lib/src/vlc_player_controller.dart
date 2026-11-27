@@ -253,16 +253,25 @@ abstract class VlcPlayerController extends ValueNotifier<VlcPlayerValue> {
   /// `resumed` handler instead.
   void notePictureInPictureImminent();
 
+  /// Reports a picture-in-picture mode change from the host (Android).
+  ///
+  /// The screen tracks Android's PiP itself (the activity mode change) and
+  /// tells the controller, so the background pause holds while the window
+  /// is up and the deferred pause applies when it closes — the same
+  /// contract the iOS `pictureInPicture` event gives natively.
+  void notePictureInPictureChanged(bool inPip);
+
   /// Stops iOS picture-in-picture, if one is running. The window closing is
   /// reported through [isPictureInPicture].
   Future<void> stopPictureInPicture();
 
   /// Whether this player is currently showing in picture-in-picture.
   ///
-  /// iOS only, reported by the native PiP window as it opens and closes —
+  /// On iOS, reported by the native PiP window as it opens and closes —
   /// by the request above, by the window's own close button, or by the
-  /// viewer tapping the window to come back. Android's PiP is an activity
-  /// mode the host screen tracks itself, so this stays false there.
+  /// viewer tapping the window to come back. On Android, fed by the host
+  /// screen through [notePictureInPictureChanged]: Android's PiP is an
+  /// activity mode the host screen tracks itself.
   ValueListenable<bool> get isPictureInPicture;
 
   /// The last picture-in-picture failure, in the native side's words, and
@@ -653,15 +662,21 @@ class _VlcPlayerController extends VlcPlayerController
   DateTime? _lastMoveAt;
   Duration? _lastStep;
 
+  /// Whether the clock has established a stepping cadence. Latched on a
+  /// gap of [_steppingFrom] or more, cleared only after three short gaps
+  /// in a row — one jittered pair of reports must not strip the grace
+  /// from a stepping clock and flash the spinner over healthy HLS.
+  bool _stepping = false;
+  int _shortSteps = 0;
+
   /// From this interval between moves, the clock counts as stepping.
   static const Duration _steppingFrom = Duration(milliseconds: 900);
 
   /// The more a stepping clock gets: every flash measured was under 180 ms.
   static const Duration _stepGrace = Duration(milliseconds: 250);
 
-  Duration get _stallDelay => (_lastStep ?? Duration.zero) >= _steppingFrom
-      ? stallIndicatorDelay + _stepGrace
-      : stallIndicatorDelay;
+  Duration get _stallDelay =>
+      _stepping ? stallIndicatorDelay + _stepGrace : stallIndicatorDelay;
 
   /// The position of the last native snapshot, throttled or not.
   ///
@@ -897,6 +912,10 @@ class _VlcPlayerController extends VlcPlayerController
   /// a resume point and `value.position` is still zero.
   VlcMediaSource _mediaForAttach(VlcMediaSource source) {
     final position = value.position;
+    // Live joins at the live edge: the window has moved on since the
+    // position was sampled, so carrying it would ask libVLC to start at
+    // a time that is no longer in the window.
+    if (source.isLive) return source;
     // Only a session that actually reached playback can improve on the
     // configured start. Two traps this avoids: a viewer who rewound below
     // their resume point would otherwise be thrown forward to it again, and a
@@ -1357,6 +1376,8 @@ class _VlcPlayerController extends VlcPlayerController
     _pauseWhenItPlays = false;
     _lastMoveAt = null;
     _lastStep = null;
+    _stepping = false;
+    _shortSteps = 0;
     // A seek's target belongs to the media it was asked of.
     _clearPendingSeek();
     _dropMergedSeek();
@@ -1560,6 +1581,17 @@ class _VlcPlayerController extends VlcPlayerController
     // native side starts the window from `didEnterBackground`; the film
     // must not stop underneath it.
     _pictureInPicturePending = true;
+  }
+
+  @override
+  void notePictureInPictureChanged(bool inPip) {
+    if (_isDisposed) return;
+    // Mirrors the iOS `pictureInPicture` event branch: the hold is over,
+    // the value is what the host reports, and a window that closed while
+    // the app was backgrounded applies the deferred pause now.
+    _pictureInPicturePending = false;
+    _pictureInPicture.value = inPip;
+    if (!inPip) _applyDeferredBackgroundPause();
   }
 
   @override
@@ -1981,7 +2013,10 @@ class _VlcPlayerController extends VlcPlayerController
     final early = asked.isNegative ? _kSeekLandsLongBy : shortBy;
     final late = asked.isNegative ? shortBy : _kSeekLandsLongBy;
     if (position >= target - early && position <= target + late) return true;
-    if (asked == Duration.zero) return false;
+    // No zero-distance carve-out: a seek to where playback already is has
+    // landed as soon as the engine is at or past that point. The travelled
+    // check below does that — and still refuses a position that went
+    // behind the target, so a missed nudge is never re-sent backward.
     final travelled = position - origin;
     return travelled.isNegative == asked.isNegative &&
         travelled.abs() >= asked.abs();
@@ -2545,6 +2580,22 @@ class _VlcPlayerController extends VlcPlayerController
       final last = _lastMoveAt;
       _lastStep = last == null ? null : now.difference(last);
       _lastMoveAt = now;
+      // The stepping state is sticky: one short gap — a jittered pair of
+      // reports 250 ms apart — must not strip the grace from a clock that
+      // steps in ~1 s moves, or the next normal step exceeds the 1000 ms
+      // timer and flashes the spinner over healthy playback. Three short
+      // gaps in a row mean the cadence really changed.
+      final step = _lastStep;
+      if (step != null && step >= _steppingFrom) {
+        _stepping = true;
+        _shortSteps = 0;
+      } else if (step != null) {
+        _shortSteps += 1;
+        if (_shortSteps >= 3) {
+          _stepping = false;
+          _shortSteps = 0;
+        }
+      }
       // Movement clears the flag - and RESTARTS the countdown rather than
       // cancelling it. Every native except Android suppresses a snapshot
       // identical to the last one it sent, so a real freeze does not arrive

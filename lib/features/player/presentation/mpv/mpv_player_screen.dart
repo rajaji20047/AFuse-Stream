@@ -997,6 +997,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   @override
   void initState() {
     super.initState();
+    PlayerPlatformService.notePlayerEntry();
     _container = ProviderScope.containerOf(context, listen: false);
     WidgetsBinding.instance.addObserver(this);
     _currentEpisode = widget.episode;
@@ -1559,9 +1560,18 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     final form = playerFormFactorOf(profile);
     if (defaultTargetPlatform == TargetPlatform.android &&
         form == PlayerFormFactor.phone) {
+      // The pin is the turn, not a lock: once the handset has settled
+      // upright, release it so the app follows the sensor again. Skipped
+      // if a new player session started meanwhile, so a re-entry's own
+      // pin stands.
+      final generation = PlayerPlatformService.playerEntryGeneration;
       unawaited(
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
       );
+      Future.delayed(const Duration(seconds: 1), () {
+        if (PlayerPlatformService.playerEntryGeneration != generation) return;
+        unawaited(SystemChrome.setPreferredOrientations(const []));
+      });
       return;
     }
     unawaited(SystemChrome.setPreferredOrientations(const []));

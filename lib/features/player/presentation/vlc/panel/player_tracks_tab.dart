@@ -102,6 +102,8 @@ class PlayerTracksTab extends StatelessWidget {
     this.isTv = false,
     this.autofocus = false,
     this.onAudioPicked,
+    this.onSubtitlePicked,
+    this.onSubtitleOffPicked,
     super.key,
   });
 
@@ -186,6 +188,16 @@ class PlayerTracksTab extends StatelessWidget {
   /// engine and win. A pick the engine refuses is reported all the same - it
   /// is still what the viewer asked for.
   final ValueChanged<VlcTrackDescription>? onAudioPicked;
+
+  /// The subtitle twin of [onAudioPicked]: reported before the engine is
+  /// asked, so a pick made while the media is still opening is carried to
+  /// the media on its way in, rather than lost to it.
+  final ValueChanged<VlcTrackDescription>? onSubtitlePicked;
+
+  /// The Off row's twin: reported before the engine is asked, so an Off
+  /// tap clears a subtitle parked for restore instead of leaving it to
+  /// come back on the next reopen.
+  final VoidCallback? onSubtitleOffPicked;
 
   bool get _isAudio => kind == PlayerTrackKind.audio;
 
@@ -279,6 +291,7 @@ class PlayerTracksTab extends StatelessWidget {
             autofocus: autofocus && anchor == 0,
             onTap: () => unawaited(
               _setTrack(context, () async {
+                onSubtitleOffPicked?.call();
                 await sideCars?.select(null);
                 await controller.disableSubtitle();
               }),
@@ -310,6 +323,9 @@ class PlayerTracksTab extends StatelessWidget {
                     await controller.setAudioTrack(track.id);
                     return;
                   }
+                  onSubtitlePicked?.call(
+                    withTrackLanguage(track, _infoFor(index)),
+                  );
                   await sideCars?.select(null);
                   await controller.setSubtitleTrack(track.id);
                 }),

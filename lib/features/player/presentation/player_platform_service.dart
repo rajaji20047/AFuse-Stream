@@ -144,6 +144,15 @@ class PlayerPlatformService {
     DeviceOrientation.landscapeRight,
   ];
 
+  /// Counts player sessions. An exit's delayed pin release compares
+  /// against it, so a re-entry's own pin stands: if a new player opened
+  /// in the meantime, the old exit's release is a no-op.
+  static int _playerEntryGeneration = 0;
+  static int get playerEntryGeneration => _playerEntryGeneration;
+  static void notePlayerEntry() {
+    _playerEntryGeneration++;
+  }
+
   /// portraitDown is honoured on Android and quietly dropped on iPhone, whose
   /// Info.plist declares only portrait, landscapeLeft and landscapeRight.
   static const List<DeviceOrientation> _portrait = [

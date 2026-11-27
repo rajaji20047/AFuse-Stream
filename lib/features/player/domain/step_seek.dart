@@ -86,8 +86,12 @@ class StepSeekCoalescer {
     final origin = _origin ?? position;
     var target = here + delta;
     if (target < Duration.zero) target = Duration.zero;
-    if (duration > Duration.zero && target > duration) {
-      target = duration;
+    if (duration > Duration.zero && target >= duration) {
+      // One second short of the end: landing exactly on the duration
+      // trips the end-of-media handler and advances an episode the
+      // viewer only meant to skip forward in (see _seekRelative).
+      target = duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
     }
     _base = target;
     _origin = origin;

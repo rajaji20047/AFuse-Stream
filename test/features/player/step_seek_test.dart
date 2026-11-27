@@ -130,7 +130,12 @@ void main() {
           duration: duration,
         );
         async.elapse(const Duration(milliseconds: 150));
-        expect(committed, [Duration.zero, duration]);
+        // One second short of the end: landing exactly on the duration
+        // trips the end-of-media handler.
+        expect(committed, [
+          Duration.zero,
+          duration - const Duration(seconds: 1),
+        ]);
         coalescer.dispose();
       });
     });

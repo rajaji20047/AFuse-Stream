@@ -1224,6 +1224,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   @override
   void initState() {
     super.initState();
+    PlayerPlatformService.notePlayerEntry();
     // First, so the record starts with the screen and the device suite reads
     // this screen's log.
     _qoe = QoeLog(sink: (line) => talker.info(line));
@@ -1544,6 +1545,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         // Android PiP open. Cancel before the equality return below.
         _pipWatchdog?.cancel();
         _pipWatchdog = null;
+        // The controller's own PiP state, which its background pause reads:
+        // the `pictureInPicture` event that feeds it exists only on iOS,
+        // so on Android the window's answer comes from here. Before the
+        // equality return below: the window can already be up (entered
+        // optimistically) while the controller still thinks it is not.
+        _controller.notePictureInPictureChanged(inPip);
         if (inPip == _inPip) return;
         // The other way into PiP: the user swiped home, or pressed the
         // system's own PiP control, and `_enterPip` never ran. Same reason -
@@ -1575,7 +1582,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
             : value.position) +
         delta;
     if (target < Duration.zero) target = Duration.zero;
-    if (value.duration > Duration.zero && target > value.duration) {
+    if (value.duration > Duration.zero && target >= value.duration) {
       // One second short of the end: landing exactly on the duration
       // trips the end-of-media handler and advances an episode the
       // viewer only meant to skip forward in.
@@ -2203,6 +2210,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         _nextLiveDelayMs ?? PlayerDiagnostics.liveDelayMs ?? kLiveDelayMs;
     _nextLiveDelayMs = null;
     _qoe.engine();
+    // A seek made during this open's setup awaits is where playback is
+    // going now: the start fixed at entry is stale. [_reopenTarget] is
+    // the pending seek target, or the last position — the same value
+    // when nothing moved.
+    final effectiveStart = _reopenTarget();
     await _controller.setMedia(
       VlcMediaSource(
         // Build 86: through the stream cache proxy where one was opened
@@ -2211,7 +2223,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         // and Quality bookkeeping never sees the localhost address.
         uri: playUri,
         httpHeaders: headers,
-        startPosition: startAt,
+        startPosition: effectiveStart,
         // Each media carries its own start threshold, buffer and decoder
         // choice: libvlc-android adds its own caching to a media that names
         // none. The rendition cap rides here whenever it is not the one the
@@ -2407,6 +2419,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// inside the video from the panel takes the side-car off first, so this
   /// never undoes that pick.
   void _applySubtitleDefault(VlcPlayerValue value) {
+    // Only on media this attempt has been handed: during a reopen's setup
+    // the outgoing media is still ticking, and the rule would turn its
+    // subtitle off over the kept picture. [_rememberTracks] guards the
+    // same way.
+    if (!_handedToEngine) return;
     if (!_subtitlesOffPending && _sideCars.active == null) return;
     final active = value.activeSubtitleTrackId;
     if (active == null) {
@@ -2471,8 +2488,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       final wasOn = _seenSubtitleTrackId != null;
       _seenSubtitleTrackId = subtitleId;
       if (subtitleId == null) {
-        _rememberedSubtitle = null;
-        _viewerSubtitleOff = wasOn;
+        // A subtitle parked for restore is a pick on its way, not "off":
+        // wiping the memory here would lose the pick and mark the viewer
+        // as having turned subtitles off.
+        if (_subtitleToRestore == null) {
+          _rememberedSubtitle = null;
+          _viewerSubtitleOff = wasOn;
+        }
       } else {
         // Do not clear the old memory here, as the audio half above does
         // not: the snapshot below writes the new track, and if a reopen
@@ -2694,6 +2716,35 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     _audioToRestore = null;
   }
 
+  /// The viewer picked [track] from the Subtitles tab - the twin of
+  /// [_onAudioPicked], for the media on its way in.
+  ///
+  /// A pick made while the media is still opening is for the media on its
+  /// way in, not the one on its way out: it is remembered, and the restore
+  /// is armed, so the new media opens with it. Do NOT set
+  /// [_viewerChoseSubtitle] here - the parked pick IS the viewer's choice,
+  /// and [_restoreSubtitle]'s retry stands on it.
+  void _onSubtitlePicked(VlcTrackDescription track) {
+    if (_disposed) return;
+    final pick = RememberedTrack.of(track);
+    if (!_handedToEngine) {
+      _rememberedSubtitle = pick;
+      _viewerSubtitleOff = false;
+      _subtitlesOffPending = false;
+      _restorePending = true;
+      return;
+    }
+    _subtitleToRestore = null;
+  }
+
+  /// The viewer tapped Off in the Subtitles tab: a subtitle parked for
+  /// restore is a pick on its way, not "off" - clear the park first, or
+  /// the next reopen brings it back.
+  void _onSubtitleOffPicked() {
+    if (_disposed) return;
+    _subtitleToRestore = null;
+  }
+
   /// The source this attempt opens, by its URL; null before there is one.
   String? get _attemptStreamUrl =>
       _resolved?.streams.elementAtOrNull(_attemptIndex)?.url;
@@ -2832,11 +2883,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// for the viewer's own pick, and for a subtitle file on screen.
   Future<void> _restoreSubtitle(RememberedTrack wanted) async {
     final generation = _generation;
+    // No [_viewerChoseSubtitle] term: the parked pick IS the viewer's
+    // choice (stashed by [_onSubtitlePicked]). A newer choice clears
+    // [_subtitleToRestore], which is what stands this retry down.
     bool superseded() =>
         _disposed ||
         generation != _generation ||
         _subtitleToRestore != wanted ||
-        _viewerChoseSubtitle ||
         _sideCars.active != null;
     try {
       final tracks = await _subtitleTracksWithLanguages();
@@ -3349,11 +3402,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         '${sourceRowLabel(resolved.streams[_attemptIndex])} · $detail',
       );
     }
+    // A failover while paused stays paused, as a quality pick does.
+    final wasPaused = _controller.value.state == VlcPlaybackState.paused;
     unawaited(
       _openAttempt(
         index,
         startAt: _reopenTarget(),
         reason: revert ? 'revert' : 'failover',
+        autoPlay: !wasPaused,
       ),
     );
   }
@@ -4434,11 +4490,6 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // platform round trip later. A PiP surface the user has walked away from
     // should not be reopening sources on its own.
     setState(() => _inPip = true);
-    // A locked PiP window is unrecoverable: the controls are not built in PiP
-    // at all, so there is no chip in it to press and no gesture that would
-    // reach one. Cleared on the way in rather than on the way out, because the
-    // window is drawn from this frame.
-    _clearLock();
     final bool entered;
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       // iOS has no activity to enter: the VLC plugin opens the PiP window
@@ -4451,6 +4502,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
           .startPictureInPicture(sourceRect: sourceRect)
           .catchError((Object _) => false);
     } else {
+      // The hold the controller's background pause respects: the window
+      // may open after the app has already gone to background, and a
+      // stop-transition while it is up must not pause the film under it.
+      // (iOS gets this from startPictureInPicture itself.)
+      _controller.notePictureInPictureImminent();
       entered = await _platform.enterPip(
         _controller.value.isPlaying,
         // Shapes the window to the film. Read at the moment of the request
@@ -4480,6 +4536,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       setState(() => _inPip = false);
       return;
     }
+    // The window opened: a locked PiP window is unrecoverable (the controls
+    // are not built in PiP at all, so there is no chip in it to press and
+    // no gesture that would reach one), so the lock comes off now that the
+    // window exists. Cleared here, not before the request, so a refusal
+    // leaves the lock standing. [_onPictureInPicture] clears it again on
+    // the mode change itself.
+    _clearLock();
     // The request went out; the window opening, or failing to, is reported
     // through [_onPictureInPicture]. If neither arrives, the watchdog takes
     // the chrome back (see [_armPipWatchdog]).
@@ -4600,9 +4663,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // theirs. Not for the audio language setting: audio is only ever chosen
     // from a row, so it stands down when the viewer picks one
     // ([_onAudioPicked]), and a panel opened for anything else leaves it be.
-    _viewerChoseSubtitle = true;
-    _autoPickPending = false;
-    _subtitleToRestore = null;
+    //
+    // Subtitles only: a panel opened for Sources, Quality or anything else
+    // must not cancel a subtitle parked for restore, or end Auto's pick
+    // for a subtitle the viewer has not touched.
+    if (tab == PlayerPanelTab.subtitles) {
+      _viewerChoseSubtitle = true;
+      _autoPickPending = false;
+      _subtitleToRestore = null;
+    }
     final isTv = _form == PlayerFormFactor.tv;
     await showPlayerPanel(
       context,
@@ -4626,6 +4695,8 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       episodeProgress: _episodeProgressFor,
       onPickFile: (file) => unawaited(_applyTorrentFile(file)),
       onAudioPicked: _onAudioPicked,
+      onSubtitlePicked: _onSubtitlePicked,
+      onSubtitleOffPicked: _onSubtitleOffPicked,
       // The settings, live, and the notifier to change them through: the
       // panel's Subtitle style page has no ProviderScope of its own to ask.
       subtitleStyle: SubtitleStyleBinding(
@@ -4786,12 +4857,15 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // hand-picked source otherwise deserves the full ladder rather than the
     // leftovers of the walk that already failed.
     if (!onTrial) _policy.reset();
+    // A pick while paused stays paused, as a quality pick does.
+    final wasPaused = _controller.value.state == VlcPlaybackState.paused;
     unawaited(
       _openAttempt(
         index,
         startAt: at,
         reason: 'pick',
         revertTo: onTrial ? _attemptIndex : null,
+        autoPlay: !wasPaused,
       ),
     );
   }
@@ -4958,6 +5032,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// pressed.
   Future<void> _goToPreviousEpisode() async {
     if (_disposed || _advancing) return;
+    // Restart first, then go back: past the first seconds, Previous
+    // restarts the episode the viewer is in.
+    final position =
+        _controller.pendingSeekTarget.value ?? _controller.value.position;
+    if (position > const Duration(seconds: 5)) {
+      await _controller.seekTo(Duration.zero);
+      return;
+    }
     final previous = _previousEpisode;
     if (previous == null) return;
     _advancing = true;
@@ -5097,7 +5179,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // Everything between here and setMedia - the download lookup, the plugin
     // resolve, the resume lookup - can take seconds over a frozen frame.
     _handedToEngine = false;
-    _setKeptPicture(false);
+    // In PiP the startup view never covers the dead surface, so the picture
+    // stays for the whole resolve: a frozen frame beats a black window.
+    // Fullscreen drops it (the startup view covers it).
+    if (!_inPip) _setKeptPicture(false);
     _setSawFrames(false);
     _setStatus('');
 
@@ -5352,6 +5437,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       }
       recorder.record(sample, lastStreamUrl: _lastStreamUrl);
       _tracker?.onPlaying(sample);
+      // A seek back out of the last 15 s dismisses the up-next card: the
+      // viewer rewound to rewatch, they did not refuse the next episode,
+      // so it is not declined — it offers again if playback reaches the
+      // lead-in once more.
+      if (_nextEpisodeOffer != null &&
+          sample.duration - sample.position > _kNextEpisodeLeadIn) {
+        setState(() => _nextEpisodeOffer = null);
+      }
       _maybeOfferNextEpisode(sample);
       return;
     }
@@ -5843,6 +5936,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// nothing the screen could have open is reachable from behind a lock, and a
   /// press that got past it to pop the route would make the lock decorative.
   void _handleBack({bool fromChrome = false}) {
+    // In PiP the route IS the window: a Back that reaches here must not
+    // pop it and kill the player under the floating window. The system
+    // owns leaving PiP; tapping the window brings the player back.
+    if (_inPip) return;
     if (_locked.value && _lockedBack()) return;
     if (_dismissOverlay()) return;
     if (!fromChrome && _hideChromeForBack()) return;
@@ -6487,9 +6584,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // iPhone keep the hand-back to the system.
     if (defaultTargetPlatform == TargetPlatform.android &&
         _form == PlayerFormFactor.phone) {
+      // The pin is the turn, not a lock: once the handset has settled
+      // upright, release it so the app follows the sensor again. Skipped
+      // if a new player session started meanwhile, so a re-entry's own
+      // pin stands.
+      final generation = PlayerPlatformService.playerEntryGeneration;
       unawaited(
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
       );
+      Future.delayed(const Duration(seconds: 1), () {
+        if (PlayerPlatformService.playerEntryGeneration != generation) return;
+        unawaited(SystemChrome.setPreferredOrientations(const []));
+      });
     }
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -6969,6 +7075,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       _status = '';
     });
     _publishPanelData();
+    // The exact position first: _start() re-reads the resume point from
+    // disk, and the recorder only writes unforced samples after 5% of the
+    // film, so without this Retry resumes up to 5% behind where playback
+    // actually stopped.
+    _flushProgress();
     unawaited(_start());
   }
 

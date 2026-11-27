@@ -773,7 +773,14 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     if (!widget.controller.value.isPlaying) return;
     final segments = widget.skipSegments;
     if (segments.isEmpty) return;
-    final segment = segmentAt(segments, widget.controller.value.position);
+    // Where the last playing tick was: a seek into a band must not fire
+    // this, only playback that played through the band's start. Read here,
+    // after the playing guard, so a seek made while paused leaves the last
+    // playing position standing.
+    final position = widget.controller.value.position;
+    final previous = _previousAutoSkipPosition;
+    _previousAutoSkipPosition = position;
+    final segment = segmentAt(segments, position);
     if (segment == null) {
       _autoSkippedSegment = null;
       return;
@@ -784,6 +791,16 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
       return;
     }
     if (_sameSegment(segment, _autoSkippedSegment)) return;
+    // Only when playback played through the band's start: the previous tick
+    // was just before it. A seek landing inside the band — the viewer
+    // scrubbed back to rewatch an intro, a recap, an outro — stays there.
+    final start =
+        Duration(milliseconds: (segment.startTime * 1000).round());
+    if (previous != null &&
+        (previous >= start ||
+            start - previous > const Duration(seconds: 2))) {
+      return;
+    }
     final bool advances =
         segment.type == SkipType.outro && widget.onSkipOutro != null;
     // Mirror the chip: an outro advance on an unseekable source cannot land.
@@ -814,6 +831,10 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
   /// Cleared the moment the position is outside every segment again, and when
   /// a new episode's segments arrive.
   SkipSegment? _autoSkippedSegment;
+
+  /// The position the last playing tick sampled, for [_maybeAutoSkip]: only
+  /// a tick that follows playback through a band's start may fire it.
+  Duration? _previousAutoSkipPosition;
 
   void _readSystemVolume() {
     final system = _system;
@@ -1387,7 +1408,12 @@ class _VlcPlayerControlsState extends ConsumerState<VlcPlayerControls> {
     final seekDelta = Duration(milliseconds: (deltaFraction * 90000).round());
     var target = startPos + seekDelta;
     if (target < Duration.zero) target = Duration.zero;
-    if (duration > Duration.zero && target > duration) target = duration;
+    if (duration > Duration.zero && target >= duration) {
+      // One second short of the end: landing exactly on the duration
+      // trips the end-of-media handler (see _seekRelative).
+      target = duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
+    }
     _horizontalDragTarget = target;
     final diffSeconds = (target - startPos).inSeconds;
     _showToast(

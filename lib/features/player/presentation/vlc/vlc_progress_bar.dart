@@ -256,6 +256,13 @@ class _VlcProgressBarState extends State<VlcProgressBar> {
   /// Hands [target] to the engine, which publishes it as the seek on its way
   /// - see [_shown].
   void _commitSeek(Duration target) {
+    // One second short of the end: landing exactly on the duration
+    // trips the end-of-media handler (see _seekRelative).
+    final duration = widget.controller.value.duration;
+    if (duration > Duration.zero && target >= duration) {
+      target = duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
+    }
     widget.controller.seekTo(target);
     setState(() => _dragTo = null);
     _publish();
