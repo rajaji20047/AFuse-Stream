@@ -1620,6 +1620,9 @@ class AppLocalizationsKn extends AppLocalizations {
   String get showEpisodeNavigation => 'ಹಿಂದಿನ / ಮುಂದಿನ ಸಂಚಿಕೆಯ ಬಟನ್‌ಗಳು';
 
   @override
+  String get showPlayerSwitchButton => 'Player switch button';
+
+  @override
   String get playerNoProviderSelected => 'No provider selected.';
 
   @override

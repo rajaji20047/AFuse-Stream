@@ -6997,7 +6997,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
                   // The engine switch in the top row: the picker opens,
                   // and the picked player opens this same video, resuming
                   // from the recorded progress like any fresh open.
-                  onSwitchEngine: _showEnginePicker,
+                  // Hidden when the viewer turned the button off in
+                  // Settings → Player → Player Controls; null also drops
+                  // the trailing button (see the controls).
+                  onSwitchEngine: _playerSettings.value.showPlayerSwitchButton
+                      ? _showEnginePicker
+                      : null,
                   onToggleFullscreen: _fullscreenAvailable
                       ? _toggleFullscreen
                       : null,

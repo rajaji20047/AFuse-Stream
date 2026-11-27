@@ -190,6 +190,7 @@ void main() {
       const String speed = 'Playback speed button';
       const String episodes = 'Previous / next episode buttons';
       const String volume = 'Volume button';
+      const String switchButton = 'Player switch button';
 
       /// Offered only where the player draws the button: a phone or a tablet,
       /// the devices it turns.
@@ -201,55 +202,55 @@ void main() {
           'Android phone — the only device that gets the PiP row',
           TargetPlatform.android,
           const DeviceProfile(),
-          [volume, pip, resize, rotate, speed, episodes],
+          [volume, pip, resize, rotate, speed, episodes, switchButton],
         ),
         (
           'Android tablet',
           TargetPlatform.android,
           const DeviceProfile(isTablet: true),
-          [volume, pip, resize, rotate, speed, episodes],
+          [volume, pip, resize, rotate, speed, episodes, switchButton],
         ),
         (
           'Android TV — nothing to shrink into',
           TargetPlatform.android,
           const DeviceProfile(isTv: true),
-          [volume, resize, speed, episodes],
+          [volume, resize, speed, episodes, switchButton],
         ),
         (
           'iPhone — no OS-level PiP for us',
           TargetPlatform.iOS,
           const DeviceProfile(),
-          [volume, resize, rotate, speed, episodes],
+          [volume, resize, rotate, speed, episodes, switchButton],
         ),
         (
           'Android 16 tablet — ignores orientation requests',
           TargetPlatform.android,
           const DeviceProfile(isTablet: true, obeysOrientationRequests: false),
-          [volume, pip, resize, speed, episodes],
+          [volume, pip, resize, speed, episodes, switchButton],
         ),
         (
           'iPad — ignores orientation requests',
           TargetPlatform.iOS,
           const DeviceProfile(isTablet: true, obeysOrientationRequests: false),
-          [volume, resize, speed, episodes],
+          [volume, resize, speed, episodes, switchButton],
         ),
         (
           'macOS',
           TargetPlatform.macOS,
           const DeviceProfile(isDesktopOS: true),
-          [volume, resize, speed, episodes],
+          [volume, resize, speed, episodes, switchButton],
         ),
         (
           'Windows',
           TargetPlatform.windows,
           const DeviceProfile(isDesktopOS: true),
-          [volume, resize, speed, episodes],
+          [volume, resize, speed, episodes, switchButton],
         ),
         (
           'Linux',
           TargetPlatform.linux,
           const DeviceProfile(isDesktopOS: true),
-          [volume, resize, speed, episodes],
+          [volume, resize, speed, episodes, switchButton],
         ),
       ];
 
@@ -270,6 +271,7 @@ void main() {
             rotate,
             speed,
             episodes,
+            switchButton,
           ]) {
             expect(
               find.text(label),

@@ -2561,6 +2561,12 @@ void showPlayerControlsDialog(BuildContext context, WidgetRef ref) {
       setter: notifier.setShowEpisodes,
       initial: settings.showEpisodes,
     ),
+    (
+      icon: Icons.swap_horiz_rounded,
+      label: l10n.showPlayerSwitchButton,
+      setter: notifier.setShowPlayerSwitchButton,
+      initial: settings.showPlayerSwitchButton,
+    ),
   ];
   final values = rows.map((row) => row.initial).toList();
 

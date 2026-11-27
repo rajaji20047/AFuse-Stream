@@ -365,6 +365,13 @@ class PlayerSettings {
   final bool showPlaybackSpeed;
   final bool showEpisodes;
 
+  /// Whether the top-row button that switches between the MPV and VLC
+  /// engines is shown. Default off (user 2026-11-27): the button is
+  /// hidden until the viewer turns it on in Settings → Player. Hiding
+  /// it only hides the button — the engine choice itself and the picker
+  /// sheet are untouched.
+  final bool showPlayerSwitchButton;
+
   /// Auto Skip (v2.9.4): automatically skip intro/recap/outro segments
   /// (opening + ending, like anime/dramas) with no tap. Default on.
   final bool autoSkip;
@@ -458,6 +465,7 @@ class PlayerSettings {
     this.showRotate = true,
     this.showPlaybackSpeed = true,
     this.showEpisodes = true,
+    this.showPlayerSwitchButton = false,
     this.autoSkip = true,
     this.playerEngine = PlayerEngine.mpv,
     this.iosMpvPip = false,
@@ -517,6 +525,7 @@ class PlayerSettings {
     bool? showRotate,
     bool? showPlaybackSpeed,
     bool? showEpisodes,
+    bool? showPlayerSwitchButton,
     bool? autoSkip,
     PlayerEngine? playerEngine,
     bool? iosMpvPip,
@@ -583,6 +592,8 @@ class PlayerSettings {
       showRotate: showRotate ?? this.showRotate,
       showPlaybackSpeed: showPlaybackSpeed ?? this.showPlaybackSpeed,
       showEpisodes: showEpisodes ?? this.showEpisodes,
+      showPlayerSwitchButton:
+          showPlayerSwitchButton ?? this.showPlayerSwitchButton,
       autoSkip: autoSkip ?? this.autoSkip,
       playerEngine: playerEngine ?? this.playerEngine,
       iosMpvPip: iosMpvPip ?? this.iosMpvPip,
@@ -846,6 +857,12 @@ class PlayerSettingsNotifier extends _$PlayerSettingsNotifier {
           defaultValue: true,
         ) ??
         true;
+    final showPlayerSwitchButton =
+        storage.getPlayerSetting<bool>(
+          'player_show_player_switch_button',
+          defaultValue: false,
+        ) ??
+        false;
     final autoSkip =
         storage.getPlayerSetting<bool>(
           'player_auto_skip',
@@ -952,6 +969,7 @@ class PlayerSettingsNotifier extends _$PlayerSettingsNotifier {
       showRotate: showRotate,
       showPlaybackSpeed: showPlaybackSpeed,
       showEpisodes: showEpisodes,
+      showPlayerSwitchButton: showPlayerSwitchButton,
       autoSkip: autoSkip,
       playerEngine: playerEngine,
       iosMpvPip: iosMpvPip,
@@ -1125,6 +1143,14 @@ class PlayerSettingsNotifier extends _$PlayerSettingsNotifier {
   Future<void> setShowEpisodes(bool val) async {
     await _repository.setPlayerSetting('player_show_episodes', val);
     _update((PlayerSettings c) => c.copyWith(showEpisodes: val));
+  }
+
+  Future<void> setShowPlayerSwitchButton(bool val) async {
+    await _repository.setPlayerSetting(
+      'player_show_player_switch_button',
+      val,
+    );
+    _update((PlayerSettings c) => c.copyWith(showPlayerSwitchButton: val));
   }
 
   Future<void> setAutoSkip(bool val) async {

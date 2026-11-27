@@ -59,6 +59,7 @@ const Set<String> kSyncedSettingKeys = <String>{
   'player_show_episodes',
   'player_show_pip',
   'player_show_playback_speed',
+  'player_show_player_switch_button',
   'player_show_remaining',
   'player_show_resize',
   'player_show_rotate',

@@ -3037,6 +3037,10 @@ abstract class AppLocalizations {
   /// **'Previous / next episode buttons'**
   String get showEpisodeNavigation;
 
+  /// In en, this message translates to:
+  /// **'Player switch button'**
+  String get showPlayerSwitchButton;
+
   /// Playback cannot start because no extension is selected to resolve the link.
   ///
   /// In en, this message translates to:

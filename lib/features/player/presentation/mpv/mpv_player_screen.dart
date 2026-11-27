@@ -7043,7 +7043,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
                   // The engine switch in the top row: the picker opens,
                   // and the picked player opens this same video, resuming
                   // from the recorded progress like any fresh open.
-                  onSwitchEngine: _showEnginePicker,
+                  // Hidden when the viewer turned the button off in
+                  // Settings → Player → Player Controls; null also drops
+                  // the button's trailing gap (see the controls).
+                  onSwitchEngine: _playerSettings.value.showPlayerSwitchButton
+                      ? _showEnginePicker
+                      : null,
                   // The Quality drawer: a height pick caps this HLS
                   // stream through `hls-bitrate` (see [_pickQuality]).
                   onPickQuality: _pickQuality,

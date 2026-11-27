@@ -1611,6 +1611,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get showEpisodeNavigation => 'Previous / next episode buttons';
 
   @override
+  String get showPlayerSwitchButton => 'Player switch button';
+
+  @override
   String get playerNoProviderSelected => 'No provider selected.';
 
   @override

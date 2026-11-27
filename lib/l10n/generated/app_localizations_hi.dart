@@ -1610,6 +1610,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get showEpisodeNavigation => 'पिछले / अगले एपिसोड के बटन';
 
   @override
+  String get showPlayerSwitchButton => 'Player switch button';
+
+  @override
   String get playerNoProviderSelected => 'No provider selected.';
 
   @override
