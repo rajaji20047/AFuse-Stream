@@ -399,10 +399,6 @@ class _HomeSearchResultsState extends ConsumerState<_HomeSearchResults> {
     }
 
     if (result == null || result!.results.isEmpty) {
-      // Size question, asked of the size: a 960 dp television clears the
-      // tablet breakpoint like any other big window.
-      final isWidescreen = context.isTabletOrLarger;
-      final imageWidth = isWidescreen ? 320.0 : 200.0;
       final nativeFont = Theme.of(context).textTheme.bodyLarge?.fontFamily;
 
       return Center(
@@ -425,17 +421,7 @@ class _HomeSearchResultsState extends ConsumerState<_HomeSearchResults> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 16),
-            Image.asset(
-              'assets/images/no_results.png',
-              fit: BoxFit.contain,
-              width: imageWidth,
-              // Source is 1613x1929 — 11.9 MB decoded — for an illustration
-              // shown at 320 logical px at most. 640 covers 2x density.
-              cacheWidth: 640,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
-            ),
+
           ],
         ),
       );
