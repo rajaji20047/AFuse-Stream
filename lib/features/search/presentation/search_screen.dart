@@ -842,10 +842,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     final nativeFont = Theme.of(context).textTheme.bodyLarge?.fontFamily;
-    final isWidescreen = context.isTabletOrLarger;
-    final imageWidth = isWidescreen ? 320.0 : 200.0;
 
-    // No search results found: display No Results Found text and the image grouped vertically.
+    // No search results found: only the text, centred on black.
     // A chip that filtered everything out names itself, so the empty screen
     // says which filter hid the results rather than that the search failed.
     final noResultsText = category == SearchCategory.all
@@ -864,17 +862,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               fontWeight: FontWeight.w400,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          ),
-          const SizedBox(height: 16),
-          Image.asset(
-            'assets/images/no_results.png',
-            fit: BoxFit.contain,
-            width: imageWidth,
-            // Source is 1613x1929 — 11.9 MB decoded — for an illustration
-            // shown at 320 logical px at most. 640 covers 2x density.
-            cacheWidth: 640,
-            errorBuilder: (context, error, stackTrace) =>
-                const SizedBox.shrink(),
           ),
         ],
       ),
