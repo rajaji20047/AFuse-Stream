@@ -149,7 +149,9 @@ class CloudStreamRepository extends _$CloudStreamRepository {
 
   static List<CsProviderInfo> _providersIn(Map<String, dynamic> answer) => [
     for (final p in (answer['providers'] as List?) ?? const [])
-      if (p is Map && p['error'] == null) CsProviderInfo.fromJson(Map<String, dynamic>.from(p)),
+      // One provider without a string name must not mark the whole plugin
+      // failed to load: fromJson casts `name` unguarded.
+      if (p is Map && p['error'] == null && p['name'] is String) CsProviderInfo.fromJson(Map<String, dynamic>.from(p)),
   ];
 
   static final Map<String, String> _slugs = {};
@@ -538,11 +540,19 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     );
   }
 
-  static List<CsPluginInfo> _parsePlugins(List<dynamic> entries, String repositoryUrl) => [
-    for (final entry in entries)
-      if (entry is Map && entry['url'] is String && (entry['internalName'] ?? entry['name']) is String)
-        CsPluginInfo.fromJson(Map<String, dynamic>.from(entry), repositoryUrl),
-  ];
+  static List<CsPluginInfo> _parsePlugins(List<dynamic> entries, String repositoryUrl) {
+    final plugins = <CsPluginInfo>[];
+    for (final entry in entries) {
+      if (entry is! Map || entry['url'] is! String || (entry['internalName'] ?? entry['name']) is! String) continue;
+      try {
+        plugins.add(CsPluginInfo.fromJson(Map<String, dynamic>.from(entry), repositoryUrl));
+      } catch (error) {
+        // One malformed entry must not kill the whole plugin list.
+        talker.warning('[CloudStream] skipping malformed plugin entry: $error');
+      }
+    }
+    return plugins;
+  }
 
   static List<CsPluginInfo> _sorted(List<CsPluginInfo> plugins) =>
       plugins..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -726,6 +736,16 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   Future<void> uninstall(CsInstalledPlugin plugin) async {
     await _loaded;
     final key = keyOf(plugin.info);
+    // An install for this plugin in flight would rename its file back and
+    // re-add it after the delete below: wait it out first.
+    final inFlight = _installing[key];
+    if (inFlight != null) {
+      try {
+        await inFlight;
+      } catch (_) {
+        // A failed install leaves nothing to resurrect; uninstall anyway.
+      }
+    }
     _setBusy(key, true);
     try {
       try {

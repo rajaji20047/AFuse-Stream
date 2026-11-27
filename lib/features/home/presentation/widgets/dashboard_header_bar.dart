@@ -36,6 +36,7 @@ class DashboardHeaderBar extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final activeProvider = ref.watch(activeProviderProvider);
+    final installed = ref.watch(extensionManagerProvider);
 
     final hasCarousel = onPrevious != null && onNext != null;
 
@@ -152,10 +153,11 @@ class DashboardHeaderBar extends ConsumerWidget {
             ),
           ),
 
-          // Provider pill — only while a provider is active. The preview's
-          // header has no provider pill, and with no provider the fork's
-          // "None" pill is exactly the fork-ism the user rejected.
-          if (activeProvider != null) ...[
+          // Provider pill. With no provider active it still shows — as
+          // "Select source", the same label the mobile header uses — so
+          // picking "None" never strands the user with no way back to the
+          // selector. Hidden only when no plugin is installed at all.
+          if (activeProvider != null || installed.isNotEmpty) ...[
             const SizedBox(width: 12),
             HoverBorderGradient(
               onTap: onShowProviderSelector,
@@ -171,7 +173,7 @@ class DashboardHeaderBar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    activeProvider.name,
+                    activeProvider?.name ?? l10n.homeProviderSelectSource,
                     style: TextStyle(
                       color: Theme.of(context).brightness == Brightness.dark
                           ? Colors.white

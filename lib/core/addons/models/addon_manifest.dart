@@ -359,12 +359,18 @@ class ManagedAddon {
   final String? errorMessage;
   final DateTime addedAt;
 
+  /// The add-on's own configure page, when install knew one (the directory
+  /// lists it). Null for a manual add: the Manage tab falls back to the
+  /// Stremio convention, {base}/configure.
+  final String? configureUrl;
+
   const ManagedAddon({
     required this.manifestUrl,
     this.manifest,
     this.enabled = true,
     this.errorMessage,
     required this.addedAt,
+    this.configureUrl,
   });
 
   String get id =>
@@ -402,6 +408,7 @@ class ManagedAddon {
     String? errorMessage,
     bool clearError = false,
     DateTime? addedAt,
+    String? configureUrl,
   }) {
     return ManagedAddon(
       manifestUrl: manifestUrl ?? this.manifestUrl,
@@ -409,6 +416,7 @@ class ManagedAddon {
       enabled: enabled ?? this.enabled,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       addedAt: addedAt ?? this.addedAt,
+      configureUrl: configureUrl ?? this.configureUrl,
     );
   }
 
@@ -417,6 +425,7 @@ class ManagedAddon {
     'manifest': manifest?.toJson(),
     'enabled': enabled,
     'addedAt': addedAt.toIso8601String(),
+    'configureUrl': configureUrl,
   };
 
   static ManagedAddon? fromJson(Map<String, dynamic> json) {
@@ -432,6 +441,7 @@ class ManagedAddon {
       addedAt:
           DateTime.tryParse((json['addedAt'] as String?) ?? '') ??
           DateTime.now(),
+      configureUrl: json['configureUrl'] as String?,
     );
   }
 }

@@ -753,19 +753,28 @@ class DownloadService {
         await dir.create(recursive: true);
       }
 
+      // Save metadata BEFORE enqueue: a kill between enqueue and the
+      // save used to leave a downloading file the tab could never list
+      // or delete. The task id already exists (built with the task).
+      await _ref
+          .read(storageServiceProvider)
+          .saveDownloadMetadata(task.taskId, item, episode: episode);
+
       final success = await FileDownloader().enqueue(task);
       if (kDebugMode) debugPrint('[DownloadService] Enqueue result: $success');
 
       if (success) {
         _ref.read(activeDownloadsProvider.notifier).add(trackingUrl ?? url);
-        // Save metadata for offline support
-        await _ref
-            .read(storageServiceProvider)
-            .saveDownloadMetadata(task.taskId, item, episode: episode);
         await _continuedProcessing.start(
           taskId: task.taskId,
           displayName: filename,
         );
+      } else {
+        // Enqueue failed: drop the metadata written above, or it lingers
+        // with no record behind it.
+        await _ref
+            .read(storageServiceProvider)
+            .removeDownloadMetadata(task.taskId);
       }
       return success;
     } catch (error, stackTrace) {
@@ -879,7 +888,7 @@ class DownloadService {
     }
 
     // Check common extensions
-    final extensions = ['.mp4', '.mkv', '.webm', '.avi'];
+    final extensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov'];
     for (final ext in extensions) {
       final file = File(p.join(directoryPath, '$baseName$ext'));
       if (await file.exists()) {

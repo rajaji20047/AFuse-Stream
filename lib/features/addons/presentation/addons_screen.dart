@@ -805,7 +805,7 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
     try {
       await ref
           .read(addonRepositoryProvider.notifier)
-          .install(entry.transportUrl);
+          .install(entry.transportUrl, configureUrl: entry.configureUrl);
       messenger.showSnackBar(
         appSnackBar(
           content: Text('Installed ${entry.manifest.name}'),
@@ -1052,12 +1052,20 @@ class _CommunityAddonTile extends StatelessWidget {
     return '$base/configure';
   }
 
-  Future<void> _openSetup() async {
+  Future<void> _openSetup(BuildContext context) async {
     final uri = Uri.tryParse(_configureUrl);
-    if (uri == null) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri == null || !await canLaunchUrl(uri)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        appSnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.discoverConfigureOpenFailed,
+          ),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+      return;
     }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -1119,7 +1127,7 @@ class _CommunityAddonTile extends StatelessWidget {
             ? IconButton(
                 tooltip: l10n.discoverOpenSetup,
                 icon: const Icon(Icons.settings_outlined),
-                onPressed: () => unawaited(_openSetup()),
+                onPressed: () => unawaited(_openSetup(context)),
               )
             : IconButton(
                 tooltip: l10n.install,

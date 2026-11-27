@@ -473,10 +473,6 @@ class DetailsController extends _$DetailsController {
         contextItem.contentType == MultimediaContentType.movie ||
         contextItem.contentType == MultimediaContentType.livestream;
 
-    if (!isMovie && episodes.length == 1) {
-      isMovie = true;
-    }
-
     if (isMovie) {
       state = state.copyWith(
         isMovie: true,
@@ -605,9 +601,13 @@ class DetailsController extends _$DetailsController {
     }
 
     if (state.isMovie) {
+      // Auto-play has no `playable` guard the way the Play button does: a
+      // movie whose provider now returns zero episodes must not throw here.
+      final episodes = details.episodes;
+      if (episodes == null || episodes.isEmpty) return;
       await ref
           .read(playbackLauncherProvider)
-          .play(context, details.episodes!.first.url, baseItem: details);
+          .play(context, episodes.first.url, baseItem: details);
       return;
     }
 
@@ -643,7 +643,28 @@ class DetailsController extends _$DetailsController {
     MultimediaItem details, {
     Episode? specificEpisode,
   }) async {
-    final type = switch (details.contentType) {
+    // The background TMDB/IMDb enrichment may not have landed yet: with
+    // no id at all Nuvio is never asked and the sheet only shows the
+    // "no TMDB or IMDb id" note. Reuse the enriched state item when it has
+    // one, else resolve now before building the request.
+    var resolvedDetails = details;
+    if (resolvedDetails.tmdbId == null && resolvedDetails.imdbId == null) {
+      final stateItem = state.item;
+      if (stateItem != null &&
+          stateItem.url == details.url &&
+          (stateItem.tmdbId != null || stateItem.imdbId != null)) {
+        resolvedDetails = stateItem;
+      } else {
+        try {
+          resolvedDetails = await ref
+              .read(metadataResolutionServiceProvider)
+              .enrichWithIds(details);
+        } catch (_) {
+          // Enrichment failed: open the sheet with the raw ids, as before.
+        }
+      }
+    }
+    final type = switch (resolvedDetails.contentType) {
       MultimediaContentType.movie => 'movie',
       MultimediaContentType.series || MultimediaContentType.anime => 'series',
       MultimediaContentType.livestream => 'tv',
@@ -651,16 +672,16 @@ class DetailsController extends _$DetailsController {
     };
     await AddonSourcesSheet.open(
       context,
-      item: details,
+      item: resolvedDetails,
       request: AddonStreamRequest(
         type: type,
-        contentId: details.url,
+        contentId: resolvedDetails.url,
         season: specificEpisode?.season,
         episode: specificEpisode?.episode,
-        imdbId: details.imdbId,
-        tmdbId: details.tmdbId,
-        title: details.title,
-        year: details.year,
+        imdbId: resolvedDetails.imdbId,
+        tmdbId: resolvedDetails.tmdbId,
+        title: resolvedDetails.title,
+        year: resolvedDetails.year,
       ),
       episode: specificEpisode,
       merged: true,

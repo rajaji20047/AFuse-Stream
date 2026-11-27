@@ -89,7 +89,12 @@ class _DownloadsTabState extends ConsumerState<DownloadsTab>
         final List<String> keys = [];
 
         for (final item in downloads) {
-          final String key = item.item.tmdbId?.toString() ?? item.item.title;
+          // TMDB movie and TV ids share one number space: a film and a
+          // show with the same id would merge into one card, and one
+          // delete-all would delete both.
+          final String key = item.item.tmdbId != null
+              ? '${item.item.contentType}:${item.item.tmdbId}'
+              : 'title:${item.item.title}:${item.item.url}';
           if (!grouped.containsKey(key)) {
             keys.add(key);
             grouped[key] = [];
@@ -386,6 +391,7 @@ class _DownloadItemTile extends ConsumerWidget {
     final isWorking =
         status == TaskStatus.running || status == TaskStatus.enqueued;
     final isPaused = status == TaskStatus.paused;
+    final isFailed = status == TaskStatus.failed;
 
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,6 +544,15 @@ class _DownloadItemTile extends ConsumerWidget {
                       onPressed: () => ref
                           .read(downloadsProvider.notifier)
                           .resumeDownload(item.task.taskId),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (isFailed)
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Retry download',
+                      onPressed: () => ref
+                          .read(downloadsProvider.notifier)
+                          .retryDownload(item),
                       visualDensity: VisualDensity.compact,
                     ),
                   if (isDone)

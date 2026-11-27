@@ -204,7 +204,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
               onlyAddonUrl: onlyAddonUrl,
             )
           : loading
-          ? const SizedBox.shrink()
+          ? const Center(child: CircularProgressIndicator.adaptive())
           : _EmptyBrowse(onOpenAddons: () => _openAddons(discover: true)),
     );
   }

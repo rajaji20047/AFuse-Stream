@@ -83,6 +83,20 @@ const String kNuvioSourcePrefix = 'nuvio:';
 ///
 /// Every source is labelled with where it came from: `addonName` is the
 /// plugin's, Nuvio provider's or add-on's own name.
+/// The identity a stream is deduped on across kinds: the torrent hash when
+/// it has one (from infoHash, or from a magnet URL that never got one),
+/// else the plain URL.
+String _crossKindKey(AddonStreamSource source) {
+  final hash = source.infoHash;
+  if (hash != null && hash.isNotEmpty) return 'hash:${hash.toLowerCase()}';
+  final url = source.url;
+  if (url != null && url.startsWith('magnet:')) {
+    final match = RegExp(r'xt=urn:btih:([A-Za-z0-9]+)').firstMatch(url);
+    if (match != null) return 'hash:${match.group(1)!.toLowerCase()}';
+  }
+  return 'url:${url ?? ''}';
+}
+
 class MergedSourceService {
   MergedSourceService({
     required List<SkyStreamProvider> Function() plugins,
@@ -161,9 +175,21 @@ class MergedSourceService {
       ];
       final loading =
           !addonsDone || !nuvioDone || pluginsCompleted < plugins.length;
+      // Cross-kind dedupe: the per-kind dedupes use dedupeKey, which
+      // carries the addon id, so the same torrent from two kinds (or the
+      // same direct URL from two add-ons) lists twice. Keep the first.
+      final combined = <AddonStreamSource>[];
+      final seen = <String>{};
+      for (final source in [
+        ...pluginStreams,
+        ...nuvioStreams,
+        ...addonProgress.streams,
+      ]) {
+        if (seen.add(_crossKindKey(source))) combined.add(source);
+      }
       return AddonStreamProgress(
         streams: rankAddonStreams(
-          [...pluginStreams, ...nuvioStreams, ...addonProgress.streams],
+          combined,
           title: request.title,
           year: request.year,
           // v7: the merged list is ordered by quality, best first.
@@ -499,7 +525,7 @@ MultimediaItem? bestTitleMatch(
     final itemYear =
         item.year ??
         int.tryParse(_yearToken.firstMatch(item.title)?.group(0) ?? '');
-    if (year != null && itemYear != null && !isSeries) {
+    if (year != null && itemYear != null) {
       if ((itemYear - year).abs() > 1) continue;
       if (itemYear == year) score += 20;
     }

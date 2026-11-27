@@ -265,6 +265,7 @@
   "selectProvider": "Select Provider",
   "searchHint": "Search movies, series...",
   "searchFavoriteContent": "Search for your favorite content",
+  "searchFailed": "Search failed. Check your connection and try again.",
   "pressSearchOrEnter": "Press the Search key or Enter to start",
   "recentSearches": "Recent searches",
   "@recentSearches": {
@@ -577,6 +578,7 @@
   "discoverClearSearch": "Clear",
   "discoverNeedsWebSetup": "Needs quick setup on the add-on's website",
   "discoverOpenSetup": "Set up on the add-on website",
+  "discoverConfigureOpenFailed": "Could not open the configure page.",
   "error": "Error",
   "ok": "OK",
   "pluginSettings": "{pluginName} Settings",

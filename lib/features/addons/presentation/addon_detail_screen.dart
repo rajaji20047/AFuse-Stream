@@ -356,7 +356,7 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     final rating = meta.imdbRating ?? '';
     final runtime = meta.runtime ?? '';
     final genreText = meta.genres.join(' • ');
-    final hasEpisodes = meta.videos.isNotEmpty;
+    final hasEpisodes = meta.hasEpisodes;
     final seasons = meta.seasons;
 
     return Scaffold(
@@ -609,7 +609,7 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     final year = meta.releaseInfo ?? '';
     final rating = meta.imdbRating ?? '';
     final runtime = meta.runtime ?? '';
-    final hasEpisodes = meta.videos.isNotEmpty;
+    final hasEpisodes = meta.hasEpisodes;
     final seasons = meta.seasons;
     final l10n = AppLocalizations.of(context)!;
 
@@ -1285,13 +1285,13 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
 
     final int start = _selectedRangeIndex * batchSize;
     final int end = (start + batchSize).clamp(0, totalEpisodes);
+    // Reverse the full list first: reversing only the slice shows the
+    // oldest batch when descending (range 0 would be E20..E1, not E100..E81).
+    final orderedEpisodes =
+        _isAscending ? episodes : episodes.reversed.toList();
     List<AddonVideo> displayedEpisodes = episodes.isNotEmpty
-        ? episodes.sublist(start, end)
+        ? orderedEpisodes.sublist(start, end)
         : <AddonVideo>[];
-
-    if (!_isAscending) {
-      displayedEpisodes = displayedEpisodes.reversed.toList();
-    }
 
     AddonStreamRequest requestFor(AddonVideo video) => AddonStreamRequest(
       type: meta.streamRequestType,

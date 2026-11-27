@@ -114,11 +114,17 @@ class _MediaHorizontalListState extends State<MediaHorizontalList> {
     if (url.isEmpty) return;
     final isPortrait = await ImageUtils.isImagePortrait(url);
     _storeCached(url, isPortrait);
-    if (mounted && _isPortrait != isPortrait) {
-      setState(() {
-        _isPortrait = isPortrait;
-      });
+    // The list may have swapped while the image was measured: only apply
+    // the result if this row still shows the measured poster.
+    if (!mounted ||
+        widget.mediaList.isEmpty ||
+        widget.mediaList.first.posterImageUrl != url ||
+        _isPortrait == isPortrait) {
+      return;
     }
+    setState(() {
+      _isPortrait = isPortrait;
+    });
   }
 
   @override

@@ -6,6 +6,9 @@ import '../../../core/storage/storage_service.dart';
 import '../../account/data/raja_sync_client.dart';
 import '../../app_lock/app_lock_controller.dart';
 import '../../app_lock/app_lock_passcode.dart';
+import '../../library/presentation/history_provider.dart';
+import '../../library/presentation/library_provider.dart';
+import '../../tracking/data/sync_manager.dart';
 import 'fuse_profile.dart';
 import 'fuse_profile_photos_notifier.dart';
 import 'fuse_profiles_client.dart';
@@ -622,6 +625,15 @@ class FuseProfilesNotifier extends Notifier<FuseProfilesState> {
     );
     if (ref.mounted) {
       state = state.copyWith(activeProfileId: profileId, clearError: true);
+      // The Home rails are keep-alive providers that cache their lists;
+      // swapping the boxes alone does not re-run them, so Home would keep
+      // showing the previous profile's Continue Watching, Synced from
+      // Trakt and My List until something refreshed them (whole-code
+      // audit H1, 2026-11-27). Refresh/invalidate them here, as the
+      // backup restore does for history and library.
+      ref.read(watchHistoryProvider.notifier).refresh();
+      ref.read(libraryProvider.notifier).refresh();
+      ref.invalidate(syncedProgressProvider);
     }
   }
 

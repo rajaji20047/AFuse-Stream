@@ -10,6 +10,7 @@ import '../../../core/extensions/extension_manager.dart';
 import '../../../core/extensions/base_provider.dart';
 import '../../../core/logger/app_logger.dart';
 import '../../../core/services/download_service.dart';
+import '../domain/season_download.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/loading_dialog.dart';
 import '../../../shared/widgets/custom_widgets.dart';
@@ -59,12 +60,16 @@ class DownloadLauncher {
 
       LoadingDialog.close(dialog);
 
-      if (streams.isEmpty) {
-        throw Exception('No download sources found for this item.');
+      // Playlists are not files: the downloader would save the playlist
+      // text as ".mp4" and report success. Offer only direct candidates.
+      final downloadable =
+          streams.where(isDirectDownloadCandidate).toList();
+      if (downloadable.isEmpty) {
+        throw Exception('No direct-download sources found for this item.');
       }
 
       // 3. Show Source Picker
-      _showSourcePicker(context, streams, item, resolveUrl);
+      _showSourcePicker(context, downloadable, item, resolveUrl);
     } catch (e) {
       if (!context.mounted) return;
       if (!isCanceled) LoadingDialog.close(dialog);
@@ -229,7 +234,11 @@ class DownloadLauncher {
 
     final finalContext = rootNavigatorKey.currentContext ?? navContext;
 
-    if (metadata == null || metadata.size == null) {
+    // A playlist HEAD answers with a (small) size, so size alone does
+    // not prove a file: the MIME has to say file too.
+    if (metadata == null ||
+        metadata.size == null ||
+        isNonFileMimeType(metadata.mimeType)) {
       if (finalContext.mounted) {
         _showErrorDialog(
           finalContext,

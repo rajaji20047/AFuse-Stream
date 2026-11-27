@@ -327,6 +327,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       navBarRetapProvider.select((requests) => requests[1] ?? 0),
       (_, _) => _scrollToTopAndFocus(),
     );
+    // The field is only synced in initState, so a Trakt card tap after a
+    // first Search visit leaves the box showing the old text while the
+    // results are for the new title. Sync it here, but never echo the
+    // field's own edits back into itself.
+    ref.listen<String>(
+      searchQueryProvider,
+      (_, next) {
+        if (next != _controller.text) {
+          _controller.value = TextEditingValue(
+            text: next,
+            selection: TextSelection.collapsed(offset: next.length),
+          );
+        }
+      },
+    );
     // Size question, asked of the size: a 960 dp television clears the
     // tablet breakpoint like any other big window.
     final isWidescreen = context.isTabletOrLarger;
@@ -629,6 +644,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         final allResults = sections.expand((entry) => entry.$2).toList();
 
         if (allResults.isEmpty && !state.isLoading) {
+          // Every source failed: that is an error, not "no results". (A
+          // mix of failures and genuine empties still reads as no results.)
+          final totalFailure = state.failed.isNotEmpty &&
+              state.empty.difference(state.failed).isEmpty;
+          if (totalFailure) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.65),
+                  ),
+                  const SizedBox(height: LayoutConstants.spacingMd),
+                  Text(
+                    l10n.searchFailed,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
           return _buildEmptyState(context, category: category);
         } else if (allResults.isEmpty && state.isLoading) {
           return const Center(child: AppLoadingIndicator());

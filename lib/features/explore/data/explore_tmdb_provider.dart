@@ -218,7 +218,14 @@ Future<List<MultimediaItem>> exploreHeroMovie(Ref ref) async {
       .toList();
 
   if (mediaItems.length < 3 && lang != 'en-US') {
-    trending = await service.getTrendingAllDay(language: 'en-US');
+    // Only the language falls back: the active genre/year/rating filters
+    // still apply, or the hero contradicts the filter the page obeys.
+    trending = await service.getTrendingAllDay(
+      language: 'en-US',
+      genreId: filters.selectedGenre?.id,
+      year: filters.selectedYear,
+      minRating: filters.minRating,
+    );
   }
 
   final topMovies = trending

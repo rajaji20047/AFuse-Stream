@@ -1162,16 +1162,18 @@ class DetailsDesktopEpisodeColumn extends ConsumerWidget {
           .toList();
     }
 
-    // Apply Batching (FIRST)
+    // Reverse the full list before batching: reversing only the slice
+    // shows the oldest batch when descending (range 0 would be E20..E1,
+    // not E100..E81).
+    if (!detailsState.isAscending) {
+      episodes = episodes.reversed.toList();
+    }
+
+    // Apply Batching
     const int batchSize = 20;
     final int start = detailsState.selectedRangeIndex * batchSize;
     final int end = (start + batchSize).clamp(0, episodes.length);
     List<Episode> displayedEpisodes = episodes.sublist(start, end);
-
-    // Apply Sorting (SECOND - only on the batch)
-    if (!detailsState.isAscending) {
-      displayedEpisodes = displayedEpisodes.reversed.toList();
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

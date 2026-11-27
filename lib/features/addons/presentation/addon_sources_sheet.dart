@@ -29,6 +29,7 @@ import '../../../shared/focus/app_focus.dart';
 import '../../../shared/focus/row_traversal.dart';
 import '../../../shared/focus/text_field_keys.dart';
 import '../../../shared/widgets/check_line.dart';
+import '../../details/domain/season_download.dart';
 import '../../sources/presentation/source_sheet_widgets.dart';
 import 'addon_direct_play.dart';
 
@@ -328,6 +329,15 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
       ];
       loading = loading || rerun.progress.isLoading;
     }
+    // A rerun's streams land unsorted at the bottom: re-rank the combined
+    // list the way the service ranks its own, or TOP PICK is wrong after
+    // a Verify rerun.
+    streams = rankAddonStreams(
+      streams,
+      title: widget.request.title,
+      year: widget.request.year,
+      byQuality: true,
+    );
     return AddonStreamProgress(
       streams: streams,
       statuses: statuses,
@@ -481,8 +491,41 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     final item = widget.item;
     final episode = widget.episode;
 
+    // A playlist is not a file: the downloader would save the playlist
+    // text as ".mp4" and report success. Same guards as the season path.
+    if (!isDirectDownloadCandidate(
+      StreamResult(url: url, source: stream.addonName),
+    )) {
+      messenger.showSnackBar(
+        appSnackBar(
+          content: const Text(
+            'This link is a playlist, not a downloadable file. Try another source.',
+          ),
+        ),
+      );
+      return;
+    }
+
     try {
       final saveDir = await service.getDownloadPath(item, episode: episode);
+      // The server has to say file, not playlist: a playlist HEAD answers
+      // with a (small) size, so size alone does not prove a file.
+      final metadata = await service
+          .getMetadata(url, headers: stream.proxyHeaders)
+          .timeout(const Duration(seconds: 15), onTimeout: () => null);
+      if (metadata == null ||
+          metadata.size == null ||
+          isNonFileMimeType(metadata.mimeType)) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          appSnackBar(
+            content: const Text(
+              'This link is not a downloadable file. Try another source.',
+            ),
+          ),
+        );
+        return;
+      }
       final clean = url.split('?').first.toLowerCase();
       var extension = '.mp4';
       for (final ext in const ['.mp4', '.mkv', '.webm', '.avi', '.mov']) {
@@ -504,7 +547,10 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
         directory: saveDir,
         item: item,
         episode: episode,
-        trackingUrl: url,
+        // The episode identity, not the stream URL: two sources for one
+        // episode write the same file, so the second tap must hit the
+        // already-running guard instead of enqueueing a duplicate.
+        trackingUrl: episode?.url ?? item.url,
         headers: stream.proxyHeaders,
       );
 
@@ -1037,7 +1083,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                       ),
                     ),
                   ),
-                  if (_result.streams.isNotEmpty)
+                  if (listedStreams.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: SizedBox(
@@ -1048,8 +1094,11 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
                             horizontal: kSourceSheetGutter,
                           ),
                           children: [
+                            // From the listed streams only: a provider
+                            // whose links are all external (or filtered
+                            // out) has nothing behind its chip.
                             for (final name in addonStreamProviderLabels(
-                              _result.streams,
+                              listedStreams,
                             ))
                               Padding(
                                 padding: const EdgeInsets.only(right: 6),

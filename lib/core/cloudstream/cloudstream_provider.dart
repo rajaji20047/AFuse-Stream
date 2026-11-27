@@ -88,7 +88,7 @@ class CloudStreamProvider extends SkyStreamProvider {
   Future<List<MultimediaItem>> search(String query, {CancelToken? cancelToken}) async {
     try {
       final result = await _call((e) => e.search(name, query, plugin: _pluginPath), kind: 'search');
-      return [for (final item in _list(result['items'])) _item(item)];
+      return [for (final item in _list(result['items'])) if (item['url'] is String) _item(item)];
     } catch (error) {
       talker.warning('[CloudStream] $name search failed: $error');
       return const [];
@@ -118,7 +118,7 @@ class CloudStreamProvider extends SkyStreamProvider {
                 // Home items carry no provider, like Raja plugins' (the carousel would print the
                 // id); details falls back to the active provider, whose home this is.
                 (section['name'] as String? ?? name): [
-                  for (final item in _list(section['items'])) _item(item, stampProvider: false),
+                  for (final item in _list(section['items'])) if (item['url'] is String) _item(item, stampProvider: false),
                 ],
           };
         } catch (error) {
@@ -172,6 +172,10 @@ class CloudStreamProvider extends SkyStreamProvider {
     } else {
       final raw = _list(result['episodes']);
       for (var i = 0; i < raw.length; i++) {
+        // One episode without playable data must not kill the whole
+        // details page: skip it, the rest still open and play.
+        final data = raw[i]['data'];
+        if (data is! String || data.isEmpty) continue;
         episodes.add(_episode(raw[i], i));
       }
     }
@@ -311,17 +315,18 @@ class CloudStreamProvider extends SkyStreamProvider {
     final subtitles = await _subtitles(_list(result['subtitles']));
     return [
       for (final link in _list(result['links']))
-        StreamResult(
-          url: link['url'] as String,
-          source: _label(link),
-          providerName: name,
-          quality: _adaptiveQuality(link),
-          headers: _headers(link),
-          subtitles: subtitles,
-          drmKid: (link['drm'] as Map?)?['kid'] as String?,
-          drmKey: (link['drm'] as Map?)?['key'] as String?,
-          licenseUrl: (link['drm'] as Map?)?['licenseUrl'] as String?,
-        ),
+        if (link['url'] is String)
+          StreamResult(
+            url: link['url'] as String,
+            source: _label(link),
+            providerName: name,
+            quality: _adaptiveQuality(link),
+            headers: _headers(link),
+            subtitles: subtitles,
+            drmKid: (link['drm'] as Map?)?['kid'] as String?,
+            drmKey: (link['drm'] as Map?)?['key'] as String?,
+            licenseUrl: (link['drm'] as Map?)?['licenseUrl'] as String?,
+          ),
     ];
   }
 
@@ -396,7 +401,9 @@ class CloudStreamProvider extends SkyStreamProvider {
   static Future<List<SubtitleFile>> _subtitles(List<Map<String, dynamic>> raw) async {
     final files = <SubtitleFile>[];
     for (final sub in raw) {
-      var url = sub['url'] as String;
+      final rawUrl = sub['url'];
+      if (rawUrl is! String) continue;
+      var url = rawUrl;
       final headers = (sub['headers'] as Map?)?.map((k, v) => MapEntry('$k', '$v'));
       if (headers != null && headers.isNotEmpty) {
         await LocalProxyService.instance.startServer();

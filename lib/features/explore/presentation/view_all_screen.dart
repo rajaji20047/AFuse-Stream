@@ -192,13 +192,21 @@ class _ViewAllScreenState extends ConsumerState<ViewAllScreen> {
               onTap: () {
                 if (widget.onTap != null) {
                   widget.onTap!(item);
-                } else {
+                } else if (item.tmdbId != null) {
                   TmdbDetailsRoute(
                     movieId: item.id,
                     mediaType: item.tmdbMediaType,
                     heroTag: uniqueTag,
                     placeholderPoster: imageUrl,
                     source: item.source,
+                  ).push<void>(context);
+                } else {
+                  // No TMDB id (add-on/plugin items): the TMDB route would
+                  // open movieId 0 — the item's own details page instead.
+                  // This is also the path a process-death restore takes,
+                  // since the codec cannot restore the caller's onTap.
+                  DetailsRoute(
+                    $extra: DetailsRouteExtra(item: item),
                   ).push<void>(context);
                 }
               },

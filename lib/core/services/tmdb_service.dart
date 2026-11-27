@@ -16,6 +16,7 @@ class TmdbService {
   final Map<String, _SuggestionCacheEntry> _suggestionsCache = {};
   final Map<String, _CacheEntry<Map<String, dynamic>>> _seasonDetailsCache = {};
   final Map<String, _CacheEntry<Map<String, dynamic>>> _tvExtraCache = {};
+  final Map<String, _CacheEntry<Map<String, dynamic>>> _movieExtraCache = {};
   final Map<String, Future<Map<String, dynamic>?>> _inFlightRequests = {};
 
   TmdbService(Dio baseDio)
@@ -376,6 +377,9 @@ class TmdbService {
           .replaceAll('()', '')
           .trim();
     }
+    // A query that WAS the year ("1917", "2012"): the year is the title,
+    // not a filter — searching it with the filter on can never find it.
+    final yearWasQuery = yearMatch != null && cleanQuery.isEmpty;
 
     // 2. Extract Language (e.g., "Kannada", "Tamil")
     final languageMap = {
@@ -402,6 +406,7 @@ class TmdbService {
 
     // If query became empty (e.g. user just typed "2023"), revert to original but keep filters
     if (cleanQuery.isEmpty) cleanQuery = query;
+    if (yearWasQuery) filterYear = null;
 
     // Clean up double spaces
     cleanQuery = cleanQuery.replaceAll(RegExp(r'\s+'), ' ');
@@ -447,23 +452,22 @@ class TmdbService {
             processedResults.add(item);
           }
         }
-        final today = DateTime.now();
-
         final finalResults = processedResults.where((item) {
           final mediaType = item['media_type'];
           if (mediaType != 'movie' && mediaType != 'tv') return false;
 
-          // --- Filter 1: Release Status (Existing logic) ---
+          // A missing date is no date signal, not a rejection: dateless
+          // titles still match on title, and unreleased ones still
+          // enrich (their ids are what Nuvio needs).
           String? dateStr;
           if (mediaType == 'movie') {
             dateStr = item['release_date'] as String?;
           } else if (mediaType == 'tv') {
             dateStr = item['first_air_date'] as String?;
           }
-          if (dateStr == null || dateStr.isEmpty) return false;
 
-          // --- Filter 2: Year (New) ---
-          if (filterYear != null) {
+          // --- Filter 2: Year ---
+          if (filterYear != null && dateStr != null && dateStr.isNotEmpty) {
             try {
               final date = DateTime.parse(dateStr);
               // Allow +/- 1 year tolerance or exact match
@@ -474,19 +478,13 @@ class TmdbService {
             }
           }
 
-          // --- Filter 3: Language (New) ---
+          // --- Filter 3: Language ---
           if (filterLanguageCode != null) {
             final originalLang = item['original_language'];
             if (originalLang != filterLanguageCode) return false;
           }
 
-          // Future date check
-          try {
-            final date = DateTime.parse(dateStr);
-            return date.isBefore(today);
-          } catch (e) {
-            return false;
-          }
+          return true;
         }).toList();
 
         // Deduplicate results based on ID (Person's known_for might duplicate direct search results)
@@ -820,24 +818,69 @@ class TmdbService {
   }) async {
     if (TmdbConfig.apiKey.isEmpty) return null;
 
+    // Same shape as getTvExtra: a 1h cache, one in-flight request per key,
+    // and up to 3 attempts on a transient failure.
+    final cacheKey = '$movieId:$language';
+    final cached = _movieExtraCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.cachedAt) < _detailsCacheTtl) {
+      return cached.data;
+    }
+
+    if (_inFlightRequests.containsKey(cacheKey)) {
+      return await _inFlightRequests[cacheKey];
+    }
+
+    final future = _fetchMovieExtra(
+      movieId,
+      language: language,
+      cacheKey: cacheKey,
+    );
+    _inFlightRequests[cacheKey] = future;
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/movie/$movieId',
-        queryParameters: {
-          'api_key': TmdbConfig.apiKey,
-          'language': language,
-          'append_to_response': 'videos,images,translations,external_ids',
-          'include_image_language': '$language,null,en',
-        },
-      );
-      if (response.statusCode == 200) {
-        return response.data;
+      return await future;
+    } finally {
+      unawaited(_inFlightRequests.remove(cacheKey));
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchMovieExtra(
+    int movieId, {
+    required String language,
+    required String cacheKey,
+  }) async {
+    int attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/movie/$movieId',
+          queryParameters: {
+            'api_key': TmdbConfig.apiKey,
+            'language': language,
+            'append_to_response': 'videos,images,translations,external_ids',
+            'include_image_language': '$language,null,en',
+          },
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          _movieExtraCache[cacheKey] = _CacheEntry(
+            response.data!,
+            DateTime.now(),
+          );
+          return response.data;
+        }
+        talker.warning(
+          'TmdbService.getMovieExtra: status ${response.statusCode} for $movieId',
+        );
+        return null;
+      } catch (e, st) {
+        if (attempts < 3 && _isTransientError(e)) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempts));
+          continue;
+        }
+        talker.error('TmdbService.getMovieExtra failed for $movieId', e, st);
+        break;
       }
-      talker.warning(
-        'TmdbService.getMovieExtra: status ${response.statusCode} for $movieId',
-      );
-    } catch (e, st) {
-      talker.error('TmdbService.getMovieExtra failed for $movieId', e, st);
     }
     return null;
   }

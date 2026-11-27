@@ -62,6 +62,14 @@ class SearchAggregateState {
   /// Extensions searching again because their site's check cleared.
   final Set<String> rerunning;
 
+  /// Extensions that came back empty (no results) this pass.
+  final Set<String> empty;
+
+  /// Extensions whose search threw this pass. A subset of [empty]: a total
+  /// failure (everything in [empty] is also here) is an error, not "no
+  /// results".
+  final Set<String> failed;
+
   /// The searchers this search ran besides the extensions: Stremio add-ons'
   /// and Nuvio's. Their checks show with the extensions'.
   final List<SkyStreamProvider> others;
@@ -71,6 +79,8 @@ class SearchAggregateState {
     this.isLoading = false,
     this.startedAt,
     this.rerunning = const {},
+    this.empty = const {},
+    this.failed = const {},
     this.others = const [],
   });
 }
@@ -376,6 +386,9 @@ Stream<SearchAggregateState> searchAllProviders(
   /// be why.
   final empty = <String>{};
 
+  /// Extensions whose search threw this pass (a subset of [empty]).
+  final failed = <String>{};
+
   /// Extensions searching again after their site's check cleared.
   final rerunning = <String>{};
 
@@ -472,6 +485,8 @@ Stream<SearchAggregateState> searchAllProviders(
         isLoading: stillLoading,
         startedAt: startedAt,
         rerunning: Set.of(rerunning),
+        empty: Set.of(empty),
+        failed: Set.of(failed),
         others: searchers,
       ),
     );
@@ -577,6 +592,12 @@ Stream<SearchAggregateState> searchAllProviders(
                         contentType: item.contentType,
                         episodes: item.episodes,
                         provider: provider.packageName,
+                        // The category chips read these: dropping them made
+                        // the 4K chip unmatchable and K-Drama near-dead.
+                        tags: item.tags,
+                        streams: item.streams,
+                        year: item.year,
+                        score: item.score,
                       ),
                     )
                     .toList();
@@ -611,6 +632,7 @@ Stream<SearchAggregateState> searchAllProviders(
             // A search again replaces what the extension found before.
             results.removeWhere((r) => r.providerId == provider.packageName);
             empty.remove(provider.packageName);
+            failed.remove(provider.packageName);
             results.add(
               ProviderSearchResult(
                 providerId: provider.packageName,
@@ -636,8 +658,10 @@ Stream<SearchAggregateState> searchAllProviders(
           }
           if (e is DioException && e.type == DioExceptionType.cancel) return;
           // Don't add error entries with empty results — they add state size
-          // with no user-visible benefit.
+          // with no user-visible benefit. The name goes on the failed set
+          // instead, so a total failure can be told apart from "no results".
           empty.add(provider.packageName);
+          failed.add(provider.packageName);
         } finally {
           activeJobs--;
           if (takesSlot(provider)) activeSlots--;

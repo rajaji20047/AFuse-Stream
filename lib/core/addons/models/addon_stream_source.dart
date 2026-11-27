@@ -207,6 +207,10 @@ class AddonStreamSource {
 
   AddonStreamKind get kind {
     if ((infoHash ?? '').isNotEmpty) return AddonStreamKind.torrent;
+    // Plugin torrents arrive as magnet URLs with no infoHash (see
+    // pluginToSource): a magnet is a torrent, never a direct link — the
+    // old read made debrid skip them and offered Download on a magnet.
+    if ((url ?? '').startsWith('magnet:')) return AddonStreamKind.torrent;
     if ((url ?? '').isNotEmpty) return AddonStreamKind.direct;
     if ((ytId ?? '').isNotEmpty) return AddonStreamKind.youtube;
     if ((externalUrl ?? '').isNotEmpty) return AddonStreamKind.external;

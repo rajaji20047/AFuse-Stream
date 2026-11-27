@@ -155,7 +155,10 @@ class NuvioStreamService {
     } catch (error) {
       if (kDebugMode) debugPrint('[Nuvio] imdb→tmdb failed for $id: $error');
     }
-    return id;
+    // No conversion, no usable id: the scrapers are written against a
+    // numeric TMDB id, so handing them the raw `tt…` only runs 60 scrapers
+    // that silently return nothing. Empty means "cannot resolve".
+    return '';
   }
 
   Stream<NuvioProgress> resolve({
@@ -186,6 +189,10 @@ class NuvioStreamService {
     }
 
     final resolvedId = await _normalizeId(tmdbId, type);
+    if (resolvedId.isEmpty) {
+      yield const NuvioProgress(isLoading: false);
+      return;
+    }
 
     final runtime = _ref.read(nuvioRuntimeProvider);
     final streams = <NuvioStreamResult>[];

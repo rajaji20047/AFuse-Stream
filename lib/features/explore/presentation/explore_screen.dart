@@ -22,6 +22,7 @@ import '../../../../core/utils/responsive_breakpoints.dart';
 import '../../../../core/providers/device_info_provider.dart';
 import '../../../../shared/widgets/shimmer_placeholder.dart';
 import '../../../../core/domain/entity/multimedia_item.dart';
+import '../../addons/presentation/addon_providers.dart';
 import '../../addons/presentation/addons_screen.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/router/app_router.dart';
@@ -110,6 +111,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
     // clears the tablet breakpoint regardless.
     final isWidescreen =
         profile?.isLargeScreen == true || context.isTabletOrLarger;
+
+    // Search asks the installed add-ons' own catalogs in Stremio mode.
+    // With none of them searchable the search provider falls back to the
+    // built-in Cinemeta, which is content the person never installed — so
+    // in Stremio mode the button is only offered when an installed add-on
+    // can answer (same gate as Browse). TMDB/Anime modes search their own
+    // service, so the button is always offered there.
+    final canSearch =
+        ref.watch(exploreModeProvider) != ExploreModeType.stremio ||
+        (ref.watch(browsableCatalogsProvider).isNotEmpty &&
+            ref.watch(addonRepositoryProvider).enabled.any(
+                  (addon) =>
+                      (addon.manifest?.hasResource('catalog') ?? false) &&
+                      addon.manifest!.catalogs.any((c) => c.supportsSearch),
+                ));
 
     if (isWidescreen) {
       return Scaffold(
@@ -210,25 +226,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.only(
-                  right: LayoutConstants.spacingMd,
-                ),
-                child: CardsWrapper(
-                  onTap: () => unawaited(showExploreSearch(context)),
-                  borderRadius: BorderRadius.circular(50),
-                  child: CircleAvatar(
-                    backgroundColor: Theme.of(context).colorScheme.onSurface
-                        .withValues(alpha: 0.1),
-                    radius: 18,
-                    child: Icon(
-                      Icons.search,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: 18,
+              if (canSearch)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: LayoutConstants.spacingMd,
+                  ),
+                  child: CardsWrapper(
+                    onTap: () => unawaited(showExploreSearch(context)),
+                    borderRadius: BorderRadius.circular(50),
+                    child: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.1),
+                      radius: 18,
+                      child: Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
           body: _withGradientEdgeHint(_buildActiveExploreBody(context)),

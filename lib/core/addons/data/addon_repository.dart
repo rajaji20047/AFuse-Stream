@@ -97,7 +97,7 @@ class AddonRepository extends _$AddonRepository {
 
   /// Installs from any pasted URL shape. Throws [AddonException] with a
   /// user-readable message when the manifest can't be used.
-  Future<ManagedAddon> install(String rawUrl) async {
+  Future<ManagedAddon> install(String rawUrl, {String? configureUrl}) async {
     final url = AddonTransport.normalizeManifestUrl(rawUrl);
     if (!AddonTransport.looksValid(url)) {
       throw const AddonException('Enter a valid add-on URL.');
@@ -112,6 +112,7 @@ class AddonRepository extends _$AddonRepository {
       manifestUrl: url,
       manifest: manifest,
       addedAt: DateTime.now(),
+      configureUrl: configureUrl,
     );
 
     final next = List<ManagedAddon>.of(state.addons);
@@ -119,7 +120,11 @@ class AddonRepository extends _$AddonRepository {
       (a) => a.manifestUrl == url || (a.manifest?.id == manifest.id),
     );
     if (existing >= 0) {
-      next[existing] = addon.copyWith(enabled: next[existing].enabled);
+      // Installing is an explicit "I want this add-on" (Discover, manual
+      // add): a reinstall re-enables it, so the directory's "Installed"
+      // badge stops promising an add-on that never runs. The backup
+      // restore re-applies `enabled: false` itself when the backup says so.
+      next[existing] = addon.copyWith(enabled: true);
     } else {
       next.add(addon);
     }

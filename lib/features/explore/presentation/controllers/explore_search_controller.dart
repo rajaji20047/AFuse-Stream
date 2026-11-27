@@ -200,26 +200,32 @@ class ExploreSearchController extends _$ExploreSearchController {
 
     state = state.copyWith(isLoading: true);
 
+    // The query this page belongs to: a new submit mid-flight must not
+    // have the old query's page appended to its results (fetchResults
+    // already guards this way).
+    final query = state.resultsQuery;
+    final nextPage = state.page + 1;
+
     try {
-      final nextPage = state.page + 1;
       final List<MultimediaItem> results;
       if (mode == ExploreModeType.anime) {
         final anilist = ref.read(anilistRepositoryProvider);
         final titleLang = ref.read(animeTitleLanguageProvider);
         results = await anilist.searchAnime(
-          state.resultsQuery,
+          query,
           page: nextPage,
           titleLang: titleLang,
         );
       } else {
         final tmdb = ref.read(tmdbServiceProvider);
         results = await tmdb.multiSearch(
-          query: state.resultsQuery,
+          query: query,
           language: 'en-US',
           page: nextPage,
         );
       }
 
+      if (state.resultsQuery != query) return;
       if (results.isEmpty) {
         state = state.copyWith(hasMore: false, isLoading: false);
       } else {
@@ -230,6 +236,7 @@ class ExploreSearchController extends _$ExploreSearchController {
         );
       }
     } catch (e) {
+      if (state.resultsQuery != query) return;
       state = state.copyWith(isLoading: false);
     }
   }

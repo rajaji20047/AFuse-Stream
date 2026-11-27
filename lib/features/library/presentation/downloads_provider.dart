@@ -52,10 +52,11 @@ class DownloadsNotifier extends _$DownloadsNotifier {
     final List<DownloadItem> items = [];
 
     for (final record in records) {
-      // Skip non-download tasks and cancelled/failed ones
+      // Skip non-download tasks and cancelled ones. Failed ones stay:
+      // the tab shows the failure with a retry instead of the row just
+      // vanishing.
       if (record.task is! DownloadTask) continue;
-      if (record.status == TaskStatus.canceled ||
-          record.status == TaskStatus.failed) {
+      if (record.status == TaskStatus.canceled) {
         continue;
       }
 
@@ -104,8 +105,9 @@ class DownloadsNotifier extends _$DownloadsNotifier {
         newStatus = update.status;
       }
 
-      if (newStatus == TaskStatus.canceled || newStatus == TaskStatus.failed) {
-        // Remove from list if canceled or failed
+      if (newStatus == TaskStatus.canceled) {
+        // Remove from list if canceled. A failure stays as a failed row
+        // with a retry action.
         final newList = List<DownloadItem>.from(currentList)..removeAt(index);
         state = AsyncData(newList);
       } else {
@@ -182,6 +184,36 @@ class DownloadsNotifier extends _$DownloadsNotifier {
       state = AsyncData(
         state.value!.where((i) => !idsToRemove.contains(i.id)).toList(),
       );
+    }
+  }
+
+  /// Re-enqueues a failed download from its own task: a failed task
+  /// cannot be resumed, so retry starts it over with the same URL,
+  /// filename and item/episode. The failed record goes first, so the new
+  /// task is the only row.
+  Future<void> retryDownload(DownloadItem item) async {
+    final task = item.task;
+    if (task is! DownloadTask) return;
+    final service = ref.read(downloadServiceProvider);
+    await FileDownloader().database.deleteRecordWithId(task.taskId);
+    await ref
+        .read(storageServiceProvider)
+        .removeDownloadMetadata(task.taskId);
+    final directory = await service.getDownloadPath(
+      item.item,
+      episode: item.episode,
+    );
+    final started = await service.startDownload(
+      url: task.url,
+      filename: task.filename,
+      directory: directory,
+      item: item.item,
+      episode: item.episode,
+      trackingUrl: item.episode?.url ?? item.item.url,
+      headers: task.headers,
+    );
+    if (started) {
+      state = AsyncData(await _refreshList());
     }
   }
 

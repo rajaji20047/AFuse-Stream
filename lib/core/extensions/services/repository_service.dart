@@ -364,15 +364,22 @@ class RepositoryService {
               : response.data as List<dynamic>?;
 
           if (list != null) {
-            final plugins = list
-                .map(
-                  (e) => ExtensionPlugin.fromJson(
-                    e as Map<String, dynamic>,
+            for (final entry in list) {
+              if (entry is! Map) continue;
+              try {
+                allPlugins.add(
+                  ExtensionPlugin.fromJson(
+                    Map<String, dynamic>.from(entry),
                     repo.packageName,
                   ),
-                )
-                .toList();
-            allPlugins.addAll(plugins);
+                );
+              } catch (_) {
+                // One malformed entry must not empty the whole repository.
+                if (kDebugMode) {
+                  debugPrint('Skipping malformed plugin entry in $pluginListUrl');
+                }
+              }
+            }
           }
         }
       } catch (e) {

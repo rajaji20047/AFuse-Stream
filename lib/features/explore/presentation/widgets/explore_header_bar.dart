@@ -6,6 +6,7 @@ import 'package:raja/shared/widgets/cards_wrapper.dart';
 import 'package:raja/features/explore/presentation/delegates/explore_search_delegate.dart';
 import 'package:raja/features/explore/presentation/widgets/unified_filter_dialog.dart';
 import 'package:raja/features/explore/data/explore_filter_provider.dart';
+import 'package:raja/features/addons/presentation/addon_providers.dart';
 import 'package:raja/features/explore/data/explore_mode_provider.dart';
 
 import 'dart:async';
@@ -37,6 +38,18 @@ class ExploreHeaderBar extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     final hasCarousel = onPrevious != null && onNext != null;
+
+    // Same gate as Browse (and Explore's mobile button): in Stremio mode
+    // the search only works when an installed add-on can answer, else the
+    // search provider falls back to the built-in Cinemeta.
+    final canSearch =
+        ref.watch(exploreModeProvider) != ExploreModeType.stremio ||
+        (ref.watch(browsableCatalogsProvider).isNotEmpty &&
+            ref.watch(addonRepositoryProvider).enabled.any(
+                  (addon) =>
+                      (addon.manifest?.hasResource('catalog') ?? false) &&
+                      addon.manifest!.catalogs.any((c) => c.supportsSearch),
+                ));
 
     return Container(
       height: LayoutConstants.dashboardHeaderHeight,
@@ -82,51 +95,53 @@ class ExploreHeaderBar extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(width: 16),
+          if (canSearch) ...[
+            const SizedBox(width: 16),
 
-          // Capsule search bar
-          Expanded(
-            child: CardsWrapper(
-              scaleFactor: 1.01,
-              focusNode: searchFocusNode,
-              onTap: () => unawaited(showExploreSearch(context)),
-              borderRadius: BorderRadius.circular(LayoutConstants.radiusPill),
-              child: Container(
-                height: 38,
-                constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.5,
-                  ),
-                  borderRadius: BorderRadius.circular(
-                    LayoutConstants.radiusPill,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search,
-                      size: 18,
-                      color: theme.colorScheme.onSurfaceVariant,
+            // Capsule search bar
+            Expanded(
+              child: CardsWrapper(
+                scaleFactor: 1.01,
+                focusNode: searchFocusNode,
+                onTap: () => unawaited(showExploreSearch(context)),
+                borderRadius: BorderRadius.circular(LayoutConstants.radiusPill),
+                child: Container(
+                  height: 38,
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${l10n.search}...',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme.colorScheme.onSurfaceVariant,
+                    borderRadius: BorderRadius.circular(
+                      LayoutConstants.radiusPill,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        size: 18,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${l10n.search}...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(width: 16),
+            const SizedBox(width: 16),
+          ],
           // Filter / Stremio Add-on Settings chip
           Consumer(
             builder: (context, ref, _) {

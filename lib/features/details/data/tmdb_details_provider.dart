@@ -45,26 +45,30 @@ Future<TmdbDetails?> tmdbDetails(Ref ref, MovieDetailsParams params) async {
     final String type = params.type.toLowerCase();
     final bool isTv = type == 'tv' || type == 'series' || type == 'tvseries';
 
+    // Each call times out on its own: a slow "extra" must degrade to
+    // extra == null (which the merge below already handles), not throw
+    // away the primary details that already arrived.
+    const extraTimeout = Duration(seconds: 15);
     if (isTv) {
-      final results =
-          await Future.wait([
-            service.getTvDetails(params.id, language: language),
-            service.getTvExtra(params.id, language: language),
-          ]).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException('Request timed out'),
-          );
+      final results = await Future.wait([
+        service
+            .getTvDetails(params.id, language: language)
+            .timeout(extraTimeout, onTimeout: () => null),
+        service
+            .getTvExtra(params.id, language: language)
+            .timeout(extraTimeout, onTimeout: () => null),
+      ]);
       data = results[0];
       extra = results[1];
     } else {
-      final results =
-          await Future.wait([
-            service.getMovieDetails(params.id, language: language),
-            service.getMovieExtra(params.id, language: language),
-          ]).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw TimeoutException('Request timed out'),
-          );
+      final results = await Future.wait([
+        service
+            .getMovieDetails(params.id, language: language)
+            .timeout(extraTimeout, onTimeout: () => null),
+        service
+            .getMovieExtra(params.id, language: language)
+            .timeout(extraTimeout, onTimeout: () => null),
+      ]);
       data = results[0];
       extra = results[1];
     }

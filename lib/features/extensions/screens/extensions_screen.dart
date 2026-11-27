@@ -398,7 +398,13 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
     final csInstalled = ref.watch(
       cloudStreamRepositoryProvider.select((s) => s.installed),
     );
-    if (state is ExtensionsLoading && state.installedPlugins.isEmpty) {
+    // Installed Stremio add-ons and Nuvio repositories count as installed
+    // too (v5) — they are listed at the end of this segment.
+    final hasOtherSources = InstalledOtherSources.hasAny(ref);
+    if (state is ExtensionsLoading &&
+        state.installedPlugins.isEmpty &&
+        csInstalled.isEmpty &&
+        !hasOtherSources) {
       return [const Center(child: AppLoadingIndicator())];
     }
 
@@ -431,9 +437,6 @@ class _ExtensionsScreenState extends ConsumerState<ExtensionsScreen> {
         .toList();
     final hasInstalledOnly = installedOnlyPlugins.isNotEmpty;
 
-    // Installed Stremio add-ons and Nuvio repositories count as installed
-    // too (v5) — they are listed at the end of this segment.
-    final hasOtherSources = InstalledOtherSources.hasAny(ref);
     if (state.installedPlugins.isEmpty &&
         csInstalled.isEmpty &&
         !hasOtherSources) {

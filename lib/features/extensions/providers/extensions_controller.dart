@@ -725,9 +725,9 @@ class ExtensionsController extends _$ExtensionsController {
         );
       } else {
         if (kDebugMode) debugPrint("Failed to parse repository at $url");
-        if (visitedUrls.length == 1 && !background) {
+        if (entered) {
           state = ExtensionsError(
-            "Failed to parse repository",
+            "Could not load repository — check the URL or your connection",
             installedPlugins: state.installedPlugins,
             repositories: state.repositories,
             availablePlugins: state.availablePlugins,
@@ -950,10 +950,12 @@ class ExtensionsController extends _$ExtensionsController {
     try {
       final repositoryService = ref.read(repositoryServiceProvider);
       final storageService = ref.read(pluginStorageServiceProvider);
+      final failed = <String>[];
+      var succeeded = false;
 
       for (final plugin in plugins) {
         File? savedFile;
-
+        try {
         // Standard HTTP Download
         savedFile = await repositoryService.downloadPlugin(plugin.sourceUrl);
 
@@ -1008,8 +1010,30 @@ class ExtensionsController extends _$ExtensionsController {
           if (await savedFile.exists()) {
             await savedFile.delete();
           }
+          succeeded = true;
         } else {
           // Download failed, remove from installing set
+          failed.add(plugin.packageName);
+          final currentInstalling = Set<String>.from(state.installingPlugins)
+            ..remove(plugin.packageName);
+          state = ExtensionsSuccess(
+            installedPlugins: state.installedPlugins,
+            repositories: state.repositories,
+            availablePlugins: state.availablePlugins,
+            availableUpdates: state.availableUpdates,
+            installingPlugins: currentInstalling,
+          );
+        }
+        } catch (e) {
+          // One bad plugin must not abort the batch: record it, drop its
+          // temp file, and carry on with the rest.
+          failed.add(plugin.packageName);
+          if (kDebugMode) {
+            debugPrint('Install failed for ${plugin.packageName}: $e');
+          }
+          if (savedFile != null && await savedFile.exists()) {
+            await savedFile.delete();
+          }
           final currentInstalling = Set<String>.from(state.installingPlugins)
             ..remove(plugin.packageName);
           state = ExtensionsSuccess(
@@ -1022,6 +1046,17 @@ class ExtensionsController extends _$ExtensionsController {
         }
       }
       await loadInstalledPlugins();
+      // Nothing at all installed: say so, instead of a silent no-op.
+      if (failed.isNotEmpty && !succeeded && !quiet) {
+        state = ExtensionsError(
+          'Failed to install: ${failed.join(', ')}',
+          installedPlugins: state.installedPlugins,
+          repositories: state.repositories,
+          availablePlugins: state.availablePlugins,
+          availableUpdates: state.availableUpdates,
+          installingPlugins: state.installingPlugins,
+        );
+      }
     } catch (e) {
       final currentInstalling = Set<String>.from(state.installingPlugins);
       for (final p in plugins) {

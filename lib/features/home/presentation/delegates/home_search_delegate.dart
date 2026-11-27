@@ -314,6 +314,10 @@ class _HomeSearchResultsState extends ConsumerState<_HomeSearchResults> {
   bool isLoading = true;
   ProviderSearchResult? result;
 
+  /// Monotonic generation: a slow earlier query must never overwrite a
+  /// newer one that already replaced it in the field.
+  int _searchId = 0;
+
   /// When the search went out: a bot check its plugin met since is the one
   /// the spinner, or the empty results, stand over. The search gives up on a
   /// check that wants a person after the automatic try, so the empty results
@@ -356,24 +360,23 @@ class _HomeSearchResultsState extends ConsumerState<_HomeSearchResults> {
       return;
     }
 
+    final searchId = ++_searchId;
     try {
       final rawResults = await provider.search(widget.query);
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          result = ProviderSearchResult(
-            providerId: provider.packageName,
-            providerName: provider.name,
-            results: rawResults.toList(),
-          );
-        });
-      }
+      if (!mounted || searchId != _searchId) return;
+      setState(() {
+        isLoading = false;
+        result = ProviderSearchResult(
+          providerId: provider.packageName,
+          providerName: provider.name,
+          results: rawResults.toList(),
+        );
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      if (!mounted || searchId != _searchId) return;
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 

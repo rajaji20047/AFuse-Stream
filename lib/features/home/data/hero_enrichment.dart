@@ -402,7 +402,13 @@ class HeroEnrichmentService {
   static String cacheKey(MultimediaItem item) {
     final clean = cleanHeroTitle(item.title);
     final tv = _isTv(item);
-    return '${tv ? 'tv' : 'movie'}|${heroTitleKey(clean.name)}|'
+    // Title + year alone collide: two different films can share both. A
+    // TMDB id identifies the title outright; without one, the provider +
+    // URL separate same-title items from different sources.
+    final identity = item.tmdbId != null
+        ? 'tmdb:${item.tmdbId}'
+        : '${item.provider ?? ''}|${item.url}';
+    return '${tv ? 'tv' : 'movie'}|$identity|${heroTitleKey(clean.name)}|'
         '${item.year ?? clean.year ?? ''}';
   }
 

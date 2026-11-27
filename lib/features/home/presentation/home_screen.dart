@@ -177,6 +177,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isWidescreen =
         profile?.isLargeScreen == true || context.isTabletOrLarger;
 
+    // The header arrows only work while a hero carousel is on screen:
+    // the controller outlives the carousel across loading/error states,
+    // so the arrows would render live and do nothing.
+    final hasHeroCarousel = homeDataAsync is HomeSuccess &&
+        (homeDataAsync.data['Trending']?.isNotEmpty == true ||
+            homeDataAsync.data.values.any((v) => v.isNotEmpty));
+
     // On widescreen: no AppBar, no FAB — we use the DashboardHeaderBar instead.
     // The header lives outside the scroll view in a plain Column so there is
     // no SliverPersistentHeader / pinned-header interaction with scroll
@@ -193,10 +200,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 searchFocusNode: _firstActionFocusNode,
                 onShowProviderSelector: () =>
                     _showProviderSelector(context, ref),
-                onPrevious: _carouselController != null
+                onPrevious: _carouselController != null && hasHeroCarousel
                     ? () => _carouselController!.previousPage()
                     : null,
-                onNext: _carouselController != null
+                onNext: _carouselController != null && hasHeroCarousel
                     ? () => _carouselController!.nextPage()
                     : null,
               ),
@@ -349,6 +356,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // "Add a plugin" card and Continue Watching only — no feed.
     final hasNoProvider = ref.watch(activeProviderProvider) == null;
 
+    // The hero is the Trending row when it has items, else the first
+    // non-empty row. An empty Trending counts as absent, or the hero
+    // collapses to nothing and the first row slides under the AppBar.
+    // The hero row never also renders as a row below itself.
+    String? heroKey;
+    if (state is HomeSuccess) {
+      if (state.data['Trending']?.isNotEmpty == true) {
+        heroKey = 'Trending';
+      } else {
+        for (final entry in state.data.entries) {
+          if (entry.value.isNotEmpty) {
+            heroKey = entry.key;
+            break;
+          }
+        }
+      }
+    }
+
     // Home rows customise (v7): the saved order and hidden rows of the
     // source on screen - the active provider, or the no-provider key
     // when there is none.
@@ -356,7 +381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ? applyHomeRowPrefs(
             [
               kHomeRowContinueWatching,
-              ...state.data.keys.where((k) => k != 'Trending'),
+              ...state.data.keys.where((k) => k != heroKey),
             ],
             ref.watch(
               homeRowPrefsProvider.select(
@@ -395,7 +420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: CustomScrollView(
             controller: _scrollController,
             slivers: [
-              if (data.containsKey('Trending'))
+              if (heroKey == 'Trending')
                 SliverToBoxAdapter(
                   child: ExploreCarousel(
                     movies: data['Trending']!.take(7).toList(),
@@ -418,10 +443,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     },
                   ),
                 )
-              else if (data.isNotEmpty)
+              else if (heroKey != null)
                 SliverToBoxAdapter(
                   child: ExploreCarousel(
-                    movies: data.values.first.take(7).toList(),
+                    movies: data[heroKey]!.take(7).toList(),
                     scrollController: _scrollController,
                     onNavigateUp: () => _firstActionFocusNode.requestFocus(),
                     onControllerReady: (c) =>

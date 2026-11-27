@@ -443,14 +443,18 @@ class _AddonManageViewState extends ConsumerState<AddonManageView> {
                   ? () => unawaited(
                       ref
                           .read(addonRepositoryProvider.notifier)
-                          .reorder(i, i + 2),
+                          .reorder(i, i + 1),
                     )
                   : null,
               onConfigure: () async {
-                final configureUrl = AddonTransport.baseUrl(
-                  state.addons[i].manifestUrl,
-                );
-                final uri = Uri.tryParse('$configureUrl/configure');
+                // The add-on's own configure page when install knew one
+                // (the directory lists it); otherwise the Stremio
+                // convention, {base}/configure.
+                final stored = state.addons[i].configureUrl;
+                final url = (stored != null && stored.isNotEmpty)
+                    ? stored
+                    : '${AddonTransport.baseUrl(state.addons[i].manifestUrl)}/configure';
+                final uri = Uri.tryParse(url);
                 if (uri == null) return;
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               },

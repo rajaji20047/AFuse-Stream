@@ -18,6 +18,8 @@ import '../../../core/nuvio/models/nuvio_models.dart';
 import '../../../core/services/download_service.dart';
 import '../../../core/utils/source_text.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../details/data/metadata_resolution_service.dart';
+import '../../details/domain/season_download.dart';
 import '../../details/presentation/playback_launcher.dart';
 import '../../settings/presentation/player_settings_provider.dart';
 import 'source_sheet_widgets.dart';
@@ -476,17 +478,37 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
     if (value == null || !mounted) return;
 
     final tmdbMatch = RegExp(r'^(?:tmdb:)?(\d{2,9})$').firstMatch(value);
-    setState(() {
-      if (value.isEmpty) {
-        _titleOverride = null;
-        _tmdbOverride = null;
-      } else if (tmdbMatch != null) {
-        _tmdbOverride = tmdbMatch.group(1);
-        _titleOverride = null;
-      } else {
-        _titleOverride = value;
-        _tmdbOverride = null;
+    String? titleOverride;
+    String? tmdbOverride;
+    if (value.isEmpty) {
+      // Reset: both null.
+    } else if (tmdbMatch != null) {
+      tmdbOverride = tmdbMatch.group(1);
+    } else {
+      // A title: resolve it to a TMDB id first. The scrapers only take a
+      // numeric id, so searching on the raw title would silently re-run
+      // on the old id while the sheet claims the new title.
+      titleOverride = value;
+      try {
+        final resolved = await ref
+            .read(metadataResolutionServiceProvider)
+            .enrichWithIds(widget.target.copyWith(title: value));
+        tmdbOverride = resolved.tmdbId?.toString();
+      } catch (_) {
+        tmdbOverride = null;
       }
+      if (tmdbOverride == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            appSnackBar(content: Text('Could not find "$value" on TMDB')),
+          );
+        }
+        return;
+      }
+    }
+    setState(() {
+      _titleOverride = titleOverride;
+      _tmdbOverride = tmdbOverride;
       _nuvioResult = const NuvioProgress(isLoading: true);
       _mainResult = const NuvioProgress(isLoading: true);
       _reruns.clear();
@@ -546,7 +568,9 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
     // addon sheet, and restores the filter PR #98 dropped along with the
     // Play/Download toggle.
     if (_downloadMode && !row.canDownload) return false;
-    if (_verifiedOnly) {
+    if (_verifiedOnly && !row.isTorrent) {
+      // Magnets are never probed (no http URL), so they can never carry
+      // a passing probe: exempt them, or Tested hides every torrent.
       final probe = _probes[row.url];
       if (probe == null || !probe.reachable) return false;
     }
@@ -579,7 +603,11 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
   }
 
   Future<void> _play(_Row row) async {
-    final ordered = <_Row>[row, ..._visible.where((r) => r.key != row.key)];
+    final ordered = <_Row>[
+      row,
+      ..._visible.where((r) => r.key != row.key && !_isRowUnavailable(r)),
+      ..._visible.where((r) => r.key != row.key && _isRowUnavailable(r)),
+    ];
     final streams = [for (final r in ordered) r.toStreamResult()];
 
     final item = widget.target;
@@ -621,8 +649,39 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
     final item = widget.target;
     final episode = widget.episode;
 
+    // A playlist is not a file: the downloader would save the playlist
+    // text as ".mp4" and report success. Same guards as the season path.
+    if (!isDirectDownloadCandidate(row.toStreamResult())) {
+      messenger.showSnackBar(
+        appSnackBar(
+          content: const Text(
+            'This link is a playlist, not a downloadable file. Try another source.',
+          ),
+        ),
+      );
+      return;
+    }
+
     try {
       final saveDir = await service.getDownloadPath(item, episode: episode);
+      // The server has to say file, not playlist: a playlist HEAD answers
+      // with a (small) size, so size alone does not prove a file.
+      final metadata = await service
+          .getMetadata(row.url, headers: row.headers)
+          .timeout(const Duration(seconds: 15), onTimeout: () => null);
+      if (metadata == null ||
+          metadata.size == null ||
+          isNonFileMimeType(metadata.mimeType)) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          appSnackBar(
+            content: const Text(
+              'This link is not a downloadable file. Try another source.',
+            ),
+          ),
+        );
+        return;
+      }
       final extension = extensionForUrl(row.url);
 
       String filename;
@@ -640,7 +699,10 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
         directory: saveDir,
         item: item,
         episode: episode,
-        trackingUrl: row.url,
+        // The episode identity, not the stream URL: two sources for one
+        // episode write the same file, so the second tap must hit the
+        // already-running guard instead of enqueueing a duplicate.
+        trackingUrl: episode?.url ?? item.url,
         headers: row.headers,
       );
 
