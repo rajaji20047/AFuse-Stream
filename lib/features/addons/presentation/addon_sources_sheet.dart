@@ -421,16 +421,32 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
       return;
     }
 
-    // A row picked here plays on its own: the player gets only that link,
-    // so it opens it directly instead of racing the whole list
-    // ("Source 1 of 14"). The attempt list stays for the direct Play
-    // button, which hands the player the whole list with no pick.
+    // The picked row plays first and the rest of the sheet's playable list
+    // rides along as the player's other sources, mirroring
+    // [PluginSourcesSheet._play]: the player gets the full visible list
+    // with the pick first, so its Sources tab lists them instead of
+    // showing only the one link that opened.
+    //
+    // The probe race the single-link handoff avoided is mitigated the same
+    // way the plugin sheet mitigates it. The pick is first in the list
+    // ([playAddonLinks] also moves it to the front), and a hand-picked list
+    // is taken as already ranked by [resolvePlayback] — no re-sort, no
+    // quality filter that could drop or overtake the pick — while its probe
+    // check runs in list order from the pick, so a healthy pick wins at
+    // once and a dead one fails over to the next entry. The rest of the
+    // list is the sheet's own ranked order ([_playable]: last-used,
+    // data-saver cap and language already applied), and only playable rows
+    // are handed over, so no unplayable row can occupy a probe slot.
+    final ordered = <AddonStreamSource>[
+      stream,
+      ..._playable.where((s) => s.dedupeKey != stream.dedupeKey),
+    ];
     final played = await playAddonLinks(
       context,
       ref,
       item: widget.item,
       request: widget.request,
-      links: [stream],
+      links: ordered,
       selected: stream,
       episode: widget.episode,
       onStatus: (status) {
