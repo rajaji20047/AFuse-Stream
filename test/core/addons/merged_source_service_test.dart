@@ -105,6 +105,7 @@ MergedSourceService _service({
   Stream<AddonStreamProgress> Function(AddonStreamRequest)? addonAnswers,
   Stream<NuvioProgress> Function(String id, String type, int? s, int? e)?
   nuvioAnswers,
+  bool hasNuvio = true,
 }) => MergedSourceService(
   plugins: () => plugins,
   streamAddons: () => addons,
@@ -125,6 +126,7 @@ MergedSourceService _service({
       }) =>
           nuvioAnswers?.call(id, mediaType, season, episode) ??
           Stream.value(const NuvioProgress()),
+  hasNuvioScraper: (_) => hasNuvio,
 );
 
 const _movie = AddonStreamRequest(

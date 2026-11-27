@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entity/multimedia_item.dart';
 import '../../extensions/base_provider.dart';
 import '../../extensions/extension_manager.dart';
+import '../../nuvio/data/nuvio_repository.dart';
 import '../../nuvio/data/nuvio_stream_service.dart';
 import '../../nuvio/models/nuvio_models.dart';
 import '../models/addon_manifest.dart';
@@ -54,6 +55,19 @@ final mergedSourceServiceProvider = Provider<MergedSourceService>((ref) {
               personWaiting: personWaiting,
               fresh: fresh,
             ),
+    // Whether a Nuvio scraper is installed and enabled for a type — the
+    // same filter the stream service uses to pick its targets. While
+    // the repository is still loading, assume one is present: claiming
+    // "no plugin installed" for a repo that has not finished loading
+    // would be a false negative.
+    hasNuvioScraper: (mediaType) {
+      final state = ref.read(nuvioRepositoryProvider);
+      if (state.isLoading) return true;
+      final type = NuvioScraperInfo.normalizeType(mediaType);
+      return state.activeScrapers.any(
+        (entry) => entry.scraper.supportsType(type),
+      );
+    },
   );
 });
 
@@ -103,6 +117,7 @@ class MergedSourceService {
     required List<ManagedAddon> Function() streamAddons,
     required AskAddons askAddons,
     required AskNuvio askNuvio,
+    required bool Function(String mediaType) hasNuvioScraper,
     this.searchTimeout = const Duration(seconds: 25),
     this.detailsTimeout = const Duration(seconds: 30),
     this.streamsTimeout = const Duration(seconds: 45),
@@ -110,12 +125,21 @@ class MergedSourceService {
   }) : _plugins = plugins,
        _streamAddons = streamAddons,
        _askAddons = askAddons,
-       _askNuvio = askNuvio;
+       _askNuvio = askNuvio,
+       _hasNuvioScraper = hasNuvioScraper;
 
   final List<SkyStreamProvider> Function() _plugins;
   final List<ManagedAddon> Function() _streamAddons;
   final AskAddons _askAddons;
   final AskNuvio _askNuvio;
+
+  /// Whether a Nuvio scraper is installed and enabled for a media type
+  /// ('movie' / 'series' / 'tv' / 'other'), the same filter the stream
+  /// service uses to pick its targets. The Nuvio line is state-aware
+  /// because of it: no scraper for the type reads "no plugin installed",
+  /// and only a scraper that exists but has no id to ask with reads the
+  /// id note.
+  final bool Function(String mediaType) _hasNuvioScraper;
 
   final Duration searchTimeout;
   final Duration detailsTimeout;
@@ -210,13 +234,28 @@ class MergedSourceService {
             ),
           ...pluginStatuses.values,
           if (nuvioId == null)
-            const AddonQueryStatus(
-              addonName: 'Nuvio',
-              outcome: AddonQueryOutcome.empty,
-              message: 'this title has no TMDB or IMDb id',
-              origin: kOriginNuvio,
-              isNote: true,
-            )
+            // No id, so Nuvio was never asked — but the note must say
+            // WHY it cannot serve, not just that the id is missing. A
+            // title with no id AND no Nuvio scraper for its type is a
+            // "no plugin installed" line (the id is not the blocker);
+            // only a scraper that exists but has no id to ask with reads
+            // the id note. Same pattern as the Stremio line below.
+            if (!_hasNuvioScraper(request.type))
+              const AddonQueryStatus(
+                addonName: 'Nuvio',
+                outcome: AddonQueryOutcome.empty,
+                message: 'no plugin installed',
+                origin: kOriginNuvio,
+                isNote: true,
+              )
+            else
+              const AddonQueryStatus(
+                addonName: 'Nuvio',
+                outcome: AddonQueryOutcome.empty,
+                message: 'this title has no TMDB or IMDb id',
+                origin: kOriginNuvio,
+                isNote: true,
+              )
           else if (nuvioError != null)
             AddonQueryStatus(
               addonName: 'Nuvio',

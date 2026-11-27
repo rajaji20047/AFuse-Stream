@@ -90,6 +90,7 @@ MergedSourceService _merged(
           ),
         );
       },
+  hasNuvioScraper: (_) => true,
 );
 
 void main() {
