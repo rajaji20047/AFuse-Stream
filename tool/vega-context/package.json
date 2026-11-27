@@ -1,0 +1,1 @@
+{"dependencies":{"axios":"1.21.1","cheerio":"1.2.0"},"description":"Builds the Vega providerContext bundle shipped as a Fuse asset (assets/vega/vega_context_bundle.js).","devDependencies":{"esbuild":"0.27.0","quickjs-emscripten":"0.32.0"},"name":"vega-context","private":true,"scripts":{"build":"node build.mjs","smoke":"node smoke-test.mjs"},"type":"module","version":"1.0.0"}

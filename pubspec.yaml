@@ -211,6 +211,10 @@ flutter:
     # The Public Suffix List (MPL-2.0), which tells which site a host belongs
     # to: a bot check's clearance holds for one site.
     - assets/clearance/
+    # The Vega providerContext bundle (axios + cheerio + kvStore), built by
+    # tool/vega-context — loaded at runtime by VegaProviderContext, only
+    # when a Vega provider is first used.
+    - assets/vega/vega_context_bundle.js
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
