@@ -1599,11 +1599,17 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
 
   /// An engine switch is under way: [_switchEngine] set this before the
   /// replacement route, so [_restoreOrientation] (in dispose) knows the
-  /// delayed pin release must not run — the new player's entry pin is
-  /// the one that must stand.
+  /// whole hand-back must not run — the new player's entry pin is the
+  /// one that must stand, and any release or portrait force here would
+  /// turn the display portrait and back.
   bool _leavingForEngineSwitch = false;
 
   void _restoreOrientation() {
+    // An engine switch hands the player to a new screen: its entry pin is
+    // the one that must stand. The new screen's initState already pinned
+    // landscape before this dispose, so forcing portrait here would turn
+    // the display portrait and back. Skip the whole hand-back.
+    if (_leavingForEngineSwitch) return;
     // Force portrait on the way out: the player is the only landscape
     // screen, and DeviceOrientation.values (all) does NOT rotate the
     // device — it just lifts the pin, so the app stays sideways in
@@ -1623,18 +1629,12 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       unawaited(
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
       );
-      // An engine switch hands the player to a new screen: its entry pin
-      // is the one that must stand, and this exit's delayed release would
-      // clear it ~1 s later — the new screen's initState runs before
-      // this dispose, so the generation guard cannot tell them apart.
-      if (!_leavingForEngineSwitch) {
-        Future.delayed(const Duration(seconds: 1), () {
-          if (PlayerPlatformService.playerEntryGeneration != generation) {
-            return;
-          }
-          unawaited(SystemChrome.setPreferredOrientations(const []));
-        });
-      }
+      Future.delayed(const Duration(seconds: 1), () {
+        if (PlayerPlatformService.playerEntryGeneration != generation) {
+          return;
+        }
+        unawaited(SystemChrome.setPreferredOrientations(const []));
+      });
       return;
     }
     unawaited(SystemChrome.setPreferredOrientations(const []));

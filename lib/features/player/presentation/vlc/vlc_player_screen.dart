@@ -6646,9 +6646,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// rotation, the system bars, a desktop window out of full screen.
   ///
   /// An engine switch is under way: [_switchEngine] set this before the
-  /// replacement route, so [_handBack] (in dispose) knows the delayed pin
-  /// release must not run — the new player's entry pin is the one that
-  /// must stand.
+  /// replacement route, so [_handBack] (in dispose) knows the whole
+  /// orientation hand-back must not run — the new player's entry pin is
+  /// the one that must stand, and any release or portrait force here
+  /// would turn the display portrait and back.
   bool _leavingForEngineSwitch = false;
 
   /// From Back, before the pop, so all three start with the route's exit
@@ -6662,43 +6663,44 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // toggles we issued, and is wrong whenever the OS window control was used
     // instead - which is exactly when this matters.
     unawaited(_platform.exitFullscreen());
-    // Whether the video's shape pinned anything, read before the release
-    // below clears it: the entry pin's release depends on it.
-    final shapePinned = _platform.hasOrientationPin;
-    // Hands orientation back to the system: outside the player the app
-    // follows the device, the user's rotation lock included.
-    _platform.restoreOrientation();
-    // Release the landscape pin taken at entry (see initState), but only when
-    // the video's shape pinned nothing: restoreOrientation already released
-    // the entry pin along with a shape pin (its release is the same empty
-    // list), so a second one would turn the handset twice on the way out
-    // (see leaving_the_player_test: handed back once). Without this, a
-    // session that ended before any shape settled — backed out of the source
-    // list — would keep the landscape pin on a tablet or an iPhone, where no
-    // portrait pin below stands after it.
-    if (_pinnedLandscapeOnEntry && !shapePinned) {
-      unawaited(SystemChrome.setPreferredOrientations(const []));
-    }
-    // An Android phone is turned upright on the way out, whatever the
-    // sensor or auto-rotate say (user 2026-11-19: "kuch vi ho back anepe
-    // portrait hojaye"), as the mpv player does. Sent after the release
-    // above, so it is the one that stands. Tablets, TV, desktop and the
-    // iPhone keep the hand-back to the system.
-    if (defaultTargetPlatform == TargetPlatform.android &&
-        _form == PlayerFormFactor.phone) {
-      // The pin is the turn, not a lock: once the handset has settled
-      // upright, release it so the app follows the sensor again. Skipped
-      // if a new player session started meanwhile, so a re-entry's own
-      // pin stands.
-      final generation = PlayerPlatformService.playerEntryGeneration;
-      unawaited(
-        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
-      );
-      // An engine switch hands the player to a new screen: its entry pin
-      // is the one that must stand, and this exit's delayed release would
-      // clear it ~1 s later — the new screen's initState runs before
-      // this dispose, so the generation guard cannot tell them apart.
-      if (!_leavingForEngineSwitch) {
+    // An engine switch hands the player to a new screen: its entry pin is
+    // the one that must stand. The new screen's initState already pinned
+    // landscape before this dispose, so every orientation release or force
+    // below would clear that pin and turn the display portrait and back.
+    // Skip them all; only the fullscreen/UI hand-back still runs.
+    if (!_leavingForEngineSwitch) {
+      // Whether the video's shape pinned anything, read before the release
+      // below clears it: the entry pin's release depends on it.
+      final shapePinned = _platform.hasOrientationPin;
+      // Hands orientation back to the system: outside the player the app
+      // follows the device, the user's rotation lock included.
+      _platform.restoreOrientation();
+      // Release the landscape pin taken at entry (see initState), but only when
+      // the video's shape pinned nothing: restoreOrientation already released
+      // the entry pin along with a shape pin (its release is the same empty
+      // list), so a second one would turn the handset twice on the way out
+      // (see leaving_the_player_test: handed back once). Without this, a
+      // session that ended before any shape settled — backed out of the source
+      // list — would keep the landscape pin on a tablet or an iPhone, where no
+      // portrait pin below stands after it.
+      if (_pinnedLandscapeOnEntry && !shapePinned) {
+        unawaited(SystemChrome.setPreferredOrientations(const []));
+      }
+      // An Android phone is turned upright on the way out, whatever the
+      // sensor or auto-rotate say (user 2026-11-19: "kuch vi ho back anepe
+      // portrait hojaye"), as the mpv player does. Sent after the release
+      // above, so it is the one that stands. Tablets, TV, desktop and the
+      // iPhone keep the hand-back to the system.
+      if (defaultTargetPlatform == TargetPlatform.android &&
+          _form == PlayerFormFactor.phone) {
+        // The pin is the turn, not a lock: once the handset has settled
+        // upright, release it so the app follows the sensor again. Skipped
+        // if a new player session started meanwhile, so a re-entry's own
+        // pin stands.
+        final generation = PlayerPlatformService.playerEntryGeneration;
+        unawaited(
+          SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+        );
         Future.delayed(const Duration(seconds: 1), () {
           if (PlayerPlatformService.playerEntryGeneration != generation) {
             return;
