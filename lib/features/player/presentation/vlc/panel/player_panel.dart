@@ -132,6 +132,8 @@ Future<void> showPlayerPanel(
   EpisodeProgressLookup? episodeProgress,
   SideCarSubtitles? sideCars,
   ValueChanged<VlcTrackDescription>? onAudioPicked,
+  ValueChanged<VlcTrackDescription>? onSubtitlePicked,
+  VoidCallback? onSubtitleOffPicked,
   SubtitleStyleBinding? subtitleStyle,
 }) {
   return Navigator.of(context).push<void>(
@@ -152,6 +154,8 @@ Future<void> showPlayerPanel(
           episodeProgress: episodeProgress,
           sideCars: sideCars,
           onAudioPicked: onAudioPicked,
+          onSubtitlePicked: onSubtitlePicked,
+          onSubtitleOffPicked: onSubtitleOffPicked,
           subtitleStyle: subtitleStyle,
           onClose: () => Navigator.of(routeContext).pop(),
         );
@@ -264,6 +268,8 @@ class PlayerPanel extends StatefulWidget {
     this.episodeProgress,
     this.sideCars,
     this.onAudioPicked,
+    this.onSubtitlePicked,
+    this.onSubtitleOffPicked,
     this.subtitleStyle,
     super.key,
   });
@@ -304,6 +310,15 @@ class PlayerPanel extends StatefulWidget {
   /// Each audio track the viewer puts on from the Audio tab - see
   /// [PlayerTracksTab.onAudioPicked].
   final ValueChanged<VlcTrackDescription>? onAudioPicked;
+
+  /// Each subtitle track the viewer puts on from the Subtitles tab while
+  /// the engine is still opening - carried into the restore, see
+  /// [PlayerTracksTab.onSubtitlePicked].
+  final ValueChanged<VlcTrackDescription>? onSubtitlePicked;
+
+  /// Subtitles turned off from the Subtitles tab while the engine is
+  /// still opening - see [PlayerTracksTab.onSubtitleOffPicked].
+  final VoidCallback? onSubtitleOffPicked;
 
   /// The viewer's subtitle settings, for the Subtitles tab's Subtitle style
   /// page - see [PlayerTracksTab.subtitleStyle].
@@ -963,6 +978,9 @@ class _PlayerPanelState extends State<PlayerPanel> {
           subtitleStyle: isAudio ? null : widget.subtitleStyle,
           styleFocusNode: isAudio ? null : _styleRow,
           onAudioPicked: isAudio ? widget.onAudioPicked : null,
+          onSubtitlePicked: isAudio ? null : widget.onSubtitlePicked,
+          onSubtitleOffPicked:
+              isAudio ? null : widget.onSubtitleOffPicked,
         );
       },
     );
