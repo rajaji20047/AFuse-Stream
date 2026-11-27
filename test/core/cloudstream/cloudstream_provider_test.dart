@@ -272,6 +272,15 @@ void main() {
       expect(item.episodes, isEmpty);
     });
 
+    test('a data URL does not discard the episode list', () {
+      final item = map({...anime(), 'dataUrl': '/series-data'});
+      expect(item.episodes, hasLength(2));
+      expect(
+        item.episodes!.map((e) => CloudStreamProvider.decodeToken(e.url)).toList(),
+        [(data: '/ep/1', torrent: false), (data: '/ep/2', torrent: false)],
+      );
+    });
+
     test('nothing said is nothing shown', () {
       final item = map({'name': 'Bare', 'type': 'Movie', 'dataUrl': '/play'});
       expect(item.score, isNull);

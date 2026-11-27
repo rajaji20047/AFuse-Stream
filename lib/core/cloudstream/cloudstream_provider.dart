@@ -164,19 +164,23 @@ class CloudStreamProvider extends SkyStreamProvider {
 
     final dataUrl = (result['dataUrl'] as String?)?.trim();
     final magnet = result['magnet'] as String? ?? result['torrent'] as String?;
-    // A blank data URL is a film not out yet (CloudStream marks it coming soon): nothing to play.
-    if (dataUrl != null && dataUrl.isNotEmpty) {
-      episodes.add(Episode(name: title, url: _token(dataUrl), season: 1, episode: 1));
-    } else if (magnet != null) {
-      episodes.add(Episode(name: title, url: _token(magnet, torrent: true), season: 1, episode: 1));
-    } else {
-      final raw = _list(result['episodes']);
-      for (var i = 0; i < raw.length; i++) {
-        // One episode without playable data must not kill the whole
-        // details page: skip it, the rest still open and play.
-        final data = raw[i]['data'];
-        if (data is! String || data.isEmpty) continue;
-        episodes.add(_episode(raw[i], i));
+    // A plugin may return both a data URL and an episode list: the list wins,
+    // or a series collapses to one synthetic S1E1. A film has no list, so it
+    // still plays from its data URL (or magnet) as one synthetic episode.
+    final raw = _list(result['episodes']);
+    for (var i = 0; i < raw.length; i++) {
+      // One episode without playable data must not kill the whole
+      // details page: skip it, the rest still open and play.
+      final data = raw[i]['data'];
+      if (data is! String || data.isEmpty) continue;
+      episodes.add(_episode(raw[i], i));
+    }
+    if (episodes.isEmpty) {
+      // A blank data URL is a film not out yet (CloudStream marks it coming soon): nothing to play.
+      if (dataUrl != null && dataUrl.isNotEmpty) {
+        episodes.add(Episode(name: title, url: _token(dataUrl), season: 1, episode: 1));
+      } else if (magnet != null) {
+        episodes.add(Episode(name: title, url: _token(magnet, torrent: true), season: 1, episode: 1));
       }
     }
 
