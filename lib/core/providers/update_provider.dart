@@ -38,7 +38,11 @@ class UpdateError extends UpdateState {
 
 @Riverpod(keepAlive: true)
 class UpdateController extends _$UpdateController {
-  late final UpdateService _service;
+  // NOT `final`: Riverpod re-runs build() on the same notifier instance
+  // when this provider is invalidated, so a `late final` here throws
+  // LateInitializationError ("has already been initialized") on the
+  // second build — the same crash fixed in LocaleNotifier.
+  late UpdateService _service;
 
   @override
   UpdateState build() {

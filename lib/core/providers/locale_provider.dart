@@ -20,7 +20,12 @@ part 'locale_provider.g.dart';
 /// - worst on Android TV, where that is a D-pad walk through a settings tree.
 @Riverpod(keepAlive: true)
 class LocaleNotifier extends _$LocaleNotifier {
-  late final StorageService _storage;
+  // NOT `final`: Riverpod re-runs build() on the same notifier instance
+  // when this provider is invalidated (e.g. _refreshSettingsProviders
+  // after a settings restore), so a `late final` here throws
+  // LateInitializationError ("has already been initialized") on the
+  // second build and the app shows the "Something went wrong" screen.
+  late StorageService _storage;
 
   /// Used when neither the stored preference nor any of the device's locales
   /// is one of [AppLocalizations.supportedLocales].
