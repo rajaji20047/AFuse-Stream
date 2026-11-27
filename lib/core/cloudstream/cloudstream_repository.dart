@@ -132,6 +132,7 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   final _waiting = StreamController<WaitingScreen>.broadcast();
   final Map<String, List<String>> _added = {};
   final Set<String> _adding = {};
+  final Set<String> _seeding = {};
   Timer? _announce;
   Timer? _saveTimer;
   int _fetching = 0;
@@ -227,19 +228,34 @@ class CloudStreamRepository extends _$CloudStreamRepository {
     _host.setSwitchedOff(!state.enabled);
     _publish();
     _syncRepositories();
+    // Raja: first launch with no repositories yet - pre-add the owner's
+    // repository, so its plugins are there from the start.
+    unawaited(_seedDefaultRepository());
   }
 
-  /// The two well-known CloudStream repositories, for display grouping
-  /// only ([isFuseRepository], [isCloudStreamRepository]). Nothing is
-  /// seeded: a fresh install starts with no repositories at all, and
-  /// the user adds whichever ones they want. The owner's repo
-  /// (RajajiX / TojiX) keeps its own "Fuse" section when the user adds
-  /// it, and the official CloudStream providers repository is labelled
-  /// "CloudStream".
+  /// Raja's default CloudStream repository: the owner's own repo (TojiX).
+  /// It is seeded once, on a launch where no repository is stored yet.
+  /// Never re-added after the user removed it (see [removedReposKey]),
+  /// and retried on the next launch if the network was down when first
+  /// tried.
+  ///
+  /// The owner's repo moved from `sezkc16/katdrama` to `sezkc16/TojiX`
+  /// (the old address still serves the same list); [_legacyRajajiXRepositoryUrl]
+  /// is that old address, so an install that already has it does not get
+  /// TojiX added a second time, and one that removed it does not get it back.
+  /// Only TojiX is seeded: the official CloudStream providers repository
+  /// is not a default, and the user adds whichever other repositories
+  /// they want.
   static const String _rajajiXRepositoryUrl =
       'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json';
   static const String _cloudStreamRepositoryUrl =
       'https://raw.githubusercontent.com/recloudstream/extensions/master/repo.json';
+  static const String _legacyRajajiXRepositoryUrl =
+      'https://raw.githubusercontent.com/sezkc16/katdrama/builds/plugins.json';
+
+  static const List<String> _defaultRepositoryUrls = [
+    _rajajiXRepositoryUrl,
+  ];
 
   /// The repositories Fuse seeds, as the Plugins screen labels them:
   /// the official CloudStream providers repository is the "CloudStream"
@@ -265,6 +281,37 @@ class CloudStreamRepository extends _$CloudStreamRepository {
   static String displayNameFor(CsRepository repo) {
     if (isCloudStreamRepository(repo.url)) return 'CloudStream';
     return repo.name;
+  }
+
+  Future<void> _seedDefaultRepository() async {
+    await _loaded;
+    if (!ref.mounted) return;
+    // Only a launch with no repositories at all gets the default: an
+    // install that already has repositories keeps exactly what it has.
+    if (state.repositories.isNotEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final removed = prefs.getStringList(removedReposKey) ?? const [];
+    final stored = {for (final repo in state.repositories) repo.url};
+    for (final url in _defaultRepositoryUrls) {
+      // TojiX: the old katdrama address is the same repository.
+      final aliases = url == _rajajiXRepositoryUrl
+          ? {_rajajiXRepositoryUrl, _legacyRajajiXRepositoryUrl}
+          : {url};
+      if (aliases.any(stored.contains) || aliases.any(removed.contains)) {
+        continue;
+      }
+      // Two loads in one run (the launch load, then an account
+      // backup/restore load) must not seed the same repository twice:
+      // the second seed skips it instead of adding a duplicate row.
+      if (!_seeding.add(url)) continue;
+      try {
+        await addRepository(url);
+      } catch (error) {
+        talker.warning('[CloudStream] default repository did not load: $error');
+      } finally {
+        _seeding.remove(url);
+      }
+    }
   }
 
   Future<List<CsRepository>> _readRepositories(SharedPreferences prefs) async {

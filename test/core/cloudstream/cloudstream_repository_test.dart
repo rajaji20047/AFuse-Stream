@@ -31,6 +31,11 @@ import 'package:raja/features/settings/presentation/app_version_provider.dart';
 const _repoUrl = 'https://repo.test/repo.json';
 const _otherUrl = 'https://other.test/repo.json';
 
+/// The owner's repository, seeded on a fresh install: the launch seed
+/// would add it during this file's longer waits, so the test below that
+/// waits 300 ms boots with it already removed.
+const _tojiXUrl = 'https://raw.githubusercontent.com/sezkc16/TojiX/main/repo.json';
+
 /// Serves two repositories, each with one plugin list and its plugin's file; [failLists] makes
 /// plugin lists fail.
 class _FakeRepos implements HttpClientAdapter {
@@ -345,8 +350,40 @@ void main() {
     await loading;
   });
 
-  test('repositories a plugin adds join the list, apart from ones the user removed', () async {
+  test('a fresh install seeds the owner repository, and only that one', () async {
     final container = boot();
+    // The launch load runs from build, and the seed runs unawaited after
+    // it: wait for it to land. No explicit load() here: a second load
+    // would start a second seed racing the first.
+    container.read(cloudStreamRepositoryProvider);
+    for (var i = 0; i < 100; i++) {
+      final seeded = container
+          .read(cloudStreamRepositoryProvider)
+          .repositories
+          .any((r) => r.url == _tojiXUrl);
+      if (seeded) break;
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    final urls = [for (final r in container.read(cloudStreamRepositoryProvider).repositories) r.url];
+    expect(urls, [_tojiXUrl]);
+  });
+
+  test('a removed default repository is not seeded back on the next launch', () async {
+    final container = boot({
+      'cloudstream_removed_repos_v1': [_tojiXUrl],
+    });
+    container.read(cloudStreamRepositoryProvider);
+    // Long enough for the seed to have run, had it run.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(container.read(cloudStreamRepositoryProvider).repositories, isEmpty);
+  });
+
+  test('repositories a plugin adds join the list, apart from ones the user removed', () async {
+    // The default repository is already removed here: the launch seed
+    // would otherwise add it during the 300 ms wait below.
+    final container = boot({
+      'cloudstream_removed_repos_v1': [_tojiXUrl],
+    });
     final notifier = container.read(cloudStreamRepositoryProvider.notifier);
     await notifier.addRepository(_otherUrl);
     await notifier.removeRepository(_otherUrl);
