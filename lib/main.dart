@@ -13,6 +13,7 @@ import 'features/player/presentation/player_debug_flags.dart'
 import 'package:flutter/rendering.dart' show debugRepaintRainbowEnabled;
 import 'package:flutter/services.dart'; // LogicalKeyboardKey, KeyDownEvent
 import 'package:flutter/foundation.dart'; // For kReleaseMode
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
@@ -75,8 +76,26 @@ import 'features/settings/presentation/general_settings_provider.dart';
 import 'features/settings/presentation/full_screen_mode_provider.dart';
 import 'shared/focus/android_text_editing.dart';
 import 'features/player/presentation/player_platform_service.dart'
-    show immersiveRouteActive;
+    show PlayerPlatformService, immersiveRouteActive;
 import 'features/player/domain/temp_download_lifecycle.dart';
+
+/// Whether this Android device is a television (leanback or the older
+/// television feature): the same two signals `deviceProfile` uses.
+/// Never throws: on any failure the device is treated as a phone, so
+/// the startup portrait force still runs.
+Future<bool> _isTelevision() async {
+  try {
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    return androidInfo.systemFeatures.contains(
+          'android.software.leanback',
+        ) ||
+        androidInfo.systemFeatures.contains(
+          'android.hardware.type.television',
+        );
+  } catch (_) {
+    return false;
+  }
+}
 
 void main() async {
   // First statement in the process: a framework or async error raised while
@@ -86,6 +105,31 @@ void main() async {
   installGlobalErrorHandlers();
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Startup is always portrait: a player killed mid-session leaves a
+  // landscape pin behind (Android restores the Activity's requested
+  // orientation with the task), and without this the app sometimes
+  // launches in landscape. Force portraitUp first, then hand back to
+  // the system after a beat so the app follows the device when the
+  // viewer turns it himself — the same force-then-release the players
+  // use on the way out. Android phones only: a television is a fixed
+  // landscape panel and must never be pinned to portrait. Skipped if
+  // a player opened in the meantime, so its own landscape pin stands.
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      !await _isTelevision()) {
+    final startupOrientationGeneration =
+        PlayerPlatformService.playerEntryGeneration;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    Future.delayed(const Duration(seconds: 1), () {
+      if (PlayerPlatformService.playerEntryGeneration !=
+          startupOrientationGeneration) {
+        return;
+      }
+      unawaited(SystemChrome.setPreferredOrientations(const []));
+    });
+  }
 
   // Build 119: the Instant temp-download files are deleted when Fuse
   // closes (see [TempDownloadLifecycleObserver]) — they live as long
