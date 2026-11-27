@@ -2584,12 +2584,20 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     return viewer != null && (viewer.hasLanguage || _viewerAudioCopy == url);
   }
 
-  /// Starts [_pickPreferredAudio] once the media has published its audio, and
-  /// again on each change to the list until the setting has its answer.
+  /// Starts [_pickPreferredAudio] once the media has published its tracks,
+  /// and again on each change to the list until the setting has its answer.
+  ///
+  /// Deliberately NOT gated on an audio track already playing: a media whose
+  /// audio is in no language the setting names can open with libVLC having
+  /// selected nothing at all (the `:audio-language` option names a language
+  /// the stream does not have), and that silent open is exactly when the
+  /// look is needed - it is the one that puts the media's own default track
+  /// on. An early look on a list not yet published reads empty, does
+  /// nothing, and retries on the next revision change; the revision gate
+  /// below is the readiness clock, not an active track.
   void _maybePickPreferredAudio(VlcPlayerValue value) {
     final preferred = _preferredAudioToPick;
     if (preferred == null ||
-        value.activeAudioTrackId == null ||
         _pickingPreferredAudio ||
         _preferredAudioCheckedRevision == value.trackRevision) {
       return;
@@ -2621,9 +2629,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   ///
   /// Media with no track in the language - not listed yet, or not at all - is
   /// put back on what was playing before this reopen if it has that, and is
-  /// otherwise left on its own default. The setting goes on watching the list
-  /// meanwhile: the language can still arrive late, as a resumed MKV's tracks
-  /// do.
+  /// otherwise left on its own default. And when nothing is playing at all
+  /// - the engine selected no track, which a language the stream does not
+  /// have can cause - the first track that is the film goes on instead of
+  /// silence: there is no audio-off choice in the UI, so a silent open with
+  /// tracks listed is never what the viewer asked for. The setting goes on
+  /// watching the list meanwhile: the language can still arrive late, as a
+  /// resumed MKV's tracks do.
   ///
   /// A commentary or an audio description libVLC put on for itself is never
   /// left playing, though. Asked for a language ([_audioLanguageOption]) it
@@ -2673,9 +2685,14 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         return;
       }
       final carried = _audioToRestore;
+      // The first non-commentary track is the media's own default, and it
+      // goes on not only when the engine is playing commentary: when the
+      // engine selected nothing at all (active == null) the player would
+      // otherwise stay silent on a link whose audio is in no language the
+      // setting names, with tracks listed and nothing to switch to.
       final back =
           matchRememberedTrack(tracks, carried) ??
-          (enginesCommentary
+          ((enginesCommentary || active == null)
               ? tracks
                     .where((track) => !isCommentaryOrDescription(track))
                     .firstOrNull
