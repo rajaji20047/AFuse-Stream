@@ -12,10 +12,11 @@ import '../widgets/cloudstream_plugin_section.dart';
 import '../widgets/plugin_check_bar.dart';
 import '../widgets/plugin_updates_bar.dart';
 import '../widgets/skystream_extensions_tab.dart';
+import '../widgets/vega_plugin_section.dart';
 
-/// Settings → Extensions (b121): the four plugin sources as four
+/// Settings → Extensions (b121): the five plugin sources as five
 /// SEPARATE tabs, one per source — SkyStream, CloudStream, Nuvio,
-/// Stremio. The owner asked for them separate, not merged
+/// Stremio, Vega. The owner asked for them separate, not merged
 /// (2026-11-22 ~04:02: "ek jagaha nahi... alag alag ho"): each tab
 /// manages ONLY its own source's plugins and repositories, with its own
 /// add / remove / refresh and install / uninstall. A plugin installed
@@ -31,10 +32,12 @@ import '../widgets/skystream_extensions_tab.dart';
 /// CloudStream is the .cs3 repository store
 /// ([CloudStreamInstalledSection] + [CloudStreamRepositoriesSection]
 /// with the owner's RajajiX repo in its own [FuseRepositorySection]),
-/// Nuvio is [NuvioPluginsView], Stremio is [AddonManageView].
+/// Nuvio is [NuvioPluginsView], Stremio is [AddonManageView], Vega is
+/// the Vega provider store ([VegaInstalledSection] +
+/// [VegaRepositoriesSection]).
 class SettingsExtensionsScreen extends ConsumerStatefulWidget {
   /// Which tab opens first (0 SkyStream, 1 CloudStream, 2 Nuvio,
-  /// 3 Stremio). Defaults to SkyStream.
+  /// 3 Stremio, 4 Vega). Defaults to SkyStream.
   final int initialTab;
 
   const SettingsExtensionsScreen({super.key, this.initialTab = 0});
@@ -52,6 +55,7 @@ class _SettingsExtensionsScreenState
     _ExtensionsTab(label: 'CloudStream', icon: Icons.cloud_rounded),
     _ExtensionsTab(label: 'Nuvio', icon: Icons.bolt_rounded),
     _ExtensionsTab(label: 'Stremio', icon: Icons.movie_filter_rounded),
+    _ExtensionsTab(label: 'Vega', icon: Icons.play_circle_rounded),
   ];
 
   late final TabController _tabController = TabController(
@@ -100,6 +104,7 @@ class _SettingsExtensionsScreenState
               _KeepAlive(child: _CloudStreamTab()),
               _KeepAlive(child: NuvioPluginsView()),
               _KeepAlive(child: AddonManageView()),
+              _KeepAlive(child: _VegaTab()),
             ],
           ),
         ),
@@ -152,6 +157,31 @@ class _CloudStreamTab extends ConsumerWidget {
           CloudStreamRepositoriesSection(showAddRow: true),
         ],
       ),
+    );
+  }
+}
+
+/// The Vega tab: installed Vega providers on top (empty when none are
+/// installed — [VegaInstalledSection] renders nothing then), then the
+/// Vega provider store: its repositories with add / remove / refresh and
+/// install / uninstall, per source.
+class _VegaTab extends ConsumerWidget {
+  const _VegaTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(
+        top: LayoutConstants.spacingSm,
+        bottom: LayoutConstants.pillFreeBottomContentPadding(context),
+      ),
+      children: const [
+        PluginUpdatesBar(),
+        PluginCheckBar(),
+        VegaInstalledSection(),
+        VegaRepositoriesSection(),
+      ],
     );
   }
 }
