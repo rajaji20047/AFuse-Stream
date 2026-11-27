@@ -209,16 +209,14 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
     final l10n = AppLocalizations.of(context)!;
     final size = MediaQuery.sizeOf(context);
     final backdrop = widget.backdropUrl;
-    // A backdrop needs room to be read beside the content, not under it: a
-    // portrait phone has none, so it stays black there (the test 'is left off
-    // a phone' pins that). A wide screen — a phone turned landscape, a tablet,
-    // a television — has the width, so the backdrop shows there (user
-    // 2026-11-26: backdrop on the phone's startup screen).
+    // One loading screen only, the landscape one: in portrait nothing
+    // shows at all — no backdrop, no title, no list, no Back (user
+    // 2026-11-27: the portrait loading screen is completely removed, and
+    // on the black background nothing should be visible). A backdrop needs
+    // room to be read beside the content, not under it, so it shows only
+    // when wide (user 2026-11-26: backdrop on the phone's startup screen).
     final wide = size.width > size.height;
-    final showBackdrop =
-        backdrop != null &&
-        backdrop.isNotEmpty &&
-        (widget.isTv || size.shortestSide >= 600 || wide);
+    final showBackdrop = backdrop != null && backdrop.isNotEmpty && wide;
 
     return Stack(
       fit: StackFit.expand,
@@ -267,14 +265,18 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
             ),
           ),
         ),
-        PlayerBackButtonSlot(
-          isTv: widget.isTv,
-          // Only while nothing else is there to land on: the list takes the
-          // remote once it has rows, and Retry once everything has failed.
-          autofocus: widget.rows.isEmpty && !widget.failed && _onTop,
-          focusNode: _backFocus,
-          onPressed: widget.onBack,
-        ),
+        // In portrait nothing shows at all, Back included: the screen is
+        // pure black until the player is landscape. System Back still
+        // works in the meantime (the route's PopScope owns it).
+        if (wide)
+          PlayerBackButtonSlot(
+            isTv: widget.isTv,
+            // Only while nothing else is there to land on: the list takes the
+            // remote once it has rows, and Retry once everything has failed.
+            autofocus: widget.rows.isEmpty && !widget.failed && _onTop,
+            focusNode: _backFocus,
+            onPressed: widget.onBack,
+          ),
       ],
     );
   }

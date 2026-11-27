@@ -3,6 +3,8 @@ import 'package:flutter/gestures.dart' show kDoubleTapTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:raja/features/player/domain/source_row_status.dart';
+import 'package:raja/features/player/presentation/widgets/player_control_components.dart'
+    show PlayerBackButtonSlot;
 import 'package:raja/features/player/presentation/vlc/player_startup_view.dart';
 import 'package:raja/l10n/generated/app_localizations.dart';
 
@@ -371,15 +373,22 @@ void main() {
   });
 
   // One loading screen only, the landscape one (user 2026-11-27): in
-  // portrait the screen stays black until the player is wide.
+  // portrait the screen stays black until the player is wide — no title,
+  // no rows, no backdrop, no Back.
   testWidgets('in portrait there is no loading screen: no title, no rows', (
     tester,
   ) async {
-    await pump(tester, view(rows: _rows(2)), size: _phone);
+    await pump(
+      tester,
+      view(rows: _rows(2), backdropUrl: _backdrop),
+      size: _phone,
+    );
 
     expect(find.text('A Film'), findsNothing);
     expect(row(0), findsNothing);
     expect(find.byType(ListView), findsNothing);
+    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(find.byType(PlayerBackButtonSlot), findsNothing);
   });
 
   group('the backdrop', () {
