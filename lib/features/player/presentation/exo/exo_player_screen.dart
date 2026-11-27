@@ -40,12 +40,17 @@ import '../../domain/sleep_timer.dart';
 import '../../domain/source_row_status.dart';
 import '../../domain/stream_resolver.dart';
 import '../../../skip/data/skip_service.dart';
+import '../mpv/golden_drawer.dart';
+import '../player_brightness.dart';
 import '../player_platform_service.dart';
 import '../vlc/chrome_visibility_controller.dart';
 import '../vlc/ended_card.dart';
+import '../vlc/player_rail.dart';
 import '../vlc/player_startup_view.dart';
+import '../vlc/transient_overlay.dart';
 import '../widgets/engine_picker_sheet.dart';
 import '../widgets/player_control_components.dart';
+import '../widgets/player_stream_widgets.dart';
 import '../widgets/resolve_diagnostic_text.dart';
 
 /// The ExoPlayer screen: [BetterPlayer] with Fuse's own chrome on top.
@@ -83,6 +88,10 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
 }
 
 enum _Stage { resolving, playing, failed }
+
+/// Which axis a pan has committed to: undecided until the finger has
+/// travelled 10 px, so a diagonal start never becomes two gestures.
+enum _PanAxis { none, horizontal, vertical }
 
 class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   final PlayerPlatformService _platform = PlayerPlatformService();
@@ -141,9 +150,57 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   Size? _videoSize;
   // A seek in flight: the bar shows the drag target, not the position.
   Duration? _seekPreview;
+  // A seek the engine has not arrived at yet: the bar shows this, not the
+  // engine's stale position, so the thumb never snaps back while a seek is
+  // on its way (VLC's pendingSeekTarget, same rule). Cleared once the
+  // engine arrives (within a second) or after five seconds, so a seek
+  // that never lands cannot freeze the thumb.
+  Duration? _pendingSeekTarget;
+  DateTime? _pendingSeekTargetSetAt;
   // The subtitle on screen, by name — the sheet's checkmark. The package
   // exposes the list but not the selection, so the screen tracks it.
   String? _selectedSubtitleName;
+
+  // -- gestures (the same single-recognizer layer VLC uses) -----------------
+  // The pan anchor, the scale recognizer's axis, and the pinch state: one
+  // recognizer owns the pan and the pinch together, so a drag can never
+  // steal the first finger before a pinch starts.
+  Offset? _panAnchor;
+  double? _panAnchorLocalX;
+  _PanAxis _panAxis = _PanAxis.none;
+  bool _pinching = false;
+  double _pinchStartScale = 1.0;
+  // The pinch zoom, 0.5–3.0, applied to the video layer.
+  final ValueNotifier<double> _videoScale = ValueNotifier<double>(1.0);
+  // The vertical rail: which level a swipe is driving, and its start.
+  bool? _dragIsVolume;
+  bool _dragIsSeek = false;
+  bool _dragReady = false;
+  double _dragPending = 0;
+  double _dragStart = 0;
+  int _dragId = 0;
+  // The horizontal swipe-seek's origin and target.
+  double? _horizontalDragStartX;
+  Duration? _horizontalDragStartPosition;
+  Duration? _horizontalDragTarget;
+  // The long-press speed boost's saved speed.
+  double? _speedBeforeBoost;
+  // The toast and the rail, rendered by TransientOverlay so a write at
+  // pointer rate rebuilds one overlay and nothing else.
+  final TransientValue<String> _toast = TransientValue<String>();
+  final TransientValue<PlayerRail> _rail = TransientValue<PlayerRail>();
+  final TransientValue<SeekBurst> _seekBurst = TransientValue<SeekBurst>();
+  int _seekBurstRevision = 0;
+  // The screen brightness, mirrored from the last read. The app's
+  // brightness is a process-wide override, so leaving the player gives
+  // it back.
+  double _brightness = 0.5;
+  bool _brightnessOverridden = false;
+  late final PlayerBrightness _brightnessControl =
+      PlatformPlayerBrightness();
+  // The engine volume, 0..1, mirrored here: the package caps setVolume
+  // at 1.0, so there is no boost past 100% the way mpv/VLC offer it.
+  double _volume = 1.0;
 
   // -- progress --------------------------------------------------------------
   PlaybackTracker? _tracker;
@@ -165,6 +222,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
 
   StreamResult? get _selected =>
       _streams.isEmpty ? null : _streams[_streamIndex];
+
+  /// What the seek bar shows: the drag target, then a seek the engine has
+  /// not arrived at, then the engine's own position — so the thumb never
+  /// snaps back to the old place while a seek is on its way.
+  Duration get _displayPosition =>
+      _seekPreview ?? _pendingSeekTarget ?? _position;
 
   bool get _isSeries =>
       widget.item.contentType == MultimediaContentType.series;
@@ -257,6 +320,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _chrome.dispose();
     _sleepTimer.dispose();
     _locked.dispose();
+    _toast.dispose();
+    _rail.dispose();
+    _seekBurst.dispose();
+    _videoScale.dispose();
+    // The brightness override is process-wide: leaving gives it back.
+    if (_brightnessOverridden) _brightnessControl.reset();
     _flushProgress();
     try {
       _tracker?.finish();
@@ -425,6 +494,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _isPlaying = false;
     _isBuffering = false;
     _ended = null;
+    // A new source has not played yet: the spinner shows until its first
+    // frame, and any pending seek from the old source is dropped.
+    _startedPlaying = false;
+    _pendingSeekTarget = null;
+    _pendingSeekTargetSetAt = null;
     _disposeController();
     final stream = _streams[index];
     final settings =
@@ -678,6 +752,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _isPlaying = value.isPlaying;
     _isBuffering = value.isBuffering;
     if (value.size != null) _videoSize = value.size;
+    // The pending seek target clears once the engine arrives (within a
+    // second) or after five seconds, so a seek that never lands cannot
+    // freeze the thumb.
+    final pending = _pendingSeekTarget;
+    if (pending != null) {
+      final converged =
+          (_position - pending).abs() <= const Duration(seconds: 1);
+      final stale =
+          _pendingSeekTargetSetAt != null &&
+          DateTime.now().difference(_pendingSeekTargetSetAt!) >
+              const Duration(seconds: 5);
+      if (converged || stale) {
+        _pendingSeekTarget = null;
+        _pendingSeekTargetSetAt = null;
+      }
+    }
     if (_isPlaying && !_startedPlaying) _startedPlaying = true;
     if (_isPlaying) {
       final sample = ProgressSample(
@@ -973,6 +1063,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         : (_duration > Duration.zero && target > _duration
               ? _duration
               : target);
+    // The thumb rides the target until the engine arrives there (see
+    // [_displayPosition]).
+    _pendingSeekTarget = clamped;
+    _pendingSeekTargetSetAt = DateTime.now();
     await controller.seekTo(clamped);
   }
 
@@ -1037,150 +1131,140 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   }
 
   /// The moon button's picker: 15/30/45/60 minutes, end of episode, off.
+  /// A side drawer like the other sheets, not a bottom sheet.
   Future<void> _showSleepPicker() async {
     final l10n = AppLocalizations.of(context)!;
-    _chrome.poke(hold: true);
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: ListenableBuilder(
-            listenable: _sleepTimer,
-            builder: (context, _) {
-              final mode = _sleepTimer.mode;
-              final remaining = _sleepTimer.remaining;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.playerSleepTimer,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  if (mode != SleepTimerMode.off)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                      child: Text(
-                        remaining != null
-                            ? l10n.playerSleepTimerRemaining(
-                                formatSleepRemaining(remaining),
-                              )
-                            : l10n.playerSleepTimerEndOfEpisodeArmed,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  for (final minutes in <int>[15, 30, 45, 60])
-                    ListTile(
-                      dense: true,
-                      title: Text(
-                        l10n.playerSleepTimerMinutes(minutes),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      leading: Icon(
-                        _sleepTimer.selectedDuration ==
-                                Duration(minutes: minutes)
-                            ? Icons.radio_button_checked_rounded
-                            : Icons.radio_button_unchecked_rounded,
-                        color: Colors.white70,
-                      ),
-                      onTap: () {
-                        _sleepTimer.start(Duration(minutes: minutes));
-                        Navigator.of(sheetContext).pop();
-                      },
-                    ),
-                  ListTile(
-                    dense: true,
-                    title: Text(
-                      l10n.playerSleepTimerEndOfEpisode,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    leading: Icon(
-                      mode == SleepTimerMode.endOfEpisode
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: Colors.white70,
-                    ),
-                    onTap: () {
-                      _sleepTimer.armEndOfEpisode();
-                      Navigator.of(sheetContext).pop();
-                    },
-                  ),
-                  ListTile(
-                    dense: true,
-                    title: Text(
-                      l10n.playerSleepTimerOff,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    leading: Icon(
-                      mode == SleepTimerMode.off
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: Colors.white70,
-                    ),
-                    onTap: () {
-                      _sleepTimer.cancel();
-                      Navigator.of(sheetContext).pop();
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-    _chrome.release();
-  }
-
-  // -- sheets ----------------------------------------------------------------
-
-  /// The dark bottom sheet the picker and the player sheets share: dense
-  /// rows, white text, so every sheet reads as a picker, not a screen.
-  Future<void> _showListSheet({
-    required String title,
-    required List<Widget> children,
-  }) {
-    _chrome.poke(hold: true);
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        // A series can have a hundred episodes: the sheet scrolls
-        // rather than overflowing.
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
-          ),
-          child: SingleChildScrollView(
+    await _showSidePanel(
+      title: l10n.playerSleepTimer,
+      child: ListenableBuilder(
+        listenable: _sleepTimer,
+        builder: (context, _) {
+          final mode = _sleepTimer.mode;
+          final remaining = _sleepTimer.remaining;
+          return SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                if (mode != SleepTimerMode.off)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                    child: Text(
+                      remaining != null
+                          ? l10n.playerSleepTimerRemaining(
+                              formatSleepRemaining(remaining),
+                            )
+                          : l10n.playerSleepTimerEndOfEpisodeArmed,
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   ),
+                for (final minutes in <int>[15, 30, 45, 60])
+                  ListTile(
+                    dense: true,
+                    title: Text(
+                      l10n.playerSleepTimerMinutes(minutes),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    leading: Icon(
+                      _sleepTimer.selectedDuration ==
+                              Duration(minutes: minutes)
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: Colors.white70,
+                    ),
+                    onTap: () {
+                      _sleepTimer.start(Duration(minutes: minutes));
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ListTile(
+                  dense: true,
+                  title: Text(
+                    l10n.playerSleepTimerEndOfEpisode,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  leading: Icon(
+                    mode == SleepTimerMode.endOfEpisode
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: Colors.white70,
+                  ),
+                  onTap: () {
+                    _sleepTimer.armEndOfEpisode();
+                    Navigator.of(context).pop();
+                  },
                 ),
-                ...children,
+                ListTile(
+                  dense: true,
+                  title: Text(
+                    l10n.playerSleepTimerOff,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  leading: Icon(
+                    mode == SleepTimerMode.off
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: Colors.white70,
+                  ),
+                  onTap: () {
+                    _sleepTimer.cancel();
+                    Navigator.of(context).pop();
+                  },
+                ),
               ],
             ),
-          ),
+          );
+        },
+      ),
+    );
+  }
+
+  // -- sheets ----------------------------------------------------------------
+
+  /// The side drawer the player sheets share: a right-anchored panel
+  /// sliding in from the right edge, the same presentation mpv's
+  /// GoldenDrawer and VLC's PlayerPanel use — so the function boxes never
+  /// come up from below. Dense rows, white text, so every sheet reads as
+  /// a picker, not a screen.
+  Future<void> _showListSheet({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return _showSidePanel(
+      title: title,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
         ),
+      ),
+    );
+  }
+
+  /// A right-anchored side drawer over the player, sliding in from the
+  /// right edge (mpv/VLC's presentation). The video keeps playing behind
+  /// it, a tap beside it closes it, and the chrome is held open while it
+  /// is up so the button that opened it is still there to take focus back.
+  Future<void> _showSidePanel({
+    required String title,
+    required Widget child,
+  }) {
+    _chrome.poke(hold: true);
+    return Navigator.of(context).push<void>(
+      _SidePanelRoute(
+        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        builder: (routeContext) {
+          final width = goldenDrawerWidth(
+            MediaQuery.sizeOf(routeContext).width,
+          );
+          return GoldenDrawer(
+            title: title,
+            onClose: () => Navigator.of(routeContext).pop(),
+            width: width,
+            child: child,
+          );
+        },
       ),
     ).whenComplete(() => _chrome.release());
   }
@@ -1419,8 +1503,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           fit: StackFit.expand,
           children: [
             // The video, or black behind the resolving / failed stages.
+            // The pinch zoom scales the picture around its centre, 0.5–
+            // 3.0, and sticks where the fingers left it.
             if (_stage == _Stage.playing && _controller != null)
-              _buildVideoLayer()
+              ValueListenableBuilder<double>(
+                valueListenable: _videoScale,
+                builder: (context, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: _buildVideoLayer(),
+              )
             else
               Container(color: Colors.black),
 
@@ -1624,36 +1715,73 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                // The gesture layer: tap toggles the chrome, double-tap
-                // seeks on the outer thirds and toggles play/pause in the
-                // centre third. Locked, only a bare tap survives — it asks
-                // to see the unlock chip.
+                // The gesture layer: one scale recognizer owns the pan and
+                // the pinch together (VLC's rule), so a drag can never steal
+                // the first finger before a pinch starts. Tap toggles the
+                // chrome, double-tap seeks on the outer thirds and toggles
+                // play/pause in the centre third, a vertical swipe drives
+                // the Left/Right Gesture rails, a horizontal swipe seeks,
+                // a pinch zooms, and a long press on the right half holds
+                // 2x. Locked, only a bare tap survives — it asks to see
+                // the unlock chip.
                 if (isLocked)
                   GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onTap: _chrome.poke,
                   )
                 else
-                  GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: _chrome.toggle,
-                    onDoubleTapDown: settings.doubleTapEnabled
-                        ? (d) => _doubleTapSeek(d.localPosition.dx, settings)
-                        : null,
-                  ),
-
-                // Buffering spinner, over the video, chrome or not.
-                if (_isBuffering)
-                  const Center(
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
+                  Listener(
+                    onPointerDown: _onPointerDown,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: _chrome.toggle,
+                      onDoubleTapDown: settings.doubleTapEnabled
+                          ? (d) => _doubleTapSeek(d.localPosition.dx, settings)
+                          : null,
+                      onScaleStart: _onScaleStart,
+                      onScaleUpdate: (d) => _onScaleUpdate(d, settings),
+                      onScaleEnd: _onScaleEnd,
+                      onLongPressStart: (d) =>
+                          _startSpeedBoost(d.localPosition.dx),
+                      onLongPressEnd: (_) => _endSpeedBoost(),
+                      onLongPressCancel: _endSpeedBoost,
                     ),
                   ),
+
+                // Buffering spinner, over the video, chrome or not: while
+                // the picture has not started yet, and whenever the engine
+                // starves mid-playback. The shared indicator VLC shows for
+                // a stalled or held picture — never a dead black screen
+                // with no feedback.
+                if (_isBuffering || !_startedPlaying)
+                  const PlayerBufferingIndicator(),
+
+                // The gesture readouts, over the video: the seek toast,
+                // the volume/brightness rail, and the double-tap burst.
+                // Each is mounted once and driven by its own notifier, so
+                // a write at pointer rate rebuilds one overlay and
+                // nothing else.
+                TransientOverlay<PlayerRail>(
+                  value: _rail,
+                  builder: (_, rail) => rail,
+                ),
+                TransientOverlay<String>(
+                  value: _toast,
+                  builder: (_, message) => PlayerToast(
+                    message,
+                    // Nudged up off the centre play/pause disc, so a
+                    // swipe readout or the 2x label never lands on it.
+                    alignment: const Alignment(0, -0.42),
+                  ),
+                ),
+                TransientOverlay<SeekBurst>(
+                  value: _seekBurst,
+                  builder: (_, burst) => PlayerSeekBurst(
+                    forward: burst.forward,
+                    seconds: burst.seconds,
+                    revision: burst.revision,
+                  ),
+                ),
 
                 // The centre transport: −10 s, play/pause, +10 s. Withheld
                 // while locked rather than left to an IgnorePointer, which
@@ -1842,17 +1970,361 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   }
 
   /// A double-tap: the outer thirds seek ±step, the centre third toggles
-  /// play/pause.
+  /// play/pause. The seek shows its burst on the half that was tapped.
   void _doubleTapSeek(double dx, PlayerSettings settings) {
     final width = MediaQuery.sizeOf(context).width;
     final step = settings.seekDuration;
     if (dx < width / 3) {
       _seekRelative(Duration(seconds: -step));
+      _showSeekBurst(forward: false, seconds: step);
     } else if (dx > width * 2 / 3) {
       _seekRelative(Duration(seconds: step));
+      _showSeekBurst(forward: true, seconds: step);
     } else {
       unawaited(_togglePlay());
     }
+  }
+
+  /// The double-tap seek readout, on the half that was tapped.
+  void _showSeekBurst({required bool forward, required int seconds}) {
+    _seekBurst.show(
+      SeekBurst(
+        forward: forward,
+        seconds: seconds,
+        revision: ++_seekBurstRevision,
+      ),
+      hideAfter: const Duration(milliseconds: 900),
+    );
+  }
+
+  void _showToast(String message) =>
+      _toast.show(message, hideAfter: const Duration(milliseconds: 900));
+
+  /// Holds playback at double speed while the finger is down on the RIGHT
+  /// half (mpv's rule). Live streams are excluded: there is nothing ahead
+  /// to race towards. The saved speed is restored exactly on release.
+  void _startSpeedBoost(double dx) {
+    if (_isLive || _speedBeforeBoost != null) return;
+    final width = MediaQuery.sizeOf(context).width;
+    if (width <= 0 || dx < width / 2) return;
+    if (!_isPlaying) return;
+    _speedBeforeBoost =
+        _controller?.videoPlayerController?.value.speed ?? 1.0;
+    unawaited(_controller?.setSpeed(2.0));
+    _showToast('2x');
+  }
+
+  void _endSpeedBoost() {
+    final previous = _speedBeforeBoost;
+    if (previous == null) return;
+    _speedBeforeBoost = null;
+    unawaited(_controller?.setSpeed(previous));
+    _toast.clear();
+  }
+
+  /// Lands the pan's anchor: a [Listener] reports the pointer's down
+  /// immediately, before any arena resolution.
+  void _onPointerDown(PointerDownEvent event) {
+    if (_panAxis != _PanAxis.none || _pinching) return;
+    _panAnchor = event.position;
+    _panAnchorLocalX = event.localPosition.dx;
+  }
+
+  /// The one scale gesture: pan with one finger, pinch with two.
+  void _onScaleStart(ScaleStartDetails d) {
+    _cancelSwipeSeek();
+    _railDragEnd();
+    _panAxis = _PanAxis.none;
+    if (d.pointerCount >= 2) {
+      _pinching = true;
+      _pinchStartScale = _videoScale.value;
+      _endSpeedBoost();
+      return;
+    }
+    final wasPinching = _pinching;
+    _pinching = false;
+    if (wasPinching || _panAnchor == null) {
+      _panAnchor = d.focalPoint;
+      _panAnchorLocalX = d.localFocalPoint.dx;
+    }
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails d, PlayerSettings settings) {
+    if (d.pointerCount >= 2) {
+      if (!_pinching) {
+        _pinching = true;
+        _pinchStartScale = _videoScale.value;
+        _cancelSwipeSeek();
+        _railDragEnd();
+        _endSpeedBoost();
+      }
+      final scale = (_pinchStartScale * d.scale).clamp(0.5, 3.0).toDouble();
+      if (scale != _videoScale.value) _videoScale.value = scale;
+      return;
+    }
+    if (_pinching || d.pointerCount != 1) return;
+    if (_panAxis == _PanAxis.none) {
+      final anchor = _panAnchor ?? d.focalPoint;
+      final travel = d.focalPoint - anchor;
+      if (travel.distance < 10) return;
+      _panAxis = travel.dx.abs() >= travel.dy.abs()
+          ? _PanAxis.horizontal
+          : _PanAxis.vertical;
+      if (_panAxis == _PanAxis.horizontal) {
+        _beginSwipeSeek(anchor.dx, settings);
+        _updateSwipeSeek(d.focalPoint.dx, settings);
+      } else {
+        unawaited(_beginRail(_panAnchorLocalX ?? d.localFocalPoint.dx));
+        _updateRail(travel.dy);
+      }
+      return;
+    }
+    if (_panAxis == _PanAxis.horizontal) {
+      _updateSwipeSeek(d.focalPoint.dx, settings);
+    } else {
+      _updateRail(d.focalPointDelta.dy);
+    }
+  }
+
+  void _onScaleEnd(ScaleEndDetails d) {
+    if (d.pointerCount >= 2) {
+      _pinching = true;
+      _pinchStartScale = _videoScale.value;
+      _cancelSwipeSeek();
+      _railDragEnd();
+      _endSpeedBoost();
+      _panAxis = _PanAxis.none;
+      return;
+    }
+    if (_pinching) {
+      final settled = _videoScale.value.clamp(0.5, 3.0).toDouble();
+      if (settled != _videoScale.value) _videoScale.value = settled;
+      _pinching = false;
+      _panAxis = _PanAxis.none;
+      _panAnchor = null;
+      _panAnchorLocalX = null;
+      return;
+    }
+    if (_panAxis == _PanAxis.horizontal) {
+      _endSwipeSeek();
+    } else if (_panAxis == _PanAxis.vertical) {
+      _railDragEnd();
+    }
+    _panAxis = _PanAxis.none;
+    _panAnchor = null;
+    _panAnchorLocalX = null;
+  }
+
+  /// Starts a vertical rail from the down point's half: the Left/Right
+  /// Gesture setting decides what each side drives (brightness, volume,
+  /// seek, or none — the same setting VLC honours). Defaults: brightness
+  /// on the left, volume on the right.
+  Future<void> _beginRail(double localX) async {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width <= 0) return;
+    final isRight = localX >= width / 2;
+    final settings =
+        ref.read(playerSettingsProvider).value ?? const PlayerSettings();
+    final gesture = isRight ? settings.rightGesture : settings.leftGesture;
+    if (gesture == PlayerGesture.none) {
+      _dragIsVolume = null;
+      _dragIsSeek = false;
+      return;
+    }
+    if (gesture == PlayerGesture.seek) {
+      if (_isLive || _duration <= Duration.zero) {
+        _dragIsVolume = null;
+        _dragIsSeek = false;
+        return;
+      }
+      _dragIsVolume = null;
+      _dragIsSeek = true;
+      _dragReady = true;
+      _dragPending = 0;
+      return;
+    }
+    final isVolume = gesture == PlayerGesture.volume;
+    final id = ++_dragId;
+    _dragIsVolume = isVolume;
+    _dragReady = false;
+    _dragPending = 0;
+    if (isVolume) {
+      // The engine volume is synchronous: ready at once.
+      _dragStart = _volume;
+      _dragReady = true;
+    } else {
+      final level = await _brightnessControl.read();
+      if (!mounted || id != _dragId) return;
+      if (level != null) _brightness = level;
+      _dragStart = _brightness;
+      _dragReady = true;
+    }
+    final pending = _dragPending;
+    _dragPending = 0;
+    if (pending != 0) _railTravel(isVolume, pending);
+  }
+
+  /// A full screen height of travel covers the whole range.
+  void _updateRail(double primaryDelta) {
+    final height = MediaQuery.sizeOf(context).height;
+    if (height <= 0) return;
+    final travel = -primaryDelta / height;
+    if (_dragIsSeek) {
+      if (!_dragReady) {
+        _dragPending += travel;
+        return;
+      }
+      _seekRailTravel(travel);
+      return;
+    }
+    final isVolume = _dragIsVolume;
+    if (isVolume == null) return;
+    if (!_dragReady) {
+      _dragPending += travel;
+      return;
+    }
+    _railTravel(isVolume, travel);
+  }
+
+  /// Moves the swipe's level by [travel], a share of the screen's height,
+  /// and applies it.
+  void _railTravel(bool isVolume, double travel, {bool live = true}) {
+    if (isVolume) {
+      // Engine volume, 0..1: the package caps setVolume at 1.0, so there
+      // is no boost past 100% here.
+      _dragStart = (_dragStart + travel).clamp(0.0, 1.0);
+      _volume = _dragStart;
+      unawaited(_controller?.setVolume(_dragStart));
+      _rail.show(
+        PlayerRail(
+          icon: _volumeIcon(_dragStart),
+          value: _dragStart,
+          label: '${(_dragStart * 100).round()}%',
+          onLeft: true,
+        ),
+        hideAfter: live ? null : const Duration(milliseconds: 900),
+      );
+    } else {
+      _dragStart = (_dragStart + travel).clamp(0.0, 1.0);
+      _brightness = _dragStart;
+      _brightnessOverridden = true;
+      _brightnessControl.set(_brightness);
+      _rail.show(
+        PlayerRail(
+          icon: _brightnessIcon(_brightness),
+          value: _brightness,
+          label: '${(_brightness * 100).round()}%',
+          onLeft: false,
+        ),
+        hideAfter: live ? null : const Duration(milliseconds: 500),
+      );
+    }
+  }
+
+  /// Slides the playhead by [travel], a share of the screen's height.
+  /// A full height is 90 seconds — the same scale the horizontal
+  /// swipe-seek uses per full width — so the two seek gestures agree.
+  /// Up is forward. The rail sits on the right edge and shows the target.
+  void _seekRailTravel(double travel) {
+    final delta = Duration(milliseconds: (travel * 90000).round());
+    if (delta == Duration.zero) return;
+    _seekRelative(delta);
+    final target = _pendingSeekTarget ?? _position;
+    _rail.show(
+      PlayerRail(
+        icon: Icons.fast_forward_rounded,
+        value: _duration > Duration.zero
+            ? (target.inMilliseconds / _duration.inMilliseconds).clamp(
+                0.0,
+                1.0,
+              )
+            : 0,
+        label: _formatTime(target),
+        onLeft: false,
+      ),
+    );
+  }
+
+  void _railDragEnd() {
+    _dragIsVolume = null;
+    _dragIsSeek = false;
+    _rail.clearAfter(const Duration(milliseconds: 1500));
+  }
+
+  /// Starts a horizontal swipe-seek at global x [startX].
+  void _beginSwipeSeek(double startX, PlayerSettings settings) {
+    if (_isLive || !settings.swipeSeekEnabled || _duration <= Duration.zero) {
+      return;
+    }
+    _horizontalDragStartX = startX;
+    _horizontalDragStartPosition = _pendingSeekTarget ?? _position;
+    _horizontalDragTarget = _horizontalDragStartPosition;
+  }
+
+  /// Moves the swipe-seek's target to global x [globalX]. The position is
+  /// not sought yet — the end does that — so a swipe that becomes a pinch
+  /// commits nothing.
+  void _updateSwipeSeek(double globalX, PlayerSettings settings) {
+    final startX = _horizontalDragStartX;
+    final startPos = _horizontalDragStartPosition;
+    if (startX == null || startPos == null || !settings.swipeSeekEnabled) {
+      return;
+    }
+    final width = MediaQuery.sizeOf(context).width;
+    if (width <= 0) return;
+    final deltaFraction = (globalX - startX) / width;
+    final seekDelta = Duration(milliseconds: (deltaFraction * 90000).round());
+    var target = startPos + seekDelta;
+    if (target < Duration.zero) target = Duration.zero;
+    if (_duration > Duration.zero && target >= _duration) {
+      target = _duration - const Duration(seconds: 1);
+      if (target < Duration.zero) target = Duration.zero;
+    }
+    _horizontalDragTarget = target;
+    final diffSeconds = (target - startPos).inSeconds;
+    _showToast(
+      diffSeconds < 0
+          ? '${diffSeconds}s (${_formatTime(target)})'
+          : '+${diffSeconds}s (${_formatTime(target)})',
+    );
+  }
+
+  /// Ends a swipe-seek: seeks to the target its updates arrived at.
+  void _endSwipeSeek() {
+    final target = _horizontalDragTarget;
+    final start = _horizontalDragStartPosition;
+    _horizontalDragStartX = null;
+    _horizontalDragStartPosition = null;
+    _horizontalDragTarget = null;
+    if (target != null) {
+      if (start != null &&
+          (target - start).abs() < const Duration(milliseconds: 500)) {
+        return;
+      }
+      unawaited(_seekTo(target));
+      _chrome.poke();
+    }
+  }
+
+  /// Drops a swipe-seek without seeking: a second finger turned the gesture
+  /// into a pinch, or a new gesture superseded a stale one.
+  void _cancelSwipeSeek() {
+    _horizontalDragStartX = null;
+    _horizontalDragStartPosition = null;
+    _horizontalDragTarget = null;
+  }
+
+  static IconData _volumeIcon(double level) {
+    if (level <= 0) return Icons.volume_off_rounded;
+    if (level < 0.5) return Icons.volume_down_rounded;
+    return Icons.volume_up_rounded;
+  }
+
+  static IconData _brightnessIcon(double value) {
+    final clamped = value.clamp(0.0, 1.0);
+    if (clamped < 0.33) return Icons.brightness_5_rounded;
+    if (clamped < 0.67) return Icons.brightness_6_rounded;
+    return Icons.brightness_7_rounded;
   }
 
   /// The bottom bar: the seek strip on top, then the control row —
@@ -1886,7 +2358,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       // Its own boundary: the scrubber repaints on every position tick,
       // which would otherwise repaint the whole bottom bar, scrim and
       // every icon button.
-      progressBar: RepaintBoundary(child: _buildSeekBar()),
+      progressBar: RepaintBoundary(child: _buildSeekBar(isTv: isTv)),
       leading: [
         if (_previousEpisode != null)
           PlayerIconButton(
@@ -1998,11 +2470,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     );
   }
 
-  /// The seek strip: the time, the scrubber, the duration. A live edge
-  /// has no scrubber — a LIVE badge keeps the row's height, so nothing
-  /// jumps when the badge lands.
-  Widget _buildSeekBar() {
-    final displayPosition = _seekPreview ?? _position;
+  /// The seek strip: the time, the scrubber, the duration. The shared
+  /// [PlayerScrubber] VLC and mpv use — so the thumb, the buffered band
+  /// and the skip-segment bands are the same widget, not a second design.
+  /// A live edge has no scrubber — a LIVE badge keeps the row's height,
+  /// so nothing jumps when the badge lands.
+  Widget _buildSeekBar({required bool isTv}) {
+    final displayPosition = _displayPosition;
     final durationMs = _duration.inMilliseconds;
     final bufferedFraction = durationMs <= 0
         ? 0.0
@@ -2028,49 +2502,33 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
                   alignment: Alignment.centerLeft,
                   child: _LiveBadge(),
                 )
-              : SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 12,
-                    ),
-                    activeTrackColor: Colors.white,
-                    inactiveTrackColor: Colors.white24,
-                    secondaryActiveTrackColor: Colors.white54,
-                    thumbColor: Colors.white,
-                    overlayColor: Colors.white24,
-                  ),
-                  child: Slider(
-                    value: durationMs <= 0
-                        ? 0.0
-                        : displayPosition.inMilliseconds
-                              .clamp(0, durationMs)
-                              .toDouble(),
-                    max: durationMs <= 0 ? 1.0 : durationMs.toDouble(),
-                    secondaryTrackValue: bufferedFraction,
-                    onChangeStart: (_) {
-                      _chrome.poke(hold: true);
-                      setState(
-                        () => _seekPreview = _position,
-                      );
-                    },
-                    onChanged: (value) {
-                      setState(
-                        () => _seekPreview = Duration(
-                          milliseconds: value.round(),
-                        ),
-                      );
-                    },
-                    onChangeEnd: (value) {
-                      _chrome.release();
-                      final target = Duration(milliseconds: value.round());
-                      setState(() => _seekPreview = null);
-                      unawaited(_seekTo(target));
-                    },
-                  ),
+              : PlayerScrubber(
+                  position: displayPosition,
+                  duration: _duration,
+                  hasDuration: _duration > Duration.zero,
+                  bufferRatio: bufferedFraction,
+                  canSeek: !_isLive,
+                  skipSegments: _skipSegments,
+                  isTv: isTv,
+                  onChangeStart: (ms) {
+                    _chrome.poke(hold: true);
+                    setState(
+                      () => _seekPreview =
+                          Duration(milliseconds: ms.round()),
+                    );
+                  },
+                  onChanged: (ms) {
+                    setState(
+                      () => _seekPreview =
+                          Duration(milliseconds: ms.round()),
+                    );
+                  },
+                  onChangeEnd: (ms) {
+                    _chrome.release();
+                    final target = Duration(milliseconds: ms.round());
+                    setState(() => _seekPreview = null);
+                    unawaited(_seekTo(target));
+                  },
                 ),
         ),
         const SizedBox(width: 8),
@@ -2139,6 +2597,57 @@ class _LiveBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+/// A modal that leaves the video playing behind it.
+///
+/// [PopupRoute] rather than `showModalBottomSheet`: this one has to keep
+/// the route below built and visible, own its own transition (a slide,
+/// never a window-sized fade), and take its shape from the window — the
+/// same presentation VLC's player panel uses.
+class _SidePanelRoute extends PopupRoute<void> {
+  _SidePanelRoute({required this.builder, required this.barrierLabel});
+
+  final WidgetBuilder builder;
+
+  @override
+  final String barrierLabel;
+
+  /// A plain colour, drawn by the framework's own barrier.
+  @override
+  Color get barrierColor => const Color(0x73000000);
+
+  @override
+  bool get barrierDismissible => true;
+
+  /// mpv's drawer time: 280 ms, ease-out.
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 280);
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return builder(context);
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return SlideTransition(
+      position:
+          Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
+            CurvedAnimation(parent: animation, curve: Curves.fastOutSlowIn),
+          ),
+      child: child,
     );
   }
 }
