@@ -10,9 +10,9 @@ import '../../domain/entity/multimedia_item.dart';
 import '../../logger/app_logger.dart';
 import '../base_provider.dart';
 import '../models/extension_plugin.dart';
-import 'js_bytecode_compiler.dart';
-import 'js_engine.dart';
-import 'vega_provider_context.dart';
+import '../engine/js_bytecode_compiler.dart';
+import '../engine/js_engine.dart';
+import '../engine/vega_provider_context.dart';
 
 /// Hard ceiling on the per-call result count, mirroring [JsBasedProvider]'s
 /// `_kMaxResultListLength` / `_kMaxStreamsPerCall`: a provider that returns a
