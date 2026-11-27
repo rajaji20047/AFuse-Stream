@@ -395,7 +395,8 @@ Future<ResolvedPlayback> resolvePlayback({
       ),
       preference: preference,
       cap: cap,
-      lastUsed: (ordered) => _savedStreamIndex(read, item, ordered),
+      lastUsed: (ordered) =>
+          _savedStreamIndex(read, item, ordered, episodeUrl: videoUrl),
       language: settings.preferredSourceLanguage,
     );
     streams = plan.streams;
@@ -403,7 +404,12 @@ Future<ResolvedPlayback> resolvePlayback({
     lastUsedIndex = plan.lastUsedIndex;
     dataSaver = cap != QualityPreference.any;
   } else if (!ranked) {
-    final found = _savedStreamIndex(read, item, streams);
+    final found = _savedStreamIndex(
+      read,
+      item,
+      streams,
+      episodeUrl: videoUrl,
+    );
     saved = found < 0 ? 0 : found;
     lastUsedIndex = found;
   }
@@ -651,8 +657,9 @@ StreamResult? localStreamForSourceKey(String key, {required String localUrl}) {
   );
 }
 
-/// Hive settings-box key for the per-title last-source map: title URL
-/// (the same identity Continue Watching uses) -> [streamSourceKey].
+/// Hive settings-box key for the last-source map: the memory key
+/// ([lastSourceMemoryKey] — the episode's own URL for a series, the title
+/// URL for a movie) -> [streamSourceKey].
 const String kLastSourceByTitleKey = 'player_last_source_by_title';
 
 /// The persisted last-source map, or empty when there is none or it is
@@ -674,14 +681,36 @@ Map<String, String> readLastSourceMap(ProviderReader read) {
   }
 }
 
-/// The source the user last watched this title on, so switching episodes keeps
-/// the working provider instead of re-picking from scratch. -1 when none is
-/// remembered or it is not among [streams].
+/// The memory key for a title's last source: the episode's own URL for a
+/// series (each episode remembers its own source and link), the title URL
+/// for a movie. The stored map is keyed by URL, so a per-episode key just
+/// means one entry per episode instead of one per title; entries written
+/// under the old per-title key are simply never read again.
+String lastSourceMemoryKey(MultimediaItem item, String videoUrl) {
+  final isSeries =
+      item.contentType == MultimediaContentType.series ||
+      item.contentType == MultimediaContentType.anime;
+  return isSeries && videoUrl.isNotEmpty ? videoUrl : item.url;
+}
+
+/// The source the user last watched this episode on (a series) or this
+/// title on (a movie). -1 when none is remembered or it is not among
+/// [streams].
+///
+/// A series remembers per episode, not per title: the title entry's last
+/// stream URL is the LAST episode's link, and matching it against this
+/// episode's streams would resume the wrong episode's stream whenever
+/// two episodes share a URL. So the exact-URL arm reads only the
+/// episode's own `EP_` entry. The label arm reads the episode's key
+/// first, then falls back to the title key — a new episode still starts
+/// on the previous episode's working source, but a resumed episode
+/// always gets its own.
 int _savedStreamIndex(
   ProviderReader read,
   MultimediaItem item,
-  List<StreamResult> streams,
-) {
+  List<StreamResult> streams, {
+  String? episodeUrl,
+}) {
   try {
     final isSeries =
         item.contentType == MultimediaContentType.series ||
@@ -689,11 +718,23 @@ int _savedStreamIndex(
 
     String? lastUrl;
     if (isSeries) {
+      if (episodeUrl != null && episodeUrl.isNotEmpty) {
+        final ep = item.episodes?.firstWhereOrNull(
+          (e) => e.url == episodeUrl,
+        );
+        lastUrl = read(historyRepositoryProvider).getEpisodeLastStreamUrl(
+          episodeUrl,
+          mainUrl: item.url,
+          season: ep?.season,
+          episode: ep?.episode,
+        );
+      }
+    } else {
       lastUrl = read(historyRepositoryProvider).getLastStreamUrl(item.url);
+      lastUrl ??= read(watchHistoryProvider)
+          .firstWhereOrNull((h) => h.item.url == item.url)
+          ?.lastStreamUrl;
     }
-    lastUrl ??= read(watchHistoryProvider)
-        .firstWhereOrNull((h) => h.item.url == item.url)
-        ?.lastStreamUrl;
 
     if (lastUrl != null) {
       final found = streams.indexWhere((s) => s.url == lastUrl);
@@ -703,7 +744,11 @@ int _savedStreamIndex(
     // signed links (DriveSeed): the last-played source is remembered by
     // its stable label instead — see [streamSourceKey]. A label that
     // changed just misses and the title opens on Source 1, as before.
-    final lastKey = readLastSourceMap(read)[item.url];
+    final map = readLastSourceMap(read);
+    final memoryKey = episodeUrl != null
+        ? lastSourceMemoryKey(item, episodeUrl)
+        : item.url;
+    final lastKey = map[memoryKey] ?? map[item.url];
     if (lastKey != null) {
       final found = streams.indexWhere(
         (s) => streamSourceKey(s) == lastKey,

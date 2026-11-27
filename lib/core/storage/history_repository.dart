@@ -164,6 +164,20 @@ class HistoryRepository {
     return _storageService.getLastStreamUrl(url);
   }
 
+  String? getEpisodeLastStreamUrl(
+    String url, {
+    String? mainUrl,
+    int? season,
+    int? episode,
+  }) {
+    return _storageService.getEpisodeLastStreamUrl(
+      url,
+      mainUrl: mainUrl,
+      season: season,
+      episode: episode,
+    );
+  }
+
   String? getLastEpisodeUrl(String url) {
     return _storageService.getLastEpisodeUrl(url);
   }

@@ -1235,6 +1235,34 @@ class StorageService {
     return value is String ? value : null;
   }
 
+  /// The last stream URL for one episode: its own `EP_` entry first,
+  /// like [getEpisodePosition]. Falls back to the title entry only when
+  /// that entry IS this episode (same season/episode) — the title entry
+  /// otherwise holds the last episode's link, and returning it here
+  /// would resume the wrong episode's stream.
+  String? getEpisodeLastStreamUrl(
+    String epUrl, {
+    String? mainUrl,
+    int? season,
+    int? episode,
+  }) {
+    final epKey = "EP_${_getKey(epUrl)}";
+    final epMap = _historyEntry(epKey);
+    final epValue = epMap?['lastStreamUrl'];
+    if (epValue is String) return epValue;
+
+    if (mainUrl != null && season != null && episode != null) {
+      final mainMap = _historyEntry(_getKey(mainUrl));
+      if (mainMap != null) {
+        if (mainMap['season'] == season && mainMap['episode'] == episode) {
+          final mainValue = mainMap['lastStreamUrl'];
+          if (mainValue is String) return mainValue;
+        }
+      }
+    }
+    return null;
+  }
+
   String? getLastEpisodeUrl(String url) {
     final map = _historyEntry(_getKey(url));
     final value = map?['lastEpisodeUrl'];

@@ -37,6 +37,7 @@ import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/stream_cache/stream_cache_service.dart';
 import '../../../../core/storage/episode_watch_repository.dart';
 import '../../../../core/storage/history_repository.dart';
+import '../../../../core/storage/settings_repository.dart';
 import '../../../../core/utils/app_utils.dart';
 import '../../../../core/utils/file_size_formatter.dart';
 import '../../../../core/utils/stream_quality_sorter.dart'
@@ -1846,6 +1847,27 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     });
   }
 
+  /// Persists the opened source for this episode (a series) or title (a
+  /// movie) — see [streamSourceKey], [readLastSourceMap],
+  /// [lastSourceMemoryKey]. VLC never wrote this map before (only MPV
+  /// did), so a series watched in VLC left the per-title memory stale.
+  /// Fire-and-forget: a write that fails just means the next open picks
+  /// fresh.
+  void _rememberSource(StreamResult stream) {
+    try {
+      final map = readLastSourceMap(ref.read);
+      map[lastSourceMemoryKey(widget.item, _videoUrl)] =
+          streamSourceKey(stream);
+      unawaited(
+        ref
+            .read(settingsRepositoryProvider)
+            .setPlayerSetting(kLastSourceByTitleKey, jsonEncode(map)),
+      );
+    } catch (_) {
+      // No memory is better than a crash mid-open.
+    }
+  }
+
   /// Opens one candidate.
   ///
   /// The generation counter is bumped first and re-checked after every await.
@@ -2183,6 +2205,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // about this one's; a reopen of this one keeps it.
     if (stream.url != _lastStreamUrl) _liveSegment = null;
     _lastStreamUrl = stream.url;
+    // This source is playing, so it is the one remembered for this
+    // episode (a series) or title (a movie) — the next open of it
+    // resumes on the same source and link.
+    _rememberSource(stream);
     // A new media starts un-zoomed (pinch-to-zoom, Raja v3).
     _videoScale.value = 1.0;
     _isLive = live;

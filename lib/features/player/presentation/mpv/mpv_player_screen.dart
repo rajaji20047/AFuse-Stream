@@ -3270,8 +3270,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
             }
           });
           // v7: this source plays, so it is the one remembered for this
-          // title (see [streamSourceKey]) — the next episode starts on it
-          // and the Sources list tags it "Last used".
+          // episode (a series) or title (a movie) — see
+          // [lastSourceMemoryKey] — and the Sources list tags it
+          // "Last used".
           if (firstPlay &&
               _streamIndex >= 0 &&
               _streamIndex < _streams.length) {
@@ -5436,13 +5437,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     }
   }
 
-  /// Persists the opened source for this title (see [streamSourceKey],
-  /// [readLastSourceMap]). Fire-and-forget, like the audio pick: a write
+  /// Persists the opened source for this episode (a series) or title (a
+  /// movie) — see [streamSourceKey], [readLastSourceMap],
+  /// [lastSourceMemoryKey]. Fire-and-forget, like the audio pick: a write
   /// that fails just means the next open picks fresh.
   void _rememberSource(StreamResult stream) {
     try {
       final map = readLastSourceMap(ref.read);
-      map[widget.item.url] = streamSourceKey(stream);
+      map[lastSourceMemoryKey(widget.item, _currentVideoUrl)] =
+          streamSourceKey(stream);
       unawaited(
         ref
             .read(settingsRepositoryProvider)
