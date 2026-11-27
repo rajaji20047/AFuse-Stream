@@ -77,18 +77,21 @@ class AddonSourcesSheet extends ConsumerStatefulWidget {
     bool merged = false,
     bool resume = false,
   }) {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.65),
-      builder: (_) => AddonSourcesSheet(
-        item: item,
-        request: request,
-        episode: episode,
-        playlist: playlist,
-        mode: mode,
-        merged: merged,
-        resume: resume,
+    // Full-screen page, not a floating dialog: the All Sources UI paints
+    // edge-to-edge over a dark backdrop, no box (user 2026-11-28). The
+    // back arrow and the close button in the header both dismiss it.
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => AddonSourcesSheet(
+          item: item,
+          request: request,
+          episode: episode,
+          playlist: playlist,
+          mode: mode,
+          merged: merged,
+          resume: resume,
+        ),
       ),
     );
   }
@@ -821,6 +824,7 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     return GlassSheetScaffold(
       title: widget.merged ? 'All Sources' : 'Stremio Sources',
       subtitle: subtitleText,
+      fullScreen: true,
       actions: [
         _headerAction(
           tooltip: _searchOpen

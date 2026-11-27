@@ -193,6 +193,8 @@ class GlassSheetScaffold extends StatelessWidget {
     this.subtitle,
     this.actions = const <Widget>[],
     this.onClose,
+    this.fullScreen = false,
+    this.onBack,
   });
 
   /// Header title. Already localised by the caller.
@@ -207,6 +209,15 @@ class GlassSheetScaffold extends StatelessWidget {
 
   /// Defaults to popping the enclosing route.
   final VoidCallback? onClose;
+
+  /// Full-screen page instead of the floating dialog panel: the content
+  /// paints edge-to-edge over a dark backdrop gradient, with a back arrow
+  /// leading the header. The sheet's own content is unchanged.
+  final bool fullScreen;
+
+  /// Back arrow action, full-screen only. Defaults to popping the
+  /// enclosing route.
+  final VoidCallback? onBack;
 
   /// The sheet's content, below the header. Give it an [Expanded] of its own
   /// for whatever scrolls.
@@ -241,6 +252,8 @@ class GlassSheetScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = GlassPalette.of(context);
+
+    if (fullScreen) return _fullScreen(context, theme, palette);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -337,8 +350,163 @@ class GlassSheetScaffold extends StatelessWidget {
     );
   }
 
+  /// Full-screen page: no dialog, no floating panel, no rounded corners —
+  /// the header and the content paint edge-to-edge over a dark backdrop
+  /// gradient. The sheet's content is the same widget the dialog showed,
+  /// so its data, ranking, filters and row taps are untouched.
+  Widget _fullScreen(
+    BuildContext context,
+    ThemeData theme,
+    GlassPalette palette,
+  ) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? const [Color(0xFF1C1C22), Color(0xFF060608)]
+                : const [Color(0xFFF5F5F8), Color(0xFFE9E9EE)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _header(context, theme, palette),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _header(BuildContext context, ThemeData theme, GlassPalette palette) {
     final cs = theme.colorScheme;
+
+    // Title + subtitle. The buttons beside them are 48 dp targets against
+    // a 24 dp title line, so the text sits down by half the overhang and
+    // shares their centre line. [endPadding] reserves room for the trailing
+    // buttons in the dialog's Stack; the full-screen Row lays them out in
+    // flow, so it passes 0.
+    Widget titleBlock({required double endPadding}) {
+      return Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(
+          0,
+          _closeOverhang,
+          endPadding,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: palette.ink,
+                letterSpacing: -0.2,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // The action buttons and the close button. The close button is circled
+    // like the action buttons beside it: a bare glyph next to a filled one
+    // reads as two different kinds of control rather than two of the same.
+    Widget trailingButtons() {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final action in actions) ...[
+            action,
+            const SizedBox(width: kSourceSheetHeaderGap),
+          ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: cs.error.withValues(alpha: 0.12),
+            ),
+            child: IconButton(
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              // Compact density would make this a 40 dp target, and
+              // desktop picks compact by default; pinning standard keeps
+              // 48 dp on every platform.
+              visualDensity: VisualDensity.standard,
+              icon: Icon(
+                Icons.close_rounded,
+                size: kSourceSheetHeaderIcon,
+                color: cs.error,
+              ),
+              hoverColor: cs.error.withValues(alpha: 0.12),
+              highlightColor: cs.error.withValues(alpha: 0.16),
+              onPressed: onClose ?? () => Navigator.of(context).maybePop(),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (fullScreen) {
+      // Full-screen page: a back arrow leads the header, then the title,
+      // then the action buttons and the close button — all in one row.
+      return Padding(
+        // The full gutter on both sides. The trailing buttons are drawn as
+        // filled circles, so the circle IS their visible box and lines up
+        // like any other.
+        padding: const EdgeInsets.fromLTRB(
+          kSourceSheetGutter,
+          kSourceSheetGutter,
+          kSourceSheetGutter,
+          4,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primary.withValues(alpha: 0.15),
+              ),
+              child: IconButton(
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                visualDensity: VisualDensity.standard,
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  size: kSourceSheetHeaderIcon,
+                  color: cs.primary,
+                ),
+                onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+              ),
+            ),
+            const SizedBox(width: kSourceSheetHeaderGap),
+            Expanded(child: titleBlock(endPadding: 0)),
+            trailingButtons(),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       // The full gutter on both sides. The trailing buttons are drawn as
       // filled circles, so the circle IS their visible box and lines up like
@@ -360,84 +528,15 @@ class GlassSheetScaffold extends StatelessWidget {
         width: double.infinity,
         child: Stack(
           children: [
-            Padding(
-              // Down by half the buttons' overhang, so the title's centre line
-              // lands on theirs; across by their width so a long subtitle
-              // cannot run underneath them.
-              padding: EdgeInsetsDirectional.fromSTEB(
-                0,
-                _closeOverhang,
-                kSourceSheetHeaderButton * (actions.length + 1) +
-                    kSourceSheetHeaderGap * actions.length,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: palette.ink,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            titleBlock(
+              endPadding:
+                  kSourceSheetHeaderButton * (actions.length + 1) +
+                  kSourceSheetHeaderGap * actions.length,
             ),
             PositionedDirectional(
               top: 0,
               end: 0,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final action in actions) ...[
-                    action,
-                    const SizedBox(width: kSourceSheetHeaderGap),
-                  ],
-                  // Circled like the action buttons beside it: a bare
-                  // glyph next to a filled one reads as two different
-                  // kinds of control rather than two of the same kind.
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cs.error.withValues(alpha: 0.12),
-                    ),
-                    child: IconButton(
-                      tooltip: MaterialLocalizations.of(context)
-                          .closeButtonTooltip,
-                      // Compact density would make this a 40 dp target, and
-                      // desktop picks compact by default; pinning standard keeps
-                      // 48 dp on every platform.
-                      visualDensity: VisualDensity.standard,
-                      icon: Icon(
-                        Icons.close_rounded,
-                        size: kSourceSheetHeaderIcon,
-                        color: cs.error,
-                      ),
-                      hoverColor: cs.error.withValues(alpha: 0.12),
-                      highlightColor: cs.error.withValues(alpha: 0.16),
-                      onPressed:
-                          onClose ?? () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                ],
-              ),
+              child: trailingButtons(),
             ),
           ],
         ),
