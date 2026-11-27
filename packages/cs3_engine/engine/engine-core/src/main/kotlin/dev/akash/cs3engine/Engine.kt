@@ -28,7 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.File
@@ -312,7 +311,26 @@ class Engine(
         if (plugins[file.absolutePath]?.fingerprint != registry.fingerprint(file)) {
             withContext(Dispatchers.IO) { registry.convert(file) }
         }
-        return loadLock.withLock { register(file, url, started) }
+        return withLoadLock { register(file, url, started) }
+    }
+
+    /**
+     * Runs [block] holding [loadLock], giving up after [LOAD_LOCK_WAIT_MS] waiting for it: a load holds
+     * the lock while it registers (up to [LOAD_TIMEOUT_MS] for a plugin stuck in its own load), and a
+     * settings open behind it would otherwise wait that whole time with no answer. The load itself
+     * keeps its own timeout once it holds the lock; a load that gives up here is retried on the next call.
+     */
+    private suspend fun <T> withLoadLock(block: suspend () -> T): T {
+        try {
+            withTimeout(LOAD_LOCK_WAIT_MS) { loadLock.lock() }
+        } catch (e: TimeoutCancellationException) {
+            throw TimeoutException("another plugin is still loading after ${LOAD_LOCK_WAIT_MS / 1000} s")
+        }
+        try {
+            return block()
+        } finally {
+            loadLock.unlock()
+        }
     }
 
     private suspend fun register(file: File, url: String?, started: Long): Map<String, Any?> {
@@ -357,7 +375,7 @@ class Engine(
         }
     }
 
-    private suspend fun unloadPlugin(file: File): Map<String, Any?> = loadLock.withLock {
+    private suspend fun unloadPlugin(file: File): Map<String, Any?> = withLoadLock {
         val current = plugins[file.absolutePath]
         if (current != null) dropPlugin(current)
         mapOf("unloaded" to (current != null))
@@ -366,7 +384,7 @@ class Engine(
     /** Unloads [file] and loads it again, so its load() runs anew: what its settings screen saved applies. */
     private suspend fun reloadPlugin(file: File, url: String?): Map<String, Any?> {
         val started = System.nanoTime()
-        return loadLock.withLock {
+        return withLoadLock {
             plugins[file.absolutePath]?.let { dropPlugin(it) }
             register(file, url, started)
         }
@@ -514,6 +532,9 @@ class Engine(
         private const val CALL_TIMEOUT_MS = 60_000L
         private const val MAIN_PAGE_TIMEOUT_MS = 30_000L
         private const val LOAD_TIMEOUT_MS = 120_000L
+
+        /** How long a load waits for another plugin's load to release the load lock before giving up. */
+        private const val LOAD_LOCK_WAIT_MS = 30_000L
 
         /** See [quietEndMs]. */
         const val QUIET_END_MS = 2_000L

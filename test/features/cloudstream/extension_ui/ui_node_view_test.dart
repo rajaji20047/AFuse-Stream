@@ -211,7 +211,7 @@ void main() {
     expect(api.sent, ['8 slide 60']);
   });
 
-  testWidgets("progress shows; decorative images and unknown views don't", (tester) async {
+  testWidgets('progress shows, a decorative image stays hidden, and an unknown view shows its label', (tester) async {
     await show(
       tester,
       _node({
@@ -221,11 +221,14 @@ void main() {
           {'id': 2, 'kind': 'progress'},
           {'id': 3, 'kind': 'image'},
           {'id': 4, 'kind': 'other', 'label': 'Clouds'},
+          {'id': 5, 'kind': 'other', 'text': 'Pick a color', 'tappable': true},
         ],
       }),
     );
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.text('Clouds'), findsNothing);
+    expect(find.text('Clouds'), findsOneWidget);
+    await tester.tap(find.text('Pick a color'));
+    expect(api.sent, ['5 click null']);
   });
 
   testWidgets("a row's weighted children share what's left once the others have their own size", (tester) async {

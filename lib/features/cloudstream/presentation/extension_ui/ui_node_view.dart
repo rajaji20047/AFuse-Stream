@@ -44,8 +44,23 @@ class UiNodeView extends StatelessWidget {
       ),
       UiKind.image => n.tappable ? _iconButton(n) : const SizedBox.shrink(),
       UiKind.page => ExtensionPageView(key: _pageKey(session, n.id), node: n, session: session),
-      _ => const SizedBox.shrink(),
+      // A kind the app can't draw (a custom view): shown, not vanished, so the setting stays
+      // visible — and usable where the extension made it tappable — instead of disappearing.
+      _ => _unknown(n),
     };
+  }
+
+  /// A view of a kind the app can't draw: its words as a row, tappable where the extension made it
+  /// so. The app still doesn't draw the view itself (that would be the plugin's own UI, as-is);
+  /// this only keeps the setting from vanishing.
+  Widget _unknown(UiNode n) {
+    final words = n.words;
+    return ListTile(
+      leading: const Icon(Icons.tune_rounded),
+      title: Text(words ?? '…'),
+      enabled: n.enabled,
+      onTap: n.tappable ? () => _click(n) : null,
+    );
   }
 
   Widget _container(BuildContext context, UiNode n) {

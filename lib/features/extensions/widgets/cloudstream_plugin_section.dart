@@ -630,7 +630,11 @@ class _CloudStreamPluginTile extends ConsumerWidget {
                   // screen (its `openSettings`), and this platform can
                   // draw it. The sheet is the plugin's own screen, so its
                   // login code, polling and token stay the plugin's code.
-                  if (installed.hasSettings == true &&
+                  // Shown unless the engine said it has none: `hasSettings`
+                  // is null until a load reports it, and hiding the button
+                  // on that uncertainty hid real settings screens. A plugin
+                  // with none fails to open with an error instead.
+                  if (installed.hasSettings != false &&
                       extensionScreensSupported)
                     Semantics(
                       identifier: 'cs3-settings-${info.internalName}',

@@ -57,8 +57,66 @@ class _FakeApi implements ExtensionUiApi {
 
 Future<void> _settle() => Future<void>.delayed(const Duration(milliseconds: 1));
 
+/// An engine that never answers an open or a close, and never ends a screen: a dead one.
+class _HangingApi implements ExtensionUiApi {
+  final controller = StreamController<Map<String, dynamic>>.broadcast();
+
+  @override
+  Stream<Map<String, dynamic>> get events => controller.stream;
+
+  @override
+  Future<int> openSettings(String plugin) => Completer<int>().future;
+
+  @override
+  Future<int> openPopups(String plugin) => Completer<int>().future;
+
+  @override
+  Future<Map<String, dynamic>> uiAction(int session, int node, String action, [Object? value]) =>
+      Completer<Map<String, dynamic>>().future;
+
+  @override
+  Future<void> closeUi(int session, {bool force = false}) => Completer<void>().future;
+}
+
 void main() {
   const plugin = '/plugins/Test.cs3';
+
+  test('an open that never answers fails with an error instead of hanging', () async {
+    try {
+      await ExtensionUiSession.open(_HangingApi(), plugin, timeout: const Duration(milliseconds: 50));
+      fail('the open should have failed');
+    } on TimeoutException catch (e) {
+      expect(e.message, contains('did not open in'));
+    }
+  });
+
+  test('a force close ends the screen here when the engine never answers uiClosed', () async {
+    final api = _FakeApi();
+    final session = ExtensionUiSession.test(api, closeWait: const Duration(milliseconds: 50));
+    session.receive({
+      'event': 'ui',
+      'session': 1,
+      'windows': [_window('Settings')],
+    });
+    await _settle();
+    await session.close(force: true);
+    expect(session.closed, isTrue);
+    expect(session.closedReason, 'closed');
+    await session.done;
+  });
+
+  test('a force close ends the screen here even when closeUi never answers', () async {
+    final session = ExtensionUiSession.test(_HangingApi(), closeWait: const Duration(milliseconds: 50));
+    session.receive({
+      'event': 'ui',
+      'session': 1,
+      'windows': [_window('Settings')],
+    });
+    await _settle();
+    await session.close(force: true);
+    expect(session.closed, isTrue);
+    await session.done;
+  });
 
   test('the first windows may come before the engine answers', () async {
     final session = await ExtensionUiSession.open(_FakeApi(), plugin);

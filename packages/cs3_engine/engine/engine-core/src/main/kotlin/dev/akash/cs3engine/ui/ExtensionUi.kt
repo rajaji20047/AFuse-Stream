@@ -32,6 +32,8 @@ class ExtensionUi(
     private val host: ExtensionUiHost?,
     private val emit: (type: String, fields: Map<String, Any?>) -> Unit,
     private val openTimeoutMs: Long = OPEN_TIMEOUT_MS,
+    /** How long the platform's open of a screen may take to return: shorter only in tests. */
+    private val openHostTimeoutMs: Long = OPEN_HOST_TIMEOUT_MS,
     private val clock: () -> Long = System::currentTimeMillis,
     private val callClock: BrokerClock = BrokerClock.shared,
     private val holdLimitMs: Long = WAITING_HOLD_LIMIT_MS,
@@ -65,8 +67,11 @@ class ExtensionUi(
 
     /**
      * Opens [plugin]'s settings screen by calling [settings], and returns `{session}` once a window shows.
-     * Fails when there's no screen, [settings] throws, or nothing shows within [openTimeoutMs] of the
-     * main thread running what [settings] posted (a slow device takes seconds to get there).
+     * Fails when there's no screen, [settings] throws, the platform's open doesn't return within
+     * [openHostTimeoutMs] (the extension's `openSettings` runs on the platform's main thread, and
+     * plugin code blocking it would otherwise hold the open — and the app's answer to it — forever),
+     * or nothing shows within [openTimeoutMs] of the main thread running what [settings] posted
+     * (a slow device takes seconds to get there).
      */
     suspend fun openSettings(plugin: File, settings: (() -> Unit)?): Map<String, Any?> {
         val host = host()
@@ -81,7 +86,7 @@ class ExtensionUi(
         sessions[session.id] = session
         shown[session.id] = first
         try {
-            host.open(session, plugin, settings)
+            withTimeout(openHostTimeoutMs) { host.open(session, plugin, settings) }
             withTimeoutOrNull(SETTLE_LIMIT_MS) { host.settled(session) }
             withTimeout(openTimeoutMs) { first.await() }
         } catch (e: TimeoutCancellationException) {
@@ -237,7 +242,8 @@ class ExtensionUi(
         sessions[session.id] = session
         shown[session.id] = first
         try {
-            if (!host.openKept(session, plugin)) throw IllegalStateException("${plugin.name} has no pop-ups kept")
+            val kept = withTimeout(openHostTimeoutMs) { host.openKept(session, plugin) }
+            if (!kept) throw IllegalStateException("${plugin.name} has no pop-ups kept")
             withTimeout(openTimeoutMs) { first.await() }
         } catch (e: TimeoutCancellationException) {
             session.end("nothing")
@@ -321,6 +327,11 @@ class ExtensionUi(
 
     companion object {
         const val OPEN_TIMEOUT_MS = 3_000L
+
+        /** The longest the platform's open of a screen (or its kept pop-ups) may take to return: the
+         * extension's `openSettings` runs on the platform's main thread, and plugin code blocking it
+         * would otherwise hold the open — and the app's answer to it — forever. */
+        const val OPEN_HOST_TIMEOUT_MS = 30_000L
 
         /** Actions that aren't the person's changes: closing, and a page's focus (nothing to apply after). */
         private val UNCOUNTED = setOf("close", "focus", "blur")

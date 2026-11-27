@@ -45,7 +45,7 @@ class HostUiApi implements ExtensionUiApi {
 /// One extension screen open in the engine: its windows as they change, and the person's actions,
 /// sent one after another. Ends when the engine says (`uiClosed`).
 class ExtensionUiSession extends ChangeNotifier {
-  ExtensionUiSession._(this._api, this.id, this.plugin);
+  ExtensionUiSession._(this._api, this.id, this.plugin) : _closeWait = const Duration(seconds: 5);
 
   @visibleForTesting
   ExtensionUiSession.test(
@@ -53,7 +53,8 @@ class ExtensionUiSession extends ChangeNotifier {
     this.id = 1,
     this.plugin = '/plugins/Test.cs3',
     List<UiWindow> windows = const [],
-  }) {
+    Duration closeWait = const Duration(seconds: 5),
+  }) : _closeWait = closeWait {
     this.windows = windows;
   }
 
@@ -62,13 +63,22 @@ class ExtensionUiSession extends ChangeNotifier {
   void receive(Map<String, dynamic> event) => _on(event);
 
   /// Opens [plugin]'s settings screen. Its first windows can arrive before the engine answers, so its
-  /// events are heard from the start.
-  static Future<ExtensionUiSession> open(ExtensionUiApi api, String plugin) =>
-      _start(api, plugin, () => api.openSettings(plugin));
+  /// events are heard from the start. Fails with a [TimeoutException] instead of hanging forever
+  /// when the engine never answers (plugin code blocking the main thread, or a load stuck behind
+  /// another plugin): the flow then shows the failure instead of the sheet never coming.
+  static Future<ExtensionUiSession> open(
+    ExtensionUiApi api,
+    String plugin, {
+    Duration timeout = const Duration(seconds: 60),
+  }) => _start(api, plugin, () => api.openSettings(plugin), timeout: timeout, what: 'settings');
 
   /// Opens [plugin]'s kept pop-ups, as its Support button does; heard from the start, as [open].
-  static Future<ExtensionUiSession> openPopups(ExtensionUiApi api, String plugin) =>
-      _start(api, plugin, () => api.openPopups(plugin));
+  /// Fails with a [TimeoutException] instead of hanging forever, as [open].
+  static Future<ExtensionUiSession> openPopups(
+    ExtensionUiApi api,
+    String plugin, {
+    Duration timeout = const Duration(seconds: 60),
+  }) => _start(api, plugin, () => api.openPopups(plugin), timeout: timeout, what: 'pop-ups');
 
   /// A screen the engine opened by itself (`uiOpened`): a window the person waits on. Heard from here on; the
   /// engine reads its windows a moment after it says so.
@@ -78,11 +88,22 @@ class ExtensionUiSession extends ChangeNotifier {
     return session;
   }
 
-  static Future<ExtensionUiSession> _start(ExtensionUiApi api, String plugin, Future<int> Function() opening) async {
+  static Future<ExtensionUiSession> _start(
+    ExtensionUiApi api,
+    String plugin,
+    Future<int> Function() opening, {
+    required Duration timeout,
+    required String what,
+  }) async {
     final early = <Map<String, dynamic>>[];
     final listening = api.events.listen(early.add);
     try {
-      final id = await opening();
+      final id = await opening().timeout(
+        timeout,
+        onTimeout: () {
+          throw TimeoutException("the extension's $what did not open in ${timeout.inSeconds} s");
+        },
+      );
       final session = ExtensionUiSession._(api, id, plugin).._events = listening;
       for (final event in early) {
         session._on(event);
@@ -101,6 +122,10 @@ class ExtensionUiSession extends ChangeNotifier {
   final int id;
   final String plugin;
   StreamSubscription<Map<String, dynamic>>? _events;
+
+  /// How long a force close waits for the engine's answer and its `uiClosed` before ending the
+  /// screen here: a dead screen must not hold the sheet open.
+  final Duration _closeWait;
 
   /// Its windows, bottom to top.
   List<UiWindow> windows = const [];
@@ -168,12 +193,8 @@ class ExtensionUiSession extends ChangeNotifier {
         ];
         notifyListeners();
       case 'uiClosed' when event['session'] == id:
-        closedReason = event['reason'] as String? ?? 'closed';
         closedError = event['error'] as String?;
-        if (!_done.isCompleted) _done.complete();
-        windows = const [];
-        unawaited(_events?.cancel());
-        notifyListeners();
+        _endClosed(event['reason'] as String? ?? 'closed');
       case 'pageFocusExit' when event['session'] == id:
         _pageExits.add((node: (event['node'] as num).toInt(), direction: event['direction'] as String? ?? 'forward'));
       case 'restartRequested' when _path(event['plugin']) == _path(plugin):
@@ -195,16 +216,36 @@ class ExtensionUiSession extends ChangeNotifier {
     _typed = Timer(const Duration(milliseconds: 300), _flushText);
   }
 
-  /// Closes the top window, as Back would; [force] dismisses every window at once.
+  /// Closes the top window, as Back would; [force] dismisses every window at once. A dead engine
+  /// must not hold the sheet open: a force close that gets no answer ends the screen here, so the
+  /// sheet always goes.
   Future<void> close({bool force = false}) async {
     _flushText();
-    await _queue;
+    // An action that never answers (a dead engine) must not hold the escape hatch.
+    final queue = _queue;
+    if (queue != null) await queue.timeout(_closeWait, onTimeout: () {});
     if (closed) return;
     if (force || windows.isEmpty) {
-      await _api.closeUi(id, force: force);
+      await _api.closeUi(id, force: force).timeout(_closeWait, onTimeout: () {});
+      if (!closed) {
+        // The engine's `uiClosed` may never arrive (a dead screen): end here so the sheet goes.
+        await done.timeout(_closeWait, onTimeout: () {});
+        if (!closed) _endClosed('closed');
+      }
       return;
     }
     await _send(windows.last.root.id, 'close', null);
+  }
+
+  /// Ends the screen here, as the engine's `uiClosed` would: the sheet goes even when that event
+  /// never arrives (a dead screen).
+  void _endClosed(String reason) {
+    if (closed) return;
+    closedReason = reason;
+    if (!_done.isCompleted) _done.complete();
+    windows = const [];
+    unawaited(_events?.cancel());
+    notifyListeners();
   }
 
   void _flushText() {

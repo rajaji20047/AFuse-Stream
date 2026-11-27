@@ -670,7 +670,11 @@ class _PluginTile extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  if (installed.hasSettings == true &&
+                  // Shown unless the engine said the plugin has no settings screen: `hasSettings`
+                  // is null until a load reports it, not none — hiding the button on that
+                  // uncertainty hid real settings screens. A plugin with none fails to open
+                  // with an error instead.
+                  if (installed.hasSettings != false &&
                       extensionScreensSupported)
                     Semantics(
                       identifier: 'cs3-settings-${info.internalName}',

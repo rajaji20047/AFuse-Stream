@@ -18,6 +18,9 @@ class ExtensionUiTest {
     private class FakeHost : ExtensionUiHost {
         var showsWindow = true
 
+        /** Set: [open] and [openKept] never return (plugin code blocking the platform's main thread). */
+        var openHangs = false
+
         /** Set: the window shows only once the main thread gets to it, this many ms on (a slow device). */
         var slowShowMs: Long? = null
         var throwOnAct: Throwable? = null
@@ -36,6 +39,7 @@ class ExtensionUiTest {
 
         override suspend fun openKept(session: UiSession, plugin: File): Boolean {
             val count = keptWindows.remove(plugin.absolutePath) ?: return false
+            if (openHangs) delay(Long.MAX_VALUE)
             sessions += session
             session.publish((1..count).map { mapOf("id" to "w$it", "kind" to "dialog") })
             return true
@@ -48,6 +52,7 @@ class ExtensionUiTest {
         override suspend fun open(session: UiSession, plugin: File, open: () -> Unit) {
             sessions += session
             open()
+            if (openHangs) delay(Long.MAX_VALUE)
             if (showsWindow) session.publish(listOf(mapOf("id" to "w1", "kind" to "sheet")))
         }
 
@@ -103,6 +108,37 @@ class ExtensionUiTest {
         val error = assertFailsWith<IllegalStateException> { ui(host).openSettings(plugin) {} }
         assertTrue("showed no settings screen" in error.message!!)
         assertEquals(listOf(1 to true), host.closed)
+        assertEquals(listOf("nothing"), named("uiClosed").map { it["reason"] })
+    }
+
+    @Test
+    fun `a screen whose platform never runs its open fails instead of hanging`() = runBlocking {
+        val host = FakeHost().apply { openHangs = true }
+        val ui = ExtensionUi(
+            host,
+            { type, fields -> events += type to fields },
+            openTimeoutMs = 200,
+            openHostTimeoutMs = 50,
+        )
+        val error = assertFailsWith<IllegalStateException> { ui.openSettings(plugin) {} }
+        assertTrue("showed no settings screen" in error.message!!)
+        assertEquals(listOf("nothing"), named("uiClosed").map { it["reason"] })
+    }
+
+    @Test
+    fun `kept pop-ups whose platform never opens them fail instead of hanging`() = runBlocking {
+        val host = FakeHost().apply {
+            openHangs = true
+            keptWindows[plugin.absolutePath] = 1
+        }
+        val ui = ExtensionUi(
+            host,
+            { type, fields -> events += type to fields },
+            openTimeoutMs = 200,
+            openHostTimeoutMs = 50,
+        )
+        val error = assertFailsWith<IllegalStateException> { ui.openPopups(plugin) }
+        assertTrue("didn't show" in error.message!!)
         assertEquals(listOf("nothing"), named("uiClosed").map { it["reason"] })
     }
 
