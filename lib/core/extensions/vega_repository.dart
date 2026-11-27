@@ -51,6 +51,18 @@ class VegaRepository extends Notifier<VegaState> {
   /// SharedPreferences key holding the manifest URLs the user added.
   static const String repoUrlsKey = 'vega_repo_urls';
 
+  /// The Vega source present by default: the Zenda-Cross provider
+  /// repository, the de facto real-providers repo for the Vega app's
+  /// provider system. Seeded on first initialisation when no source is
+  /// stored yet, so the Vega tab lists its providers without the user
+  /// adding anything.
+  static const String defaultSourceInput = 'Zenda-Cross';
+
+  /// SharedPreferences flag recording that the default source was seeded.
+  /// Once set, the seed never runs again, so removing the default source
+  /// stays removed — a later launch never puts it back.
+  static const String defaultSourceSeededKey = 'vega_default_source_seeded';
+
   /// SharedPreferences key holding the package names the user disabled.
   static const String disabledProvidersKey = 'vega_disabled_providers';
 
@@ -98,10 +110,30 @@ class VegaRepository extends Notifier<VegaState> {
     state = state.copyWith(isLoading: true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final urls = prefs.getStringList(repoUrlsKey) ?? const <String>[];
+      var urls = prefs.getStringList(repoUrlsKey) ?? const <String>[];
       final disabled = <String>{
         ...?prefs.getStringList(disabledProvidersKey),
       };
+      // The default source: a fresh install — or one that never added a
+      // Vega source — gets Zenda-Cross without the user adding anything,
+      // so the Vega tab lists its providers from the first launch. The
+      // seeded flag is written only after the URL list is persisted, so
+      // a failed write retries next launch; once set, the seed never runs
+      // again, so removing the source stays removed.
+      if (urls.isEmpty && !(prefs.getBool(defaultSourceSeededKey) ?? false)) {
+        try {
+          final source = ref
+              .read(vegaRepositoryServiceProvider)
+              .resolveSource(defaultSourceInput);
+          urls = [source.manifestUrl];
+          await prefs.setStringList(repoUrlsKey, urls);
+          await prefs.setBool(defaultSourceSeededKey, true);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('Vega: could not seed the default source: $e');
+          }
+        }
+      }
       final installed = await _listInstalled();
 
       // The installed providers publish from disk first: Home, search and
