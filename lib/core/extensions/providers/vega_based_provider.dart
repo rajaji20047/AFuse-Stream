@@ -26,6 +26,10 @@ const int _kVegaMaxStreamsPerCall = 200;
 const int _kVegaMaxEpisodeLinks = 2000;
 const int _kVegaMaxSkipUrls = 500;
 
+/// Cap on the listing images remembered per provider session (see
+/// [VegaBasedProvider._listingImages]).
+const int _kVegaMaxListingImages = 500;
+
 /// One skip interval (intro / recap / credits) a Vega stream reported, in
 /// seconds. Parsed and validated by [VegaBasedProvider]; the player does not
 /// consume these yet (see [VegaBasedProvider.skipIntervalsFor]).
@@ -169,6 +173,14 @@ class VegaBasedProvider extends SkyStreamProvider {
   /// Skip intervals a provider returned per stream URL, for the player
   /// wiring in a later phase (no consumer yet — see [skipIntervalsFor]).
   final Map<String, List<VegaSkipInterval>> _skipIntervals = {};
+
+  /// Listing images seen by [getHome]/search this session, keyed by the
+  /// post's link URL. Some providers' `getMeta` returns no image at all
+  /// (MX Player: `image=""` for Yashoda) while the listing that led here
+  /// carried a poster — [_infoToItem] falls back to this cache so the
+  /// details hero is not left on the placeholder. Bounded (see
+  /// [_kVegaMaxListingImages]).
+  final Map<String, String> _listingImages = {};
 
   VegaBasedProvider(
     this._jsEngine, {
@@ -799,10 +811,18 @@ globalThis[$installerKey] = function(__ssTok) {
   // ---------------------------------------------------------------------------
 
   MultimediaItem _postToItem(Map<String, dynamic> post) {
+    final link = (post['link'] as String?) ?? '';
+    final image = (post['image'] as String?) ?? '';
+    if (link.isNotEmpty && image.isNotEmpty) {
+      if (_listingImages.length >= _kVegaMaxListingImages) {
+        _listingImages.clear();
+      }
+      _listingImages[link] = image;
+    }
     return MultimediaItem(
       title: (post['title'] as String?) ?? '',
-      url: (post['link'] as String?) ?? '',
-      posterUrl: (post['image'] as String?) ?? '',
+      url: link,
+      posterUrl: image,
       provider: packageName,
       source: _displayName,
     );
@@ -846,12 +866,17 @@ globalThis[$installerKey] = function(__ssTok) {
       episodes = await _episodesFromLinkList(linkList);
     }
 
+    // getMeta may return no image at all (empty string, not null) while
+    // the listing that led here carried a poster — fall back to it so the
+    // details hero is not left on the placeholder.
+    final metaImage = _nonEmpty(info['poster']) ?? _nonEmpty(info['image']);
+    final image = metaImage ?? _listingImages[url];
+
     return MultimediaItem(
       title: (info['title'] as String?) ?? '',
       url: url,
-      posterUrl:
-          (info['poster'] as String?) ?? (info['image'] as String?) ?? '',
-      bannerUrl: info['image'] as String?,
+      posterUrl: image ?? '',
+      bannerUrl: image,
       logoUrl: info['logo'] as String?,
       description: info['synopsis'] as String?,
       contentType: type,
@@ -1108,6 +1133,12 @@ globalThis[$installerKey] = function(__ssTok) {
       'options': raw['options'],
     };
   }
+
+  /// A non-empty string, or null for anything else (null, empty string,
+  /// non-string). getMeta returns `image=""` (empty, not null) for some
+  /// titles, so a plain `??` would keep the empty value.
+  String? _nonEmpty(dynamic value) =>
+      value is String && value.isNotEmpty ? value : null;
 
   List<String>? _stringList(dynamic raw) {
     if (raw is! List) return null;
