@@ -335,7 +335,20 @@ class DetailsController extends _$DetailsController {
       }
     } catch (e, st) {
       if (ref.mounted) {
-        state = state.copyWith(details: AsyncError(e, st));
+        state = state.copyWith(
+          details: AsyncError(e, st),
+          // The provider gave no details, so _processEpisodes never ran
+          // and isMovie stayed false — which hides the Play button for
+          // a Vega movie (hidePlay: isVega && !isMovie). The catalog
+          // item's own content type is the verdict here; a series keeps
+          // isMovie false and its Play button stays hidden.
+          isMovie: item.contentType == MultimediaContentType.movie,
+          // A film is one episode — itself — so the Play button has
+          // something to play (mirrors the provider's film synthesis).
+          // Set now so Play is enabled at once, not only after the
+          // background enrichment lands.
+          item: _withFilmEpisode(item),
+        );
       }
       // The provider's getMeta failed, but the catalog item still names
       // the title: resolve its TMDB/IMDb ids in the background anyway, so
@@ -343,6 +356,20 @@ class DetailsController extends _$DetailsController {
       // still load for it. The error itself stays as-is.
       unawaited(_resolveMetadataInBackground(item));
     }
+  }
+
+  /// A film is one episode — itself (mirrors the Vega provider's film
+  /// synthesis in `VegaBasedProvider._infoToItem`): the details page's
+  /// Play button is gated on `episodes` being non-empty, so without one
+  /// the button is dead and neither tap (direct play) nor hold (links
+  /// sheet) works. A series keeps no episodes here; its Play button
+  /// stays hidden by the Vega-series rule.
+  MultimediaItem _withFilmEpisode(MultimediaItem item) {
+    if (item.contentType != MultimediaContentType.movie) return item;
+    if (item.episodes != null && item.episodes!.isNotEmpty) return item;
+    return item.copyWith(
+      episodes: [Episode(name: item.title, url: item.url)],
+    );
   }
 
   Future<void> _resolveMetadataInBackground(MultimediaItem withProvider) async {
@@ -458,8 +485,11 @@ class DetailsController extends _$DetailsController {
           // getDetails failed (details is AsyncError, so there is no
           // fetched item to patch): the enriched ids still belong on the
           // state item, so the screen's TMDB fill and the links sheet can
-          // use them. The error itself is left untouched.
-          state = state.copyWith(item: finalItem);
+          // use them. The error itself is left untouched. Re-attach the
+          // film episode (set in the catch): the enriched item carries
+          // ids but no episodes, and overwriting would kill the Play
+          // button the catch just enabled.
+          state = state.copyWith(item: _withFilmEpisode(finalItem));
         }
       }
     } catch (e) {

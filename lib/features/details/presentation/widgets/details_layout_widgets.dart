@@ -301,10 +301,20 @@ class DetailsActionButtons extends HookConsumerWidget {
       target: targetEpisode,
     );
 
+    // When the provider's getDetails failed, `details` is null — but the
+    // controller keeps the enriched catalog item (with a synthesized
+    // single episode for a film) on the state item. Use it for the Play
+    // button so a film whose provider gave no details can still play
+    // and open the links sheet. A series has no episodes here, so its
+    // Play button stays disabled (and hidden by hidePlay for Vega).
+    final stateItem = ref.watch(
+      detailsControllerProvider(itemUrl).select((s) => s.item),
+    );
+    final effectiveDetails = details ?? stateItem;
     final playable =
-        details != null &&
-        details!.episodes != null &&
-        details!.episodes!.isNotEmpty;
+        effectiveDetails != null &&
+        effectiveDetails.episodes != null &&
+        effectiveDetails.episodes!.isNotEmpty;
 
     final playBtn = CustomButton(
       isPrimary: true,
@@ -314,7 +324,7 @@ class DetailsActionButtons extends HookConsumerWidget {
           ? () async {
               await ref
                   .read(detailsControllerProvider(item.url).notifier)
-                  .handlePlayPress(context, details!);
+                  .handlePlayPress(context, effectiveDetails!);
 
               // Phase 10 Fix: TV Focus restoration on return from player
               if (context.mounted && isTv) {
@@ -329,7 +339,7 @@ class DetailsActionButtons extends HookConsumerWidget {
                 .read(detailsControllerProvider(item.url).notifier)
                 .openLinksSheet(
                   context,
-                  details!,
+                  effectiveDetails!,
                   specificEpisode: targetEpisode,
                 )
           : null,
