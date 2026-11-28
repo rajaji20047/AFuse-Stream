@@ -146,7 +146,8 @@ class PlayerStartupView extends StatefulWidget {
   State<PlayerStartupView> createState() => _PlayerStartupViewState();
 }
 
-class _PlayerStartupViewState extends State<PlayerStartupView> {
+class _PlayerStartupViewState extends State<PlayerStartupView>
+    with SingleTickerProviderStateMixin {
   /// Retry's node, so the remote can be handed to it when the last link fails:
   /// autofocus alone does nothing while a row still holds focus.
   final FocusNode _retryFocus = FocusNode(debugLabel: 'player-startup-retry');
@@ -156,15 +157,37 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
 
   final GlobalKey<_SourceListState> _list = GlobalKey<_SourceListState>();
 
+  /// The breathing pulse for the artwork while loading: a slow scale
+  /// in-out cycle, ~2s, 1.00 -> 1.03. Runs only while loading, never once
+  /// every link has failed (see [didUpdateWidget]).
+  late final AnimationController _breathe;
+  late final Animation<double> _breatheScale;
+
   @override
   void initState() {
     super.initState();
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _breatheScale = Tween<double>(begin: 1.0, end: 1.03).animate(
+      CurvedAnimation(parent: _breathe, curve: Curves.easeInOut),
+    );
+    if (!widget.failed) _breathe.repeat(reverse: true);
     FocusManager.instance.addListener(_claimParkedFocus);
   }
 
   @override
   void didUpdateWidget(PlayerStartupView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.failed && !oldWidget.failed) {
+      // Dead end: the artwork stops breathing at its resting size, and the
+      // error icon takes over above the title.
+      _breathe.stop();
+      _breathe.reset();
+    } else if (!widget.failed && oldWidget.failed) {
+      _breathe.repeat(reverse: true);
+    }
     if (widget.isTv && widget.failed && !oldWidget.failed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _onTop) _retryFocus.requestFocus();
@@ -174,6 +197,7 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
 
   @override
   void dispose() {
+    _breathe.dispose();
     FocusManager.instance.removeListener(_claimParkedFocus);
     _retryFocus.dispose();
     _backFocus.dispose();
@@ -225,18 +249,28 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
         // leaves black, not the video surface underneath.
         const ColoredBox(color: Colors.black),
         if (showBackdrop)
-          CachedNetworkImage(
-            imageUrl: backdrop,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            memCacheWidth: ImageUtils.coverDecodeWidth(
-              context,
-              width: size.width,
-              height: size.height,
-              sourceAspectRatio: ImageUtils.backdropAspectRatio,
+          // The breathing artwork: only the image scales, the dim below
+          // stays steady, and there is no blur layer (see the comment on
+          // the dim). Scaling up only, so no edge ever shows.
+          AnimatedBuilder(
+            animation: _breatheScale,
+            builder: (context, child) => Transform.scale(
+              scale: _breatheScale.value,
+              child: child,
             ),
-            placeholder: (_, _) => const SizedBox.shrink(),
-            errorWidget: (_, _, _) => const SizedBox.shrink(),
+            child: CachedNetworkImage(
+              imageUrl: backdrop,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              memCacheWidth: ImageUtils.coverDecodeWidth(
+                context,
+                width: size.width,
+                height: size.height,
+                sourceAspectRatio: ImageUtils.backdropAspectRatio,
+              ),
+              placeholder: (_, _) => const SizedBox.shrink(),
+              errorWidget: (_, _, _) => const SizedBox.shrink(),
+            ),
           ),
         // A paint, not a layer. No blur either: this sits over a platform
         // view on Android, and a window-sized filter layer there is the cost
@@ -254,15 +288,32 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
           ),
         SafeArea(
           child: LayoutBuilder(
-            builder: (context, constraints) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: wide ? 960 : 640),
-                  child: _content(l10n, constraints.maxHeight - 48, wide: wide),
+            // Aligned a bit above center, not dead-center: the title block
+            // reads high. A fractional alignment, not a pixel offset, so a
+            // short landscape screen shifts by the same proportion.
+            builder: (context, constraints) {
+              // The column keeps the width the list used to have as the
+              // right-hand column (~55% of the room, capped at 680), so a
+              // narrow landscape screen still gets the icon-only rows
+              // below 400 wide, and a wide one the labelled columns.
+              final columnWidth = wide
+                  ? (constraints.maxWidth * 0.55).clamp(320.0, 680.0)
+                  : 640.0;
+              return Align(
+                alignment: const Alignment(0, -0.28),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: columnWidth),
+                    child: _content(
+                      l10n,
+                      constraints.maxHeight - 48,
+                      wide: wide,
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
         // In portrait nothing shows at all, Back included: the screen is
@@ -310,31 +361,35 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
     final detail = widget.detail;
     final reason = widget.reason;
 
-    // The info block, shared by both layouts below: logo, spinner, title and
-    // the lines under it, and the "Source N of M" pill.
-    final info = IgnorePointer(
+    // One centered column now, not a left/right split: the head (logo,
+    // title, source name) sits above, the source list immediately below
+    // the source name, and the pill, status and retry under the list.
+    // The head: logo, title and the lines under it.
+    final head = IgnorePointer(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (logo != null && logo.isNotEmpty && logoHeight > 0) ...[
-            _Logo(url: logo, height: logoHeight),
+            // The logo breathes with the backdrop while loading.
+            AnimatedBuilder(
+              animation: _breatheScale,
+              builder: (context, child) => Transform.scale(
+                scale: _breatheScale.value,
+                child: child,
+              ),
+              child: _Logo(url: logo, height: logoHeight),
+            ),
             const SizedBox(height: 20),
           ],
+          // No spinner ring any more: while loading the artwork breathes
+          // instead. Only the failed state shows an icon here.
           if (widget.failed)
             Icon(
               Icons.error_outline_rounded,
               color: Colors.red.shade300,
               size: 42,
-            )
-          else
-            const SizedBox.square(
-              dimension: 42,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
             ),
-          const SizedBox(height: 16),
+          if (widget.failed) const SizedBox(height: 16),
           Text(
             widget.title,
             maxLines: 2,
@@ -372,6 +427,16 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+
+    // The tail: status, detail, reason and the "Source N of M" pill,
+    // under the list.
+    final tail = IgnorePointer(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           if (status != null && status.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
@@ -440,6 +505,9 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
       ],
     ];
 
+    // The list is the one part that can shrink: it takes what is left
+    // after the head and the tail, at least two rows, so on a short
+    // landscape screen it shrinks instead of pushing the title off-screen.
     final Widget? list = widget.rows.isNotEmpty
         ? _SourceList(
             key: _list,
@@ -447,27 +515,22 @@ class _PlayerStartupViewState extends State<PlayerStartupView> {
             currentIndex: widget.currentIndex,
             isTv: widget.isTv,
             onPick: widget.onPick,
-            maxHeight: wide ? height : 220,
+            maxHeight: (height - 240).clamp(94.0, 470.0),
           )
         : null;
 
-    // Wide only now: a single column would leave the short landscape screen to the
-    // header and show one row of links, so the info sits left and the list
-    // right, over the backdrop.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // Wide only now: a single centered column — head, then the list
+    // immediately below the source name, then the tail and retry.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          flex: 5,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [info, ...retry],
-          ),
-        ),
+        head,
         if (list != null) ...[
-          const SizedBox(width: 24),
-          Expanded(flex: 6, child: list),
+          const SizedBox(height: 14),
+          list,
         ],
+        tail,
+        ...retry,
       ],
     );
   }
@@ -543,8 +606,9 @@ class _SourceList extends StatefulWidget {
   final bool isTv;
   final ValueChanged<int> onPick;
 
-  /// The tallest the panel gets: 220 in the portrait column, the whole
-  /// content height in the wide layout, where the list is the right column.
+  /// The tallest the panel gets: what is left after the title block and
+  /// the lines under the list, so the list shrinks on a short landscape
+  /// screen instead of pushing the title off-screen.
   final double maxHeight;
 
   @override
@@ -926,27 +990,21 @@ class _SourceRow extends StatelessWidget {
     );
   }
 
-  static Widget _spinner({required Color colour, String? semanticLabel}) =>
-      SizedBox.square(
-        dimension: 14,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          semanticsLabel: semanticLabel,
-          valueColor: AlwaysStoppedAnimation<Color>(colour),
-        ),
-      );
-
   /// The check's icon, built with or without a label for a screen reader,
   /// and the colour its word is drawn in - or null when there is nothing to
-  /// show, which is a source nobody has checked.
+  /// show, which is a source nobody has checked. No spinner ring anywhere:
+  /// checking shows a static hourglass beside its "Checking…" word.
   static (Widget Function({required String? semanticLabel}), Color)?
   _reachabilityLook(SourceReachability reachability) {
     Widget icon(IconData data, Color colour, String? label) =>
         Icon(data, size: 14, color: colour, semanticLabel: label);
     return switch (reachability) {
       SourceReachability.checking => (
-        ({required semanticLabel}) =>
-            _spinner(colour: Colors.white70, semanticLabel: semanticLabel),
+        ({required semanticLabel}) => icon(
+          Icons.hourglass_top_rounded,
+          Colors.white70,
+          semanticLabel,
+        ),
         Colors.white70,
       ),
       SourceReachability.reachable => (
@@ -982,13 +1040,17 @@ class _SourceRow extends StatelessWidget {
 
   /// How playing went, as an icon, for the narrow layout's second column.
   /// Nothing for a source nobody has opened, as the wide layout says nothing.
+  /// Opening shows a static hourglass, not a spinner ring; the wide layout
+  /// already says "Opening…" in words.
   static Widget? _playStateIcon(
     SourcePlayState state, {
     String? semanticLabel,
   }) => switch (state) {
     SourcePlayState.untried => null,
-    SourcePlayState.opening => _spinner(
-      colour: Colors.white,
+    SourcePlayState.opening => Icon(
+      Icons.hourglass_top_rounded,
+      size: 16,
+      color: Colors.white,
       semanticLabel: semanticLabel,
     ),
     SourcePlayState.playing => Icon(
