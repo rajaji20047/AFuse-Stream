@@ -17,7 +17,10 @@ import 'package:raja/core/storage/storage_service.dart';
 import '../../library/presentation/library_provider.dart';
 import '../../library/presentation/history_provider.dart';
 import '../../addons/presentation/addon_sources_sheet.dart';
+import '../../../core/addons/data/addon_client.dart';
 import '../../../core/addons/data/addon_stream_service.dart';
+import '../../../core/addons/data/builtin_addons.dart';
+import '../../../core/addons/models/addon_meta.dart';
 import 'playback_launcher.dart';
 import '../../../core/services/download_service.dart';
 import '../data/metadata_resolution_service.dart';
@@ -34,6 +37,101 @@ String episodeSelectionKey(Episode episode) {
     episode.dubStatus.name,
     episode.url,
   ].join('|');
+}
+
+/// The provider already gave everything the header shows (poster,
+/// backdrop, description and score): neither Cinemeta nor TMDB has a
+/// display field left to fill, so no display metadata is fetched.
+bool hasFullDisplaySet(MultimediaItem item) {
+  return item.posterUrl.isNotEmpty &&
+      item.bannerUrl != null &&
+      item.bannerUrl!.isNotEmpty &&
+      item.description != null &&
+      item.description!.trim().isNotEmpty &&
+      item.score != null;
+}
+
+/// Whether [meta] would fill at least one display field [item] left empty.
+bool _cinemetaFillsAny(MultimediaItem item, AddonMeta meta) {
+  final poster = meta.poster;
+  if (item.posterUrl.isEmpty && poster != null && poster.isNotEmpty) {
+    return true;
+  }
+  final background = meta.background;
+  if ((item.bannerUrl == null || item.bannerUrl!.isEmpty) &&
+      background != null &&
+      background.isNotEmpty) {
+    return true;
+  }
+  final description = meta.description;
+  if ((item.description == null || item.description!.trim().isEmpty) &&
+      description != null &&
+      description.trim().isNotEmpty) {
+    return true;
+  }
+  if (item.score == null && double.tryParse(meta.imdbRating ?? '') != null) {
+    return true;
+  }
+  if ((item.cast == null || item.cast!.isEmpty) &&
+      (meta.castMembers.isNotEmpty || meta.cast.isNotEmpty)) {
+    return true;
+  }
+  return false;
+}
+
+/// Returns [item] with Cinemeta's display fields merged into the gaps the
+/// provider left (poster, backdrop, description, score, cast). A value
+/// the provider gave is never overwritten; a field Cinemeta doesn't have
+/// stays empty for TMDB.
+MultimediaItem _withCinemetaDisplayGapsFilled(
+  MultimediaItem item,
+  AddonMeta meta,
+) {
+  final poster = meta.poster;
+  final background = meta.background;
+  final description = meta.description;
+  final score = item.score ?? double.tryParse(meta.imdbRating ?? '');
+  List<Actor>? cast = item.cast;
+  if (cast == null || cast.isEmpty) {
+    if (meta.castMembers.isNotEmpty) {
+      // Character roles when Cinemeta has them; a photo only when it is
+      // a full URL (a bare TMDB-style path would not load as-is).
+      cast = meta.castMembers
+          .map(
+            (m) => Actor(
+              name: m.name,
+              role: m.character.isEmpty ? null : m.character,
+              image:
+                  m.profilePath != null && m.profilePath!.startsWith('http')
+                      ? m.profilePath
+                      : null,
+            ),
+          )
+          .toList();
+    } else if (meta.cast.isNotEmpty) {
+      cast = meta.cast.map((name) => Actor(name: name)).toList();
+    }
+  }
+  return item.copyWith(
+    posterUrl:
+        item.posterUrl.isEmpty && poster != null && poster.isNotEmpty
+            ? poster
+            : null,
+    bannerUrl:
+        (item.bannerUrl == null || item.bannerUrl!.isEmpty) &&
+                background != null &&
+                background.isNotEmpty
+            ? background
+            : null,
+    description:
+        (item.description == null || item.description!.trim().isEmpty) &&
+                description != null &&
+                description.trim().isNotEmpty
+            ? description
+            : null,
+    score: score,
+    cast: cast,
+  );
 }
 
 class DetailsState {
@@ -396,6 +494,23 @@ class DetailsController extends _$DetailsController {
       final hasBothWesternIds =
           withProvider.tmdbId != null && withProvider.imdbId != null;
 
+      // The provider already gave the full display set: Cinemeta has no
+      // display field left to fill. Ids are still resolved when missing
+      // (the links sheet and Nuvio need them), but no display metadata
+      // is fetched.
+      final displayFull = hasFullDisplaySet(withProvider);
+
+      // Cinemeta starts NOW when an IMDb id is already on the item — in
+      // parallel with the TMDB id resolution below, never waiting for it.
+      // Its result is patched separately when it lands, so a slow
+      // Cinemeta never delays the id patch (and the TMDB watch it starts).
+      Future<AddonMeta?>? cinemetaFuture;
+      if (!displayFull &&
+          withProvider.imdbId != null &&
+          withProvider.imdbId!.isNotEmpty) {
+        cinemetaFuture = _fetchCinemetaMeta(withProvider);
+      }
+
       try {
         if (!hasBothWesternIds) {
           enrichedItem = await ref
@@ -419,6 +534,15 @@ class DetailsController extends _$DetailsController {
             'DetailsController: TMDB metadata resolution failed, but continuing: $e',
           );
         }
+      }
+
+      // No IMDb id at the start, but the resolution above found one: the
+      // Cinemeta fetch couldn't have started earlier, so start it now.
+      if (!displayFull &&
+          cinemetaFuture == null &&
+          enrichedItem.imdbId != null &&
+          enrichedItem.imdbId!.isNotEmpty) {
+        cinemetaFuture = _fetchCinemetaMeta(enrichedItem);
       }
 
       // Pre-fetch Simkl / AniList tracking IDs
@@ -474,12 +598,15 @@ class DetailsController extends _$DetailsController {
 
       if (!ref.mounted) return;
 
-      if (finalItem.tmdbId != withProvider.tmdbId ||
+      // Patch the resolved ids. This runs as soon as the resolution
+      // lands — it never waits for the Cinemeta fetch.
+      final idsChanged = finalItem.tmdbId != withProvider.tmdbId ||
           finalItem.imdbId != withProvider.imdbId ||
-          finalItem.syncData != withProvider.syncData) {
-        // preserve the episodes from the current state just in case
-        final currentDetails = state.details.asData?.value;
-        if (currentDetails != null) {
+          finalItem.syncData != withProvider.syncData;
+      final currentDetails = state.details.asData?.value;
+      if (currentDetails != null) {
+        if (idsChanged) {
+          // preserve the episodes from the current state just in case
           final updatedItem = currentDetails.copyWith(
             tmdbId: finalItem.tmdbId,
             imdbId: finalItem.imdbId,
@@ -489,15 +616,24 @@ class DetailsController extends _$DetailsController {
             details: AsyncData(updatedItem),
             item: updatedItem,
           );
-        } else {
-          // getDetails failed (details is AsyncError, so there is no
-          // fetched item to patch): the enriched ids still belong on the
-          // state item, so the screen's TMDB fill and the links sheet can
-          // use them. The error itself is left untouched. Re-attach the
-          // film episode (set in the catch): the enriched item carries
-          // ids but no episodes, and overwriting would kill the Play
-          // button the catch just enabled.
-          state = state.copyWith(item: _withFilmEpisode(finalItem));
+        }
+      } else if (idsChanged) {
+        // getDetails failed (details is AsyncError, so there is no
+        // fetched item to patch): the enriched ids still belong on the
+        // state item, so the screen's TMDB fill and the links sheet can
+        // use them. The error itself is left untouched. Re-attach the
+        // film episode (set in the catch): the enriched item carries
+        // ids but no episodes, and overwriting would kill the Play
+        // button the catch just enabled.
+        state = state.copyWith(item: _withFilmEpisode(finalItem));
+      }
+
+      // Cinemeta display fields land separately, whenever the fetch
+      // finishes — never blocking the id patch above.
+      if (cinemetaFuture != null) {
+        final cinemetaMeta = await cinemetaFuture;
+        if (cinemetaMeta != null && ref.mounted) {
+          _patchCinemetaDisplay(cinemetaMeta);
         }
       }
     } catch (e) {
@@ -507,6 +643,76 @@ class DetailsController extends _$DetailsController {
         );
       }
     }
+  }
+
+  /// The Cinemeta type for [item]: a film is `movie`, a series or an anime
+  /// is `series`. Live streams and untyped items have no Cinemeta meta.
+  String? _cinemetaTypeFor(MultimediaItem item) {
+    switch (item.contentType) {
+      case MultimediaContentType.movie:
+        return 'movie';
+      case MultimediaContentType.series:
+      case MultimediaContentType.anime:
+        return 'series';
+      case MultimediaContentType.livestream:
+      case MultimediaContentType.other:
+        return null;
+    }
+  }
+
+  /// Cinemeta display metadata for [item] by its IMDb id, or null when
+  /// Cinemeta doesn't know it, is slow, or fails. Never throws: a miss
+  /// just falls through to TMDB. Reuses [AddonClient.meta] (shared Dio,
+  /// clearance handling, 45-min meta cache + single-flight), with the
+  /// same 12 s caller ceiling the add-on meta fallback uses — no bot
+  /// check sheet is ever raised for a background enrichment.
+  Future<AddonMeta?> _fetchCinemetaMeta(MultimediaItem item) async {
+    final imdbId = item.imdbId;
+    final type = _cinemetaTypeFor(item);
+    if (imdbId == null || imdbId.isEmpty || type == null) return null;
+    try {
+      final client = ref.read(addonClientProvider);
+      final meta = await client
+          .meta(BuiltInAddons.cinemeta, type: type, id: imdbId)
+          .timeout(const Duration(seconds: 12));
+      if (meta != null) return meta;
+      // A wrong type 404s (a film listed as a series, or vice versa):
+      // try the other one. A 404 is cheap; a timeout is not retried.
+      final other = type == 'movie' ? 'series' : 'movie';
+      return await client
+          .meta(BuiltInAddons.cinemeta, type: other, id: imdbId)
+          .timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Merges Cinemeta display fields into the live details/state item —
+  /// gaps only, so a value the provider gave is never overwritten. This
+  /// is the middle of the chain (provider → Cinemeta → TMDB): the
+  /// screen's TMDB fill then only fills what is STILL empty.
+  void _patchCinemetaDisplay(AddonMeta meta) {
+    final currentDetails = state.details.asData?.value;
+    if (currentDetails != null) {
+      if (!_cinemetaFillsAny(currentDetails, meta)) return;
+      final updatedItem =
+          _withCinemetaDisplayGapsFilled(currentDetails, meta);
+      state = state.copyWith(
+        details: AsyncData(updatedItem),
+        item: updatedItem,
+      );
+      return;
+    }
+    // getDetails failed: the state item is the catalog item (with the
+    // film episode for a movie). Fill its gaps the same way.
+    final currentItem = state.item;
+    if (currentItem == null) return;
+    if (!_cinemetaFillsAny(currentItem, meta)) return;
+    state = state.copyWith(
+      item: _withCinemetaDisplayGapsFilled(currentItem, meta),
+    );
   }
 
   List<Episode>? _processEpisodes(
