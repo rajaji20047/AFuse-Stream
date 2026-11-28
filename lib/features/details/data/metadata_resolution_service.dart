@@ -286,23 +286,6 @@ class MetadataResolutionService {
     return best;
   }
 
-  /// Whether a title-search candidate is this title, for display
-  /// metadata found by title search (Cinemeta): the same scorer and
-  /// threshold as [findBestMatch], as a public path so production callers
-  /// don't reach for the test-only members. Below 0.6 the hit is dropped
-  /// entirely — a wrong film's poster is worse than no poster.
-  static bool acceptsTitleMatch({
-    required String sourceTitle,
-    required int? sourceYear,
-    required MultimediaItem candidate,
-  }) =>
-      matchScore(
-        sourceTitle: sourceTitle,
-        sourceYear: sourceYear,
-        candidate: candidate,
-      ) >=
-      kTitleMatchThreshold;
-
   /// How alike two titles are, from 0 (nothing in common) to 1.
   @visibleForTesting
   static double matchScore({

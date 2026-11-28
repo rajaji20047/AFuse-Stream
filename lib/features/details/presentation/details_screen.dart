@@ -149,11 +149,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
       detailsControllerProvider(widget.item.url).select((s) => s.item),
     );
     final rawItem = details ?? stateItem ?? widget.item;
-    // TMDB details fill the display gaps the plugin and Cinemeta left
-    // (poster, backdrop, overview, rating). The tmdbId is resolved in
-    // the background by DetailsController. Cast follows the same chain:
-    // the item's own cast (provider, then Cinemeta) wins, TMDB credits
-    // are the fallback when neither gave a cast.
+    // TMDB details for the Cast row (photos + character roles, like Browse)
+    // AND to fill the display gaps the plugin left (poster, backdrop,
+    // overview, rating). The tmdbId is resolved in the background by
+    // DetailsController; until it lands — or when TMDB has no credits —
+    // the plugin's own cast is the fallback (CastCarousel's text line).
     // The TMDB details belong to the resolved title by construction, so no
     // name-matching is needed. The merge below only fills EMPTY plugin
     // fields; a plugin value is never overwritten.
@@ -166,9 +166,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
         isMovie || rawItem.contentType == MultimediaContentType.movie
             ? 'movie'
             : 'tv';
-    // The provider already gave the full display set: TMDB has nothing
-    // to add, so the details fetch is skipped entirely — no network.
-    final tmdb = rawItem.tmdbId != null && !hasFullDisplaySet(rawItem)
+    final tmdb = rawItem.tmdbId != null
         ? ref
               .watch(
                 tmdbDetailsProvider(
@@ -587,14 +585,12 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
 
         const SizedBox(height: 32),
 
-        // Cast — the chain is provider, then Cinemeta, then TMDB: the
-        // item's cast (provider, with Cinemeta's names merged into its
-        // gaps) wins; TMDB credits are the fallback when neither gave
-        // a cast.
-        if (item.cast != null && item.cast!.isNotEmpty) ...[
-          CastCarousel(cast: item.cast!),
-        ] else if (tmdbCast != null && tmdbCast.isNotEmpty) ...[
+        // Cast — TMDB credits (photos + roles) win; the plugin's own cast
+        // is the fallback text line when TMDB cannot resolve.
+        if (tmdbCast != null && tmdbCast.isNotEmpty) ...[
           MovieCastList(cast: tmdbCast),
+        ] else if (item.cast != null && item.cast!.isNotEmpty) ...[
+          CastCarousel(cast: item.cast!),
         ],
 
         // Trailers
@@ -778,16 +774,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cast — the chain is provider, then Cinemeta, then TMDB: the
-              // item's cast (provider, with Cinemeta's names merged into its
-              // gaps) wins; TMDB credits are the fallback when neither gave
-              // a cast.
-              if (item.cast != null && item.cast!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                CastCarousel(cast: item.cast!),
-              ] else if (tmdbCast != null && tmdbCast.isNotEmpty) ...[
+              // Cast — TMDB credits (photos + roles) win; the plugin's own
+              // cast is the fallback text line when TMDB cannot resolve.
+              if (tmdbCast != null && tmdbCast.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 MovieCastList(cast: tmdbCast),
+              ] else if (item.cast != null && item.cast!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                CastCarousel(cast: item.cast!),
               ],
               if (item.trailers != null && item.trailers!.isNotEmpty) ...[
                 const SizedBox(height: 32),
