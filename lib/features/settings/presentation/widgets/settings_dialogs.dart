@@ -2417,7 +2417,7 @@ void showDeveloperDialog(BuildContext context) {
               ),
               child: ClipOval(
                 child: Image.network(
-                  'https://github.com/techforfriend.png',
+                  'https://github.com/rajaji20047.png',
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(child: AppLoadingIndicator());
@@ -2451,7 +2451,7 @@ void showDeveloperDialog(BuildContext context) {
                   ), // GitHub Official Black/Dark Grey
                   onTap: () => launchUrl(
                     Uri.parse(
-                      'https://github.com/techforfriend/Fuse_android',
+                      'https://github.com/rajaji20047/AFuse-Stream',
                     ),
                     mode: LaunchMode.externalApplication,
                   ),

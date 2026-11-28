@@ -654,7 +654,7 @@ abstract class AppLocalizations {
   /// The GPL notice on the licence page: copyright, the licence, no warranty, where the source is.
   ///
   /// In en, this message translates to:
-  /// **'Copyright © 2025–2026 Fuse contributors.\nFuse is free software: you can redistribute it and modify it under the terms of the GNU General Public License, version 3. It comes with ABSOLUTELY NO WARRANTY. Its source code is at github.com/techforfriend/Fuse_android.'**
+  /// **'Copyright © 2025–2026 Fuse contributors.\nFuse is free software: you can redistribute it and modify it under the terms of the GNU General Public License, version 3. It comes with ABSOLUTELY NO WARRANTY. Its source code is at github.com/rajaji20047/AFuse-Stream.'**
   String get appLegalese;
 
   /// No description provided for @enabled.

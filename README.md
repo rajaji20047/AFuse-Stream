@@ -15,7 +15,7 @@ Fuse adds its own design, branding and features on top. See `LICENSE` and
 
 - App name: Fuse
 - Android applicationId: `com.raja.fuse`
-- In-app update checks read the latest release of `github.com/techforfriend/Fuse_android`
+- In-app update checks read the latest release of `github.com/rajaji20047/AFuse-Stream`
   (`lib/core/services/update_service.dart`). A release tag such as `v2` is
   read as 2.0.0; the Android updater needs an APK asset whose name contains
   `android`.

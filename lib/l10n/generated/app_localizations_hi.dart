@@ -255,7 +255,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get appLegalese =>
-      'कॉपीराइट © 2025–2026 Fuse योगदानकर्ता।\nFuse मुफ़्त सॉफ़्टवेयर है: आप इसे GNU जनरल पब्लिक लाइसेंस, संस्करण 3 की शर्तों के तहत फिर से वितरित और संशोधित कर सकते हैं। यह बिना किसी वारंटी के आता है। इसका सोर्स कोड github.com/techforfriend/Fuse_android पर है।';
+      'कॉपीराइट © 2025–2026 Fuse योगदानकर्ता।\nFuse मुफ़्त सॉफ़्टवेयर है: आप इसे GNU जनरल पब्लिक लाइसेंस, संस्करण 3 की शर्तों के तहत फिर से वितरित और संशोधित कर सकते हैं। यह बिना किसी वारंटी के आता है। इसका सोर्स कोड github.com/rajaji20047/AFuse-Stream पर है।';
 
   @override
   String get enabled => 'सक्षम';

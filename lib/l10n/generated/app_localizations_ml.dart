@@ -255,7 +255,7 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get appLegalese =>
-      'Copyright © 2025–2026 Fuse contributors.\nFuse is free software: you can redistribute it and modify it under the terms of the GNU General Public License, version 3. It comes with ABSOLUTELY NO WARRANTY. Its source code is at github.com/techforfriend/Fuse_android.';
+      'Copyright © 2025–2026 Fuse contributors.\nFuse is free software: you can redistribute it and modify it under the terms of the GNU General Public License, version 3. It comes with ABSOLUTELY NO WARRANTY. Its source code is at github.com/rajaji20047/AFuse-Stream.';
 
   @override
   String get enabled => 'പ്രവർത്തനക്ഷമമാക്കി';

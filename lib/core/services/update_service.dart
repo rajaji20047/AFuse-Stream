@@ -25,9 +25,9 @@ UpdateService updateService(Ref ref) {
 
 class UpdateService {
   final Dio _dio;
-  static const String _owner = 'techforfriend';
+  static const String _owner = 'rajaji20047';
   // The app's own repo. Update checks read its latest release.
-  static const String _repo = 'Fuse_android';
+  static const String _repo = 'AFuse-Stream';
 
   UpdateService(this._dio);
 
