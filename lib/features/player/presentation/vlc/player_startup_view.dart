@@ -356,8 +356,9 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
     final reason = widget.reason;
 
     // One centered column now, not a left/right split: the head (logo,
-    // title, source name) sits above, the source list immediately below
-    // the source name, and the pill, status and retry under the list.
+    // title, source name) sits above, the "Source N of M" pill next,
+    // then the source list, and the status and retry under the list
+    // (user 2026-11-28: the pill goes above the link box).
     // The head: logo, title and the lines under it.
     final head = IgnorePointer(
       child: Column(
@@ -427,8 +428,8 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
       ),
     );
 
-    // The tail: status, detail, reason and the "Source N of M" pill,
-    // under the list.
+    // The tail: status, detail and reason, under the list. The
+    // "Source N of M" pill lives above the list now, not here.
     final tail = IgnorePointer(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -470,13 +471,16 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
               style: const TextStyle(color: Colors.white38, fontSize: 13),
             ),
           ],
-          if (attempt != null) ...[
-            const SizedBox(height: 12),
-            _Pill(text: l10n.sourceAttempt(attempt.index, attempt.total)),
-          ],
         ],
       ),
     );
+
+    // The "Source N of M" pill, above the list (user 2026-11-28).
+    final Widget? pill = attempt == null
+        ? null
+        : IgnorePointer(
+            child: _Pill(text: l10n.sourceAttempt(attempt.index, attempt.total)),
+          );
 
     final retry = <Widget>[
       if (widget.failed && widget.onRetry != null) ...[
@@ -502,8 +506,11 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
     ];
 
     // The list is the one part that can shrink: it takes what is left
-    // after the head and the tail, at least two rows, so on a short
-    // landscape screen it shrinks instead of pushing the title off-screen.
+    // after the head, the pill and the tail — up to five rows (user
+    // 2026-11-28: 4-5 rows visible, box bigger), at least two, so on a
+    // short landscape screen it shrinks instead of pushing the title
+    // off-screen. One row is 47 tall; the 160 reserve is the head, the
+    // pill, the gaps and the status line.
     final Widget? list = widget.rows.isNotEmpty
         ? _SourceList(
             key: _list,
@@ -511,18 +518,22 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
             currentIndex: widget.currentIndex,
             isTv: widget.isTv,
             onPick: widget.onPick,
-            maxHeight: (height - 240).clamp(94.0, 470.0),
+            maxHeight: (height - 160).clamp(94.0, 235.0),
           )
         : null;
 
-    // Wide only now: a single centered column — head, then the list
-    // immediately below the source name, then the tail and retry.
+    // Wide only now: a single centered column — head, then the pill,
+    // then the list, then the tail and retry.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         head,
+        if (pill != null) ...[
+          const SizedBox(height: 12),
+          pill,
+        ],
         if (list != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           list,
         ],
         tail,
