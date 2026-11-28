@@ -23,7 +23,8 @@ import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../../core/network/clearance/clearance.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/network/http_defaults.dart';
-import '../../../../core/network/link_probe_service.dart' show hlsVariantsOf;
+import '../../../../core/network/link_probe_service.dart'
+    show dashVariantsOf, hlsVariantsOf;
 import '../../../../core/providers/device_info_provider.dart';
 import '../../../../core/providers/device_memory.dart';
 import '../../../../core/router/app_router.dart';
@@ -670,7 +671,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// lowers it as it lowers Auto's.
   int? _qualityPick;
 
-  /// The heights the HLS stream playing offers, tallest first, for the
+  /// A Quality pick made while the player was not in its playing stage -
+  /// a reopen still in flight - that no open has applied yet: the flip to
+  /// playing reopens under it when the open in flight missed it, so the
+  /// pick is never silently dropped. See [_pickQuality].
+  bool _qualityPickPending = false;
+
+  /// The heights the adaptive stream playing offers, tallest first, for the
   /// Quality tab; empty for anything else. See [_maybeReadQualityLadder].
   List<int> _qualityLadder = const <int>[];
 
@@ -680,7 +687,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
 
   /// What this attempt's ladder would be read from: the address libVLC was
   /// given, its headers, and the source they open. Per attempt; null for
-  /// media that is not HLS.
+  /// media that is not HLS or DASH.
   ({Uri uri, Map<String, String> headers, String source})? _qualityMedia;
 
   /// The decoder counters when the current measurement window opened, and how
@@ -2385,8 +2392,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     }
     // What the Quality tab's ladder is read from once this media shows a
     // picture: the address libVLC was given, with its headers - an inline
-    // playlist too - live as well as on demand.
-    if (looksLikeHls(mediaUri) || stream.quality == 0) {
+    // playlist too - live as well as on demand, HLS or DASH.
+    if (looksLikeHls(mediaUri) ||
+        looksLikeDash(mediaUri) ||
+        stream.quality == 0) {
       _qualityMedia = (uri: mediaUri, headers: headers, source: stream.url);
     }
 
@@ -2453,6 +2462,31 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       // [_publishPanelData] - and this is the only write that turns it
       // back on, so the tick would stay off after a recovery without it.
       _publishPanelData();
+      // A Quality pick made while this open was still in flight: the open
+      // read [_qualityPick] for its cap when it could, and this reopens
+      // under it when it could not - the cap in force says which, so a
+      // pick the open already applied does not reopen twice.
+      if (_qualityPickPending) {
+        _qualityPickPending = false;
+        final pendingCap = renditionCapFor(
+          deviceCap: _adaptiveMaxHeight,
+          pick: _qualityPick,
+          preferenceHeight: _preferenceHeightAtOpen,
+        );
+        if (pendingCap != _renditionCap) {
+          final wasPaused =
+              _controller.value.state == VlcPlaybackState.paused;
+          unawaited(
+            _openAttempt(
+              _attemptIndex,
+              startAt: _reopenTarget(),
+              reason: 'quality',
+              keepPicture: true,
+              autoPlay: !wasPaused,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -5075,12 +5109,24 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   ///
   /// Holds for the rest of this player session. Reopens this source where it
   /// is, as a step-down does, when it changes the cap the media plays under;
-  /// a pick of what Auto already plays at changes only the tick.
+  /// a pick of what Auto already plays at changes only the tick. A pick
+  /// made while the player is not in its playing stage is kept, not
+  /// dropped: the open in flight reads it for its cap, and the flip to
+  /// playing reopens under it when the open missed it - see
+  /// [_qualityPickPending].
   void _pickQuality(int? height) {
-    if (_disposed || _resolved == null || _stage != _Stage.playing) return;
-    if (height == _qualityPick) return;
+    if (_disposed) return;
+    // Auto returns to the top: a decoder step-down lowered
+    // [_adaptiveMaxHeight] for this session, and Auto is the pick that
+    // lifts it again (see [_autoTopCap]). The quality preference still
+    // caps Auto - it is the viewer's own setting, not a step-down.
+    if (height == null) _adaptiveMaxHeight = _autoTopCap();
     _qualityPick = height;
     _publishPanelData();
+    if (_stage != _Stage.playing) {
+      _qualityPickPending = true;
+      return;
+    }
     final cap = renditionCapFor(
       deviceCap: _adaptiveMaxHeight,
       pick: height,
@@ -5098,6 +5144,23 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         keepPicture: true,
         autoPlay: !wasPaused,
       ),
+    );
+  }
+
+  /// The cap Auto opens under once a step-down has lowered
+  /// [_adaptiveMaxHeight]: the seeded device cap - or, while the screen
+  /// decodes in software after MediaCodec died, the rendition a CPU can
+  /// manage at that cap, so Auto never asks software decoding for a height
+  /// it already proved it cannot hold.
+  int _autoTopCap() {
+    final deviceCap = _deviceAdaptiveMaxHeight;
+    if (!_softwareRetry) return deviceCap;
+    return softwareRetryCap(
+      tier:
+          ref.read(deviceProfileProvider).asData?.value.tier ??
+          DeviceTier.standard,
+      panelHeightPx: _panelHeightPx(),
+      currentCap: deviceCap,
     );
   }
 
@@ -6606,7 +6669,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       _qualityLadderOf = null;
       return;
     }
-    _qualityLadder = qualityLadderOf(hlsVariantsOf(playlist));
+    // The fetch returns an HLS playlist or a DASH manifest, so anything
+    // that is not HLS is DASH: its renditions are read the same way.
+    final head = playlist.length > _kPlaylistHeadBytes
+        ? playlist.substring(0, _kPlaylistHeadBytes)
+        : playlist;
+    final isHls = head
+        .replaceFirst('\uFEFF', '')
+        .trimLeft()
+        .startsWith('#EXTM3U');
+    _qualityLadder = qualityLadderOf(
+      isHls ? hlsVariantsOf(playlist) : dashVariantsOf(playlist),
+    );
     _publishPanelData();
   }
 
@@ -6640,12 +6714,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     return playlist;
   }
 
-  /// One playlist, asked for with the headers libVLC was given for it.
+  /// One playlist or manifest, asked for with the headers libVLC was given
+  /// for it.
   ///
   /// Read as it arrives, and only while it is one: an address marked adaptive
   /// can answer with a film, which read as text would be held in memory
-  /// whole. Null for an answer that doesn't start `#EXTM3U`, or runs past
-  /// [_kPlaylistMaxBytes].
+  /// whole. Null for an answer that opens as neither an HLS playlist nor a
+  /// DASH manifest, or runs past [_kPlaylistMaxBytes].
   Future<String?> _fetchPlaylist(Uri url, Map<String, String> headers) async {
     final hangUp = CancelToken();
     final Stream<Uint8List>? body;
@@ -6683,7 +6758,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         if (bytes.length > _kPlaylistMaxBytes) {
           stop();
         } else if (!looked && bytes.length >= _kPlaylistHeadBytes) {
-          if (_startsAsPlaylist(bytes.toBytes())) {
+          if (_startsAsManifest(bytes.toBytes())) {
             looked = true;
           } else {
             stop();
@@ -6695,7 +6770,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         if (read.isCompleted) return;
         final all = bytes.takeBytes();
         read.complete(
-          looked || _startsAsPlaylist(all)
+          looked || _startsAsManifest(all)
               ? utf8.decode(all, allowMalformed: true)
               : null,
         );
@@ -6705,13 +6780,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     return read.future;
   }
 
-  /// Whether [bytes] open the way an HLS playlist does, past any byte order
-  /// mark and blank lines.
-  static bool _startsAsPlaylist(List<int> bytes) => utf8
-      .decode(bytes.take(_kPlaylistHeadBytes).toList(), allowMalformed: true)
-      .replaceFirst('\uFEFF', '')
-      .trimLeft()
-      .startsWith('#EXTM3U');
+  /// Whether [bytes] open the way an HLS playlist or a DASH manifest does,
+  /// past any byte order mark and blank lines: `#EXTM3U`, or XML - a
+  /// manifest's `<?xml` declaration, or a bare `<MPD`.
+  static bool _startsAsManifest(List<int> bytes) {
+    final head = utf8
+        .decode(bytes.take(_kPlaylistHeadBytes).toList(), allowMalformed: true)
+        .replaceFirst('\uFEFF', '')
+        .trimLeft();
+    return head.startsWith('#EXTM3U') ||
+        head.startsWith('<?xml') ||
+        head.startsWith('<MPD');
+  }
 
   @override
   void dispose() {

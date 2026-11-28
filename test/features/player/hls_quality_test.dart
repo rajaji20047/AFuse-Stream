@@ -19,8 +19,17 @@ void main() {
       );
     });
 
-    test('a variant with no RESOLUTION is left out, so a master without '
-        'them offers no choice', () {
+    test('a variant with no RESOLUTION offers its bandwidth as a height '
+        'estimate, so a master without them still offers a choice', () {
+      expect(
+        qualityLadderOf(const [
+          HlsVariant(bandwidth: 6221600),
+          HlsVariant(bandwidth: 2149280),
+          HlsVariant(bandwidth: 836280),
+        ]),
+        [1080, 720, 360],
+      );
+      // Noise, not a rendition: below 100 kbps a bandwidth says nothing.
       expect(
         qualityLadderOf(const [
           HlsVariant(bandwidth: 1),
@@ -50,6 +59,77 @@ void main() {
           'url_8/fhd.m3u8\n';
 
       expect(qualityLadderOf(hlsVariantsOf(mux)), [1080, 720, 480, 288, 184]);
+    });
+  });
+
+  group('estimatedHeightForBandwidth', () {
+    test('the rung a bitrate belongs to', () {
+      expect(estimatedHeightForBandwidth(6221600), 1080);
+      expect(estimatedHeightForBandwidth(3500000), 1080);
+      expect(estimatedHeightForBandwidth(3499999), 720);
+      expect(estimatedHeightForBandwidth(1700000), 720);
+      expect(estimatedHeightForBandwidth(1699999), 480);
+      expect(estimatedHeightForBandwidth(900000), 480);
+      expect(estimatedHeightForBandwidth(899999), 360);
+      expect(estimatedHeightForBandwidth(550000), 360);
+      expect(estimatedHeightForBandwidth(549999), 240);
+      expect(estimatedHeightForBandwidth(100000), 240);
+    });
+
+    test('nothing without a usable bandwidth', () {
+      expect(estimatedHeightForBandwidth(null), isNull);
+      expect(estimatedHeightForBandwidth(0), isNull);
+      expect(estimatedHeightForBandwidth(99999), isNull);
+    });
+  });
+
+  group('dashVariantsOf', () {
+    const manifest =
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<MPD xmlns="urn:mpeg:dash:schema:mpd:2011">\n'
+        '  <Period>\n'
+        '    <AdaptationSet mimeType="video/mp4" contentType="video">\n'
+        '      <Representation id="v1" bandwidth="6221600" width="1920" height="1080"/>\n'
+        '      <Representation id="v2" bandwidth="2149280" width="1280" height="720"/>\n'
+        '      <Representation id="v3" bandwidth="836280"/>\n'
+        '    </AdaptationSet>\n'
+        '    <AdaptationSet mimeType="audio/mp4" contentType="audio">\n'
+        '      <Representation id="a1" bandwidth="128000"/>\n'
+        '    </AdaptationSet>\n'
+        '  </Period>\n'
+        '</MPD>\n';
+
+    test('video renditions in order, audio skipped', () {
+      final variants = dashVariantsOf(manifest);
+      expect(variants.map((v) => v.height).toList(), [1080, 720, null]);
+      expect(
+        variants.map((v) => v.bandwidth).toList(),
+        [6221600, 2149280, 836280],
+      );
+    });
+
+    test('the ladder a DASH manifest offers', () {
+      expect(qualityLadderOf(dashVariantsOf(manifest)), [1080, 720, 360]);
+    });
+
+    test('an audio Representation is skipped even when its set says nothing', () {
+      const mixed =
+          '<MPD><Period><AdaptationSet>'
+          '<Representation bandwidth="128000" mimeType="audio/mp4"/>'
+          '<Representation bandwidth="2149280" height="720"/>'
+          '</AdaptationSet></Period></MPD>';
+      expect(
+        dashVariantsOf(mixed).map((v) => v.bandwidth).toList(),
+        [2149280],
+      );
+    });
+
+    test('attributes across lines, single quotes', () {
+      const split =
+          '<MPD><Period><AdaptationSet mimeType="video/mp4">'
+          "<Representation\n bandwidth='2149280'\n height='720'/>\n"
+          '</AdaptationSet></Period></MPD>';
+      expect(dashVariantsOf(split).map((v) => v.height).toList(), [720]);
     });
   });
 
@@ -112,6 +192,17 @@ void main() {
       expect(bitrateCapForPick(900, ladder, variants), 2149280);
       // Below the lowest rung the lowest plays.
       expect(bitrateCapForPick(100, ladder, variants), 836280);
+    });
+
+    test('a pick on a row offered by estimate caps on its bandwidth', () {
+      expect(
+        bitrateCapForPick(720, const [1080, 720, 360], const [
+          HlsVariant(bandwidth: 6221600),
+          HlsVariant(bandwidth: 2149280),
+          HlsVariant(bandwidth: 836280),
+        ]),
+        2149280,
+      );
     });
 
     test('null when there is nothing to cap on', () {

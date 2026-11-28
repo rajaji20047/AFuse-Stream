@@ -23,6 +23,25 @@ class HlsVariant {
 
 final RegExp _resolutionRe = RegExp(r'RESOLUTION=(\d+)x(\d+)');
 final RegExp _bandwidthRe = RegExp(r'(?<![-A-Z])BANDWIDTH=(\d+)');
+final RegExp _manifestTagRe =
+    RegExp(r'<(?:AdaptationSet|Representation)\b[^>]*>');
+final RegExp _heightAttrRe = RegExp('height=["\'](\\d+)["\']');
+final RegExp _bandwidthAttrRe = RegExp('bandwidth=["\'](\\d+)["\']');
+final RegExp _mimeTypeRe = RegExp('mimeType=["\']([^"\']+)["\']');
+final RegExp _contentTypeRe = RegExp('contentType=["\']([^"\']+)["\']');
+final RegExp _audioCodecRe = RegExp(
+  'codecs=["\'](?:mp4a|ac-3|ec-3|opus|vorbis)',
+);
+
+/// Whether a manifest tag declares itself audio: a `mimeType` starting
+/// `audio/`, a `contentType` of `audio`, or an audio codec. A tag that says
+/// nothing about its kind is not audio - its set decides.
+bool _declaresAudio(String tag) {
+  final mime = _mimeTypeRe.firstMatch(tag)?.group(1);
+  if (mime != null) return mime.startsWith('audio/');
+  if (_contentTypeRe.firstMatch(tag)?.group(1) == 'audio') return true;
+  return _audioCodecRe.hasMatch(tag);
+}
 
 /// The variants an HLS master playlist lists, in its order: one per
 /// `#EXT-X-STREAM-INF` line. An I-frame playlist
@@ -38,6 +57,45 @@ List<HlsVariant> hlsVariantsOf(String playlist) {
       HlsVariant(
         height: res == null ? null : int.tryParse(res.group(2)!),
         bandwidth: bandwidth == null ? null : int.tryParse(bandwidth.group(1)!),
+      ),
+    );
+  }
+  return variants;
+}
+
+/// The renditions a DASH manifest lists, in its order: one per video
+/// `<Representation>` element. Audio Representations are skipped - they
+/// carry a bandwidth too, and without the skip an audio track would read
+/// as a 240p video row - by the kind their AdaptationSet declares, or
+/// their own tag when the set says nothing. A video Representation
+/// contributes its height, or its bandwidth when it names no height, so
+/// [qualityLadderOf] can still offer it by estimate. A Representation's
+/// attributes may sit on one line or several; the tag is read whole
+/// either way.
+List<HlsVariant> dashVariantsOf(String manifest) {
+  final variants = <HlsVariant>[];
+  var audioSet = false;
+  for (final match in _manifestTagRe.allMatches(manifest)) {
+    final tag = match.group(0)!;
+    if (tag.startsWith('<AdaptationSet')) {
+      audioSet = _declaresAudio(tag);
+      continue;
+    }
+    if (_declaresAudio(tag)) continue;
+    if (audioSet &&
+        _mimeTypeRe.firstMatch(tag) == null &&
+        _contentTypeRe.firstMatch(tag) == null &&
+        !_audioCodecRe.hasMatch(tag)) {
+      // Nothing of its own to say it is video: its set says audio.
+      continue;
+    }
+    final height = _heightAttrRe.firstMatch(tag);
+    final bandwidth = _bandwidthAttrRe.firstMatch(tag);
+    variants.add(
+      HlsVariant(
+        height: height == null ? null : int.tryParse(height.group(1)!),
+        bandwidth:
+            bandwidth == null ? null : int.tryParse(bandwidth.group(1)!),
       ),
     );
   }
