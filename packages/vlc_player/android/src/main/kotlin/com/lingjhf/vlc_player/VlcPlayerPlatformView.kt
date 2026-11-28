@@ -860,6 +860,12 @@ internal class VlcPlayerPlatformView(
         if (!ensureActive(result)) {
             return
         }
+        // The cached track array may predate the audio ES (FORK.md 9): the
+        // first snapshot's video-shape read can cache an array with video
+        // but no audio yet, and a late audio stream is then announced by
+        // ESAdded but never seen by this read. Drop the cache so the read
+        // goes back to libVLC.
+        dropCachedTracks()
         result.success(trackDescriptions(mediaPlayer.audioTracks))
     }
 
@@ -880,6 +886,8 @@ internal class VlcPlayerPlatformView(
         if (!ensureActive(result)) {
             return
         }
+        // As getAudioTracks: the cached array may predate the subtitle ES.
+        dropCachedTracks()
         result.success(trackDescriptions(mediaPlayer.spuTracks))
     }
 
@@ -1182,6 +1190,11 @@ internal class VlcPlayerPlatformView(
                 if (event.esChangedType == IMedia.Track.Type.Audio ||
                     event.esChangedType == IMedia.Track.Type.Text
                 ) {
+                    // The announcement is only useful if the next read sees
+                    // the new stream: drop the array cached before it landed
+                    // (FORK.md 9), so the snapshot's video-shape read and
+                    // the panel's re-read find it rather than the stale copy.
+                    dropCachedTracks()
                     trackRevision += 1
                 }
                 sendSnapshot()

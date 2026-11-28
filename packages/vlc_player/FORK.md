@@ -906,3 +906,22 @@ Covered by `test/native/vlc_snapshot_order_test_suite.h` (in both plugins' gtest
 `test/native_snapshot_order_test.dart` (both plugins' order and number, as source), and
 `test/vlc_player_snapshot_order_test.dart` (the controller's order).
 
+
+### 38. Android: a late audio or subtitle stream is no longer invisible to the track lists
+
+Section 9's cached track array bit the audio and subtitle lists too, not just the video size. The
+first snapshot's video-shape read (`putVideoShape` → `sizedVideoTrack` → `currentVideoTrack` →
+`Media.getTracks()`) can cache an array with video but no audio yet - HLS and MPEG-TS declare the
+video ES before the audio ES - and only `postParse()` clears it, which playback never raises. So a
+late audio ES was announced (`ESAdded` bumped `trackRevision`) but invisible: `getAudioTracks()` and
+`getSubtitleTracks()` read the stale array, the panel showed "No audio tracks reported", Retry read
+the same stale array, and the host's preferred-audio look - which puts the first non-commentary
+track on instead of silence - had nothing to put on. MP4 and MKV declare all tracks in the header
+at once, so the first read was usually already complete, which is why it only happened sometimes.
+
+`getAudioTracks()` and `getSubtitleTracks()` now drop the cached array (`dropCachedTracks()`, the
+section 9 reflection) before reading, and the `ESAdded` handler drops it too when an audio or text
+ES lands, so the snapshot that follows the announcement and the panel's re-read both see the new
+stream. The video-shape path is untouched: it drops the cache itself when the track is unsized, and
+a drop only makes its next read go back to libVLC. `getMediaInfo()` needs no change of its own:
+every in-app call follows an audio or subtitle track read, which has already refreshed the array.

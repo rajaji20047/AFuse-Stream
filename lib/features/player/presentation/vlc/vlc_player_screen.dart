@@ -884,8 +884,18 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   String? _preferredAudioToPick;
 
   /// The track list revision the last look for [_preferredAudioToPick] read:
-  /// the next look waits for the list to change, not for the next tick.
+  /// the next look waits for the list to change, not for the next tick -
+  /// except a look that read an empty list, which decided nothing and
+  /// leaves the revision unchecked so the next tick looks again
+  /// ([_maybePickPreferredAudio]).
   int? _preferredAudioCheckedRevision;
+
+  /// Consecutive looks for [_preferredAudioToPick] that read an empty list.
+  /// The re-look on the next tick is bounded by this: a media with no audio
+  /// at all must not re-read its empty list on every tick for the whole of
+  /// playback. A late stream still re-arms the look, since its ESAdded bumps
+  /// the revision past whatever was checked.
+  int _preferredAudioEmptyLooks = 0;
 
   /// Set while a look for [_preferredAudioToPick] is in flight.
   bool _pickingPreferredAudio = false;
@@ -1986,6 +1996,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         '';
     _preferredAudioToPick = audioLanguage.isNotEmpty ? audioLanguage : null;
     _preferredAudioCheckedRevision = null;
+    _preferredAudioEmptyLooks = 0;
     _pickingPreferredAudio = false;
     _audioPutOn = null;
     // Whatever the viewer was listening to and reading goes back on once the
@@ -2688,9 +2699,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// selected nothing at all (the `:audio-language` option names a language
   /// the stream does not have), and that silent open is exactly when the
   /// look is needed - it is the one that puts the media's own default track
-  /// on. An early look on a list not yet published reads empty, does
-  /// nothing, and retries on the next revision change; the revision gate
-  /// below is the readiness clock, not an active track.
+  /// on. An early look on a list not yet published reads empty and decides
+  /// nothing, so it leaves the revision unchecked and the next tick looks
+  /// again, up to ten empty looks in a row; the revision gate below is the
+  /// readiness clock for a list that was actually read, not an active track.
   void _maybePickPreferredAudio(VlcPlayerValue value) {
     final preferred = _preferredAudioToPick;
     if (preferred == null ||
@@ -2698,11 +2710,28 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         _preferredAudioCheckedRevision == value.trackRevision) {
       return;
     }
-    _preferredAudioCheckedRevision = value.trackRevision;
     _pickingPreferredAudio = true;
     final generation = _generation;
+    final revision = value.trackRevision;
     unawaited(
-      _pickPreferredAudio(preferred).whenComplete(() {
+      _pickPreferredAudio(preferred).then<void>((readTracks) {
+        if (generation != _generation) return;
+        if (readTracks) {
+          // The look read a real list, so this revision is decided: a
+          // language the list lacks is looked for again only when the
+          // list changes, as before.
+          _preferredAudioCheckedRevision = revision;
+          _preferredAudioEmptyLooks = 0;
+        } else if (++_preferredAudioEmptyLooks >= 10) {
+          // Ten looks in a row read nothing: the media has no audio to
+          // pick, or the engine will not list it. Stop asking on every
+          // tick; a late stream's revision move re-arms the look.
+          _preferredAudioCheckedRevision = revision;
+          _preferredAudioEmptyLooks = 0;
+        }
+        // Otherwise the revision stays unchecked, so the next tick looks
+        // again: the tracks the empty look missed may be listed by then.
+      }).whenComplete(() {
         // A newer attempt has a latch of its own.
         if (generation == _generation) _pickingPreferredAudio = false;
       }),
@@ -2740,7 +2769,10 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// language goes on instead, and where the language has nothing else, the
   /// first track that is the film - the media's own default, as near as the
   /// list can tell.
-  Future<void> _pickPreferredAudio(String preferred) async {
+  /// Answers whether the look read a list with tracks in it: an empty read
+  /// decided nothing, and the caller looks again on the next tick
+  /// ([_maybePickPreferredAudio]).
+  Future<bool> _pickPreferredAudio(String preferred) async {
     final generation = _generation;
     bool superseded() =>
         _disposed ||
@@ -2748,15 +2780,16 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         _preferredAudioToPick != preferred;
     try {
       final tracks = await _audioTracksWithLanguages();
-      if (superseded()) return;
+      if (superseded()) return false;
+      final readTracks = tracks.isNotEmpty;
       if (_viewerAudioOutranks) {
         final viewers = matchRememberedTrack(tracks, _audioToRestore);
         if (viewers != null) {
           await _switchAudio(viewers.id);
-          if (superseded()) return;
+          if (superseded()) return false;
           _preferredAudioToPick = null;
           _audioToRestore = null;
-          return;
+          return readTracks;
         }
         _viewerAudioOutranks = false;
       }
@@ -2773,12 +2806,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       );
       if (match != null) {
         await _switchAudio(match.id);
-        if (superseded()) return;
+        if (superseded()) return false;
         // Spent once the engine has taken it: a refusal is looked at again
         // with the next change to the list.
         _preferredAudioToPick = null;
         _audioToRestore = null;
-        return;
+        return readTracks;
       }
       final carried = _audioToRestore;
       // The first non-commentary track is the media's own default, and it
@@ -2802,9 +2835,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
       } else {
         _audioRestoreRevision = _controller.value.trackRevision;
       }
+      return readTracks;
     } on Object {
       // An engine that will not list or set keeps its own choice, which is
       // where the viewer would have been without the setting.
+      return false;
     }
   }
 
