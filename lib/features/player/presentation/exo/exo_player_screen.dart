@@ -218,6 +218,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   // pick handlers set it; [_togglePlay] clears it, so a pause the
   // viewer chose is never overridden.
   bool? _panelPickWasPlaying;
+  // The playing state a buffer stall found, or null when no stall is
+  // pending. The package's native listener sends a `pause` event when
+  // ExoPlayer's isPlaying flips false on entering STATE_BUFFERING, and
+  // the Dart side answers it with a real pause (playWhenReady = false)
+  // — so a stall genuinely pauses the engine, and nothing restarts it
+  // when the buffer refills: bufferingEnd only clears the spinner.
+  // The stall's capture (the bufferingStart event, and the first
+  // buffering tick) records whether the video was playing, and
+  // bufferingEnd re-asserts it: resume when it was playing, stay paused
+  // when it was paused. Only the stall sets it; [_togglePlay] and the
+  // sleep timer clear it, so a pause the viewer chose during a stall is
+  // never overridden.
+  bool? _bufferingWasPlaying;
   bool _isBuffering = false;
   bool _isLive = false;
   bool _inPip = false;
@@ -636,6 +649,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _isPlaying = false;
     _wasPlaying = false;
     _isBuffering = false;
+    _bufferingWasPlaying = null;
     _ended = null;
     // A new source has not played yet: the spinner shows until its first
     // frame, and any pending seek from the old source is dropped.
@@ -968,9 +982,23 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           _flushProgress();
         }
       case BetterPlayerEventType.bufferingStart:
+        // The stall's capture: the video was playing when the buffer ran
+        // dry. A true sighting wins — the first buffering tick is the
+        // second capture, and a late false one must not clear it.
+        if (_isPlaying) _bufferingWasPlaying = true;
         if (!_isBuffering) setState(() => _isBuffering = true);
       case BetterPlayerEventType.bufferingEnd:
         if (_isBuffering) setState(() => _isBuffering = false);
+        // The buffer refilled: resume when the stall found the video
+        // playing, stay paused when it was paused. The package's pause
+        // on the stall set playWhenReady false, so without this the
+        // video would sit paused with the spinner gone.
+        final bufferingWasPlaying = _bufferingWasPlaying;
+        _bufferingWasPlaying = null;
+        if (bufferingWasPlaying == true && !_isPlaying) {
+          final controller = _controller;
+          if (controller != null) unawaited(controller.play());
+        }
       case BetterPlayerEventType.finished:
         _onEnded();
       case BetterPlayerEventType.exception:
@@ -1018,6 +1046,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         : value.buffered.last.end;
     _isPlaying = value.isPlaying;
     _isBuffering = value.isBuffering;
+    // A stall found the video playing: remember it before the pause the
+    // package posts on the stall overwrites the state. `wasPlaying` is
+    // the pre-tick state, so this first buffering tick still sees it.
+    // A true sighting wins — the bufferingStart event is the second
+    // capture, and a late false one must not clear it.
+    if (value.isBuffering && wasPlaying) _bufferingWasPlaying = true;
     if (value.size != null) _videoSize = value.size;
     // The pending seek target clears once the engine arrives (within a
     // second) or after five seconds, so a seek that never lands cannot
@@ -1572,9 +1606,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   Future<void> _togglePlay({bool? force}) async {
     final controller = _controller;
     if (controller == null) return;
-    // The viewer took over: a pending panel resume must not override
-    // this play/pause.
+    // The viewer took over: a pending panel resume — or a pending
+    // buffering resume — must not override this play/pause.
     _panelPickWasPlaying = null;
+    _bufferingWasPlaying = null;
     final wantPlay = force ?? !_isPlaying;
     if (wantPlay) {
       _sleepTimer.noteResumed();
@@ -1649,6 +1684,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// sleep (see [_togglePlay] → `noteResumed`).
   void _onSleepTimerFired() {
     if (_disposed) return;
+    // The viewer asked the video to stop: a pending buffering resume
+    // must not restart it when the buffer refills.
+    _bufferingWasPlaying = null;
     unawaited(_controller?.pause());
     if (!mounted) return;
     ref
