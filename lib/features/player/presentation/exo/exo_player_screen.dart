@@ -3589,9 +3589,10 @@ class _SourcesQualityChipState extends State<_SourcesQualityChip> {
               ),
               decoration: BoxDecoration(
                 color: background,
-                // A pill, not a chip: fully rounded, so it cannot be
-                // mistaken for a badge on a row below it.
-                borderRadius: BorderRadius.circular(999),
+                // A box, not a pill: the same 10dp corners as a selected
+                // PanelRow, so the selected chip reads as the same
+                // selection as the row below it.
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   // Focus is white and selection is the accent, so a pill
                   // that is both still says which is which.
