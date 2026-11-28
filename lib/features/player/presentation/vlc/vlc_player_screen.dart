@@ -99,6 +99,7 @@ class VlcPlayerScreen extends ConsumerStatefulWidget {
     required this.videoUrl,
     this.episode,
     this.preloadedStreams,
+    this.autoTriedEngines,
     super.key,
   });
 
@@ -112,6 +113,13 @@ class VlcPlayerScreen extends ConsumerStatefulWidget {
   /// Sources already aggregated by a source sheet. When present, no plugin
   /// call is made.
   final List<StreamResult>? preloadedStreams;
+
+  /// Engines already tried for this title in Auto mode. Non-null means
+  /// the player opened in Auto mode (see [PlayerEngine.auto]): when every
+  /// source has been tried here and nothing played, the screen switches
+  /// to the next untried engine instead of failing. Null on an ordinary
+  /// open, and on a manual engine switch.
+  final Set<PlayerEngine>? autoTriedEngines;
 
   @override
   ConsumerState<VlcPlayerScreen> createState() => _VlcPlayerScreenState();
@@ -279,6 +287,12 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// short clip is below the resumable threshold, so neither produces a sample
   /// despite playing.
   bool _sawFrames = false;
+
+  /// Whether any source has produced a frame on this screen, across
+  /// attempts. Unlike [_sawFrames] this is never reset: it is the Auto-mode
+  /// gate (see [PlayerEngine.auto]) — an engine switch only happens when
+  /// nothing played at all on this screen.
+  bool _everPlayed = false;
 
   /// Whether a same-source reopen is showing the last picture of the attempt
   /// before it (spec 2, *The reopen*: "the picture stays").
@@ -3543,6 +3557,40 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     final resolved = _resolved;
     if (resolved == null) return;
     _markFailed(_attemptIndex);
+    // Auto mode, and nothing played at all: try the next untried engine
+    // for this title instead of failing here. Each engine is tried at
+    // most once per title — the order is libmpv, libVLC, ExoPlayer —
+    // and after the third the failed screen below is the end of the
+    // line. A failure after playback started is not an Auto switch: the
+    // viewer already watched part of the video on this engine, and a
+    // mid-playback engine change is theirs to pick.
+    if (widget.autoTriedEngines != null && !_everPlayed) {
+      final tried = <PlayerEngine>{
+        ...widget.autoTriedEngines!,
+        PlayerEngine.vlc,
+      };
+      PlayerEngine? target;
+      for (final engine in const <PlayerEngine>[
+        PlayerEngine.mpv,
+        PlayerEngine.vlc,
+        PlayerEngine.exo,
+      ]) {
+        if (!tried.contains(engine)) {
+          target = engine;
+          break;
+        }
+      }
+      if (target != null) {
+        unawaited(
+          _switchEngine(
+            target,
+            persistEngine: false,
+            autoTriedEngines: tried,
+          ),
+        );
+        return;
+      }
+    }
     // Say what actually went wrong: a single-source channel refused for DRM
     // should name the scheme rather than just count to one.
     final total = resolved.streams.length;
@@ -5807,6 +5855,9 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     if (!value && !_keptPicture) _clearLock();
     if (_sawFrames == value) return;
     _sawFrames = value;
+    // A frame on any attempt counts for the whole screen: the Auto-mode
+    // gate reads this, never the per-attempt [_sawFrames].
+    if (value) _everPlayed = true;
     if (mounted && !_disposed) setState(() {});
   }
 
@@ -6065,10 +6116,19 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// open, and the current source list rides along so it does not
   /// re-resolve. (User 2026-11-26: switch option in the top row; the
   /// picker in the top row, 2026-11-26.)
-  Future<void> _switchEngine(PlayerEngine target) async {
-    await ref
-        .read(playerSettingsProvider.notifier)
-        .setPlayerEngine(target);
+  Future<void> _switchEngine(
+    PlayerEngine target, {
+    bool persistEngine = true,
+    Set<PlayerEngine>? autoTriedEngines,
+  }) async {
+    // A manual pick becomes the stored engine, as before. An Auto-mode
+    // switch must NOT persist: the stored setting stays `auto`, and the
+    // new route is told which engine to open through the extra instead.
+    if (persistEngine) {
+      await ref
+          .read(playerSettingsProvider.notifier)
+          .setPlayerEngine(target);
+    }
     if (!mounted) return;
     // The dispose that follows this replacement must not release the
     // new player's landscape pin (see [_handBack]).
@@ -6078,13 +6138,20 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         item: widget.item,
         videoUrl: _videoUrl,
         episode: _currentEpisode,
-        // The playing source rides first: the resolver treats a
-        // handed-in list as already ranked and probes from its head, so
-        // an unrotated list reopens on source #1 instead of the source
-        // that was playing.
+        // In Auto mode the new engine retries the whole ranked list from
+        // the top: nothing played, so there is no playing source to ride
+        // first. A manual switch keeps the playing source first, as
+        // before.
         preloadedStreams: _candidates.isEmpty
             ? null
-            : rotateStreamToFirst(_candidates, _attemptIndex),
+            : autoTriedEngines != null
+                ? _candidates
+                : rotateStreamToFirst(_candidates, _attemptIndex),
+        // Auto mode only: which engine this route must open, and which
+        // engines have already been tried for this title.
+        engineOverride: autoTriedEngines != null ? target : null,
+        autoTriedEngines:
+            autoTriedEngines?.toList() ?? const <PlayerEngine>[],
       ),
     ).pushReplacement(context);
   }

@@ -368,6 +368,8 @@ class PlayerRouteExtra {
     required this.videoUrl,
     this.episode,
     this.preloadedStreams,
+    this.engineOverride,
+    this.autoTriedEngines = const <PlayerEngine>[],
   });
   final MultimediaItem item;
   final String videoUrl;
@@ -376,6 +378,18 @@ class PlayerRouteExtra {
   /// Cross-plugin stream links aggregated before opening the player. When
   /// present, the player does not call loadStreams again for this item/episode.
   final List<StreamResult>? preloadedStreams;
+
+  /// The engine this route must open, regardless of the stored Player
+  /// Engine setting. Set by an Auto-mode engine switch (see
+  /// [PlayerEngine.auto]): the stored setting stays `auto`, so the route
+  /// has to be told which engine to open. Null on an ordinary open.
+  final PlayerEngine? engineOverride;
+
+  /// Engines already tried for this title in Auto mode, in try order.
+  /// Only meaningful with [engineOverride]: the first Auto open passes
+  /// an empty list, and each Auto switch appends the engine it is
+  /// leaving for. Empty on an ordinary open.
+  final List<PlayerEngine> autoTriedEngines;
 }
 
 class ViewAllRouteExtra {
@@ -433,6 +447,11 @@ class _RouteExtraEncoder extends Converter<Object?, Object?> {
         if (input.preloadedStreams != null)
           'preloadedStreams':
               input.preloadedStreams!.map((s) => s.toJson()).toList(),
+        if (input.engineOverride != null)
+          'engineOverride': input.engineOverride!.name,
+        if (input.autoTriedEngines.isNotEmpty)
+          'autoTriedEngines':
+              input.autoTriedEngines.map((e) => e.name).toList(),
       };
     }
     if (input is ViewAllRouteExtra) {
@@ -488,6 +507,31 @@ class _RouteExtraDecoder extends Converter<Object?, Object?> {
                       )
                       .toList()
                 : null,
+            // An unknown engine name — written by a newer build — reads
+            // as no override, so the restore opens the stored engine.
+            engineOverride: (map['engineOverride'] as String?) != null &&
+                    PlayerEngine.values.any(
+                      (e) => e.name == map['engineOverride'],
+                    )
+                ? PlayerEngine.values.firstWhere(
+                    (e) => e.name == map['engineOverride'],
+                  )
+                : null,
+            // Unknown names are dropped, so a newer build's engine list
+            // still restores; an absent list is an ordinary open.
+            autoTriedEngines: (map['autoTriedEngines'] as List?)
+                    ?.whereType<String>()
+                    .where(
+                      (name) =>
+                          PlayerEngine.values.any((e) => e.name == name),
+                    )
+                    .map(
+                      (name) => PlayerEngine.values.firstWhere(
+                        (e) => e.name == name,
+                      ),
+                    )
+                    .toList() ??
+                const <PlayerEngine>[],
           );
         case 'ViewAllRouteExtra':
           return ViewAllRouteExtra(
@@ -650,6 +694,9 @@ class PlayerRoute extends GoRouteData with $PlayerRoute {
 /// Reads the Player Engine setting ONCE, when the route is created, and
 /// shows the matching screen: the Golden mpv player for libmpv (the
 /// default), the libVLC player for libVLC, the ExoPlayer player for Exo.
+/// Auto opens on libmpv, the first engine in the Auto order, and hands
+/// the screen the (empty) tried set — an Auto switch later pushes a new
+/// route naming the next engine through [PlayerRouteExtra.engineOverride].
 /// A change to the setting while a video is playing never swaps the engine
 /// under it — it takes effect on the NEXT play. All three screens take the
 /// same route extra, so the switch is only which screen is built.
@@ -666,12 +713,32 @@ class _PlayerEngineScreen extends ConsumerStatefulWidget {
 class _PlayerEngineScreenState extends ConsumerState<_PlayerEngineScreen> {
   late final PlayerEngine _engine;
 
+  /// Engines already tried for this title in Auto mode; null when the
+  /// player did not open in Auto mode. Passed to the screen, which
+  /// hands it on through an Auto switch (see [PlayerEngine.auto]).
+  late final Set<PlayerEngine>? _autoTriedEngines;
+
   @override
   void initState() {
     super.initState();
-    _engine =
+    final stored =
         ref.read(playerSettingsProvider).asData?.value.playerEngine ??
         PlayerEngine.mpv;
+    final override = widget.extra.engineOverride;
+    if (override != null) {
+      // An Auto-mode switch: open the engine the route names, and the
+      // tried set rides with it.
+      _engine = override;
+      _autoTriedEngines = widget.extra.autoTriedEngines.toSet();
+    } else if (stored == PlayerEngine.auto) {
+      // The first Auto try, on libmpv — the first engine in the Auto
+      // order. Nothing has been tried yet.
+      _engine = PlayerEngine.mpv;
+      _autoTriedEngines = <PlayerEngine>{};
+    } else {
+      _engine = stored;
+      _autoTriedEngines = null;
+    }
   }
 
   @override
@@ -682,18 +749,31 @@ class _PlayerEngineScreenState extends ConsumerState<_PlayerEngineScreen> {
         videoUrl: widget.extra.videoUrl,
         episode: widget.extra.episode,
         preloadedStreams: widget.extra.preloadedStreams,
+        autoTriedEngines: _autoTriedEngines,
       ),
       PlayerEngine.vlc => VlcPlayerScreen(
         item: widget.extra.item,
         videoUrl: widget.extra.videoUrl,
         episode: widget.extra.episode,
         preloadedStreams: widget.extra.preloadedStreams,
+        autoTriedEngines: _autoTriedEngines,
       ),
       PlayerEngine.exo => ExoPlayerScreen(
         item: widget.extra.item,
         videoUrl: widget.extra.videoUrl,
         episode: widget.extra.episode,
         preloadedStreams: widget.extra.preloadedStreams,
+        autoTriedEngines: _autoTriedEngines,
+      ),
+      // Auto never reaches here: initState already resolved it to
+      // libmpv, the first engine in the Auto order. The arm exists so
+      // the switch stays exhaustive over PlayerEngine.
+      PlayerEngine.auto => MpvPlayerScreen(
+        item: widget.extra.item,
+        videoUrl: widget.extra.videoUrl,
+        episode: widget.extra.episode,
+        preloadedStreams: widget.extra.preloadedStreams,
+        autoTriedEngines: _autoTriedEngines,
       ),
     };
   }

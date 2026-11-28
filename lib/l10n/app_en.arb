@@ -143,6 +143,10 @@
   "@playerEngineExo": {
     "description": "Label of the ExoPlayer engine segment in Player settings."
   },
+  "playerEngineAuto": "Auto",
+  "@playerEngineAuto": {
+    "description": "Label of the Auto engine segment in Player settings: tries each engine until one plays."
+  },
   "pipModeMpv": "mpv",
   "@pipModeMpv": {
     "description": "Label of the mpv PiP-mode segment in Player settings."
@@ -154,6 +158,10 @@
   "playerEngineMpvDetail": "Golden player · PiP on Android",
   "playerEngineVlcDetail": "PiP on Android",
   "playerEngineExoDetail": "Media3 · Widevine DRM · PiP on Android",
+  "playerEngineAutoDetail": "Tries each engine until one plays",
+  "@playerEngineAutoDetail": {
+    "description": "Detail line under the Auto engine choice."
+  },
   "playerEngineNextVideo": "Takes effect on the next video",
   "leftGesture": "Left Gesture",
   "rightGesture": "Right Gesture",

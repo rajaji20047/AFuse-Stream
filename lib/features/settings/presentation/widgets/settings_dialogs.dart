@@ -1006,6 +1006,7 @@ String getPlayerDisplayName(
       PlayerEngine.mpv => l10n.internalPlayerMpv,
       PlayerEngine.vlc => l10n.internalPlayer,
       PlayerEngine.exo => l10n.internalPlayerExo,
+      PlayerEngine.auto => l10n.playerEngineAuto,
     };
   }
   final player = ExternalPlayerService.instance.getPlayerById(playerId);
@@ -1421,14 +1422,15 @@ void showDefaultPlayerDialog(
       : null;
 
   // The radio group's choice: 'internal-mpv' / 'internal-vlc' /
-  // 'internal-exo' for the three internal rows, an external player's id
-  // otherwise.
+  // 'internal-exo' / 'internal-auto' for the four internal rows, an
+  // external player's id otherwise.
   final currentChoice =
       currentPlayerId ??
       switch (currentEngine) {
         PlayerEngine.mpv => 'internal-mpv',
         PlayerEngine.vlc => 'internal-vlc',
         PlayerEngine.exo => 'internal-exo',
+        PlayerEngine.auto => 'internal-auto',
       };
 
   Future<void> applyChoice(String choice) async {
@@ -1442,6 +1444,9 @@ void showDefaultPlayerDialog(
     } else if (choice == 'internal-exo') {
       await notifier.setPreferredPlayer(null);
       await notifier.setPlayerEngine(PlayerEngine.exo);
+    } else if (choice == 'internal-auto') {
+      await notifier.setPreferredPlayer(null);
+      await notifier.setPlayerEngine(PlayerEngine.auto);
     } else {
       await notifier.setPreferredPlayer(choice);
     }
@@ -1508,6 +1513,20 @@ void showDefaultPlayerDialog(
                   },
                 ),
               ),
+              currentOption(
+                isCurrent: currentChoice == 'internal-auto',
+                child: ListTile(
+                  autofocus: currentChoice == 'internal-auto',
+                  title: Text(l10n.playerEngineAuto),
+                  subtitle: Text(l10n.playerEngineAutoDetail),
+                  leading: const Radio<String>(value: 'internal-auto'),
+                  trailing: const Icon(Icons.play_circle_filled_rounded),
+                  onTap: () async {
+                    await applyChoice('internal-auto');
+                    if (context.mounted) Navigator.pop<void>(context);
+                  },
+                ),
+              ),
               const Divider(),
               ...platformPlayers.map((player) {
                 final bool isCurrent = player.id == currentPlayerId;
@@ -1559,7 +1578,8 @@ void showDefaultPlayerDialog(
   );
 }
 
-/// Shows a dialog to pick the playback engine (libmpv / libVLC).
+/// Shows a dialog to pick the playback engine (libmpv / libVLC /
+/// ExoPlayer / Auto).
 ///
 /// The choice is written to disk before the dialog closes, so a relaunch
 /// in the gap reads the new engine back. It takes effect on the NEXT play:
@@ -1621,6 +1641,18 @@ void showPlayerEngineDialog(
                   subtitle: Text(l10n.playerEngineExoDetail),
                   leading: const Radio<PlayerEngine>(value: PlayerEngine.exo),
                   onTap: () => unawaited(choose(ctx, PlayerEngine.exo)),
+                ),
+              ),
+              currentOption(
+                isCurrent: current == PlayerEngine.auto,
+                child: ListTile(
+                  autofocus: current == PlayerEngine.auto,
+                  title: Text(l10n.playerEngineAuto),
+                  subtitle: Text(l10n.playerEngineAutoDetail),
+                  leading: const Radio<PlayerEngine>(
+                    value: PlayerEngine.auto,
+                  ),
+                  onTap: () => unawaited(choose(ctx, PlayerEngine.auto)),
                 ),
               ),
               Padding(

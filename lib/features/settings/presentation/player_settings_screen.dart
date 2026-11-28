@@ -116,6 +116,10 @@ class PlayerSettingsScreen extends ConsumerWidget {
                               value: PlayerEngine.exo,
                               label: l10n.playerEngineExo,
                             ),
+                            FuseSegment<PlayerEngine>(
+                              value: PlayerEngine.auto,
+                              label: l10n.playerEngineAuto,
+                            ),
                           ],
                           selected: playerSettings.playerEngine,
                           onChanged: (engine) => ref
@@ -131,6 +135,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
                               'libVLC · ${l10n.playerEngineVlcDetail}',
                             PlayerEngine.exo =>
                               'ExoPlayer · ${l10n.playerEngineExoDetail}',
+                            PlayerEngine.auto =>
+                              'Auto · ${l10n.playerEngineAutoDetail}',
                           },
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(

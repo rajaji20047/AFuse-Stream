@@ -150,6 +150,13 @@ enum PlayerEngine {
   /// engine. PiP on Android through the package's own PiP; iOS plays
   /// through AVPlayer behind the same controller.
   exo,
+
+  /// Auto: not an engine of its own. The player opens on libmpv and, if
+  /// no source plays there, tries libVLC and then ExoPlayer — each engine
+  /// at most once per title — before failing (see the Auto hook in each
+  /// player screen's failover). Stored as 'auto' like the other engines
+  /// and read back by the same name lookup; the default stays libmpv.
+  auto,
 }
 
 /// Which Picture-in-Picture implementation the iOS player uses.
@@ -1164,9 +1171,9 @@ class PlayerSettingsNotifier extends _$PlayerSettingsNotifier {
   }
 
   /// Which engine plays the next video. Stored as the enum name ('mpv' /
-  /// 'vlc'); an unknown name reads back as mpv (see the load above).
-  /// Takes effect on the next play — the player route reads it once when
-  /// the player opens.
+  /// 'vlc' / 'exo' / 'auto'); an unknown name reads back as mpv (see the
+  /// load above). Takes effect on the next play — the player route reads
+  /// it once when the player opens.
   Future<void> setPlayerEngine(PlayerEngine engine) async {
     await _repository.setPlayerSetting('player_engine', engine.name);
     _update((PlayerSettings c) => c.copyWith(playerEngine: engine));

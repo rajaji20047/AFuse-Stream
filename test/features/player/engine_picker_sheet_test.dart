@@ -40,10 +40,11 @@ void main() {
     expect(find.text('libmpv Golden'), findsOneWidget);
     expect(find.text('libVLC'), findsOneWidget);
     expect(find.text('ExoPlayer'), findsOneWidget);
+    expect(find.text('Auto'), findsOneWidget);
     expect(find.byIcon(Icons.radio_button_checked_rounded), findsOneWidget);
     expect(
       find.byIcon(Icons.radio_button_unchecked_rounded),
-      findsNWidgets(2),
+      findsNWidgets(3),
     );
 
     await tester.tap(find.text('libVLC'));

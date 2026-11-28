@@ -33,11 +33,13 @@ Future<PlayerEngine?> showEnginePickerSheet(
         PlayerEngine.mpv => l10n.playerEngineMpv,
         PlayerEngine.vlc => l10n.playerEngineVlc,
         PlayerEngine.exo => l10n.playerEngineExo,
+        PlayerEngine.auto => l10n.playerEngineAuto,
       };
       String engineDetail(PlayerEngine engine) => switch (engine) {
         PlayerEngine.mpv => l10n.playerEngineMpvDetail,
         PlayerEngine.vlc => l10n.playerEngineVlcDetail,
         PlayerEngine.exo => l10n.playerEngineExoDetail,
+        PlayerEngine.auto => l10n.playerEngineAutoDetail,
       };
       return SafeArea(
         child: Column(

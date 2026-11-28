@@ -84,6 +84,7 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
     required this.videoUrl,
     this.episode,
     this.preloadedStreams,
+    this.autoTriedEngines,
     super.key,
   });
 
@@ -101,6 +102,13 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   /// the next engine reopens on the playing source instead of resolving
   /// from scratch.
   final List<StreamResult>? preloadedStreams;
+
+  /// Engines already tried for this title in Auto mode. Non-null means
+  /// the player opened in Auto mode (see [PlayerEngine.auto]): when every
+  /// source has been tried here and nothing played, the screen switches
+  /// to the next untried engine instead of failing. Null on an ordinary
+  /// open, and on a manual engine switch.
+  final Set<PlayerEngine>? autoTriedEngines;
 
   @override
   ConsumerState<ExoPlayerScreen> createState() => _ExoPlayerScreenState();
@@ -852,6 +860,40 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     if (_disposed) return;
     final next = _streamIndex + 1;
     if (next >= _streams.length) {
+      // Auto mode, and nothing played at all: try the next untried
+      // engine for this title instead of failing here. Each engine is
+      // tried at most once per title — the order is libmpv, libVLC,
+      // ExoPlayer — and after the third the failed stage below is the
+      // end of the line. A failure after playback started is not an Auto
+      // switch: the viewer already watched part of the video on this
+      // engine, and a mid-playback engine change is theirs to pick.
+      if (widget.autoTriedEngines != null && !_startedPlaying) {
+        final tried = <PlayerEngine>{
+          ...widget.autoTriedEngines!,
+          PlayerEngine.exo,
+        };
+        PlayerEngine? target;
+        for (final engine in const <PlayerEngine>[
+          PlayerEngine.mpv,
+          PlayerEngine.vlc,
+          PlayerEngine.exo,
+        ]) {
+          if (!tried.contains(engine)) {
+            target = engine;
+            break;
+          }
+        }
+        if (target != null) {
+          unawaited(
+            _switchEngine(
+              target,
+              persistEngine: false,
+              autoTriedEngines: tried,
+            ),
+          );
+          return;
+        }
+      }
       setState(() {
         _stage = _Stage.failed;
         _error = 'No working source found.';
@@ -1361,8 +1403,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _switchEngine(PlayerEngine target) async {
-    await ref.read(playerSettingsProvider.notifier).setPlayerEngine(target);
+  Future<void> _switchEngine(
+    PlayerEngine target, {
+    bool persistEngine = true,
+    Set<PlayerEngine>? autoTriedEngines,
+  }) async {
+    // A manual pick becomes the stored engine, as before. An Auto-mode
+    // switch must NOT persist: the stored setting stays `auto`, and the
+    // new route is told which engine to open through the extra instead.
+    if (persistEngine) {
+      await ref.read(playerSettingsProvider.notifier).setPlayerEngine(target);
+    }
     if (!mounted) return;
     // The dispose that follows this replacement must not release the
     // new player's landscape pin (see [_restoreOrientation]).
@@ -1372,13 +1423,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
         item: widget.item,
         videoUrl: _currentVideoUrl,
         episode: _currentEpisode,
-        // The playing source rides first: the resolver treats a
-        // handed-in list as already ranked and probes from its head, so
-        // an unrotated list reopens on source #1 instead of the source
-        // that was playing.
+        // In Auto mode the new engine retries the whole ranked list from
+        // the top: nothing played, so there is no playing source to ride
+        // first. A manual switch keeps the playing source first, as
+        // before.
         preloadedStreams: _streams.isEmpty
             ? null
-            : rotateStreamToFirst(_streams, _streamIndex),
+            : autoTriedEngines != null
+                ? _streams
+                : rotateStreamToFirst(_streams, _streamIndex),
+        // Auto mode only: which engine this route must open, and which
+        // engines have already been tried for this title.
+        engineOverride: autoTriedEngines != null ? target : null,
+        autoTriedEngines:
+            autoTriedEngines?.toList() ?? const <PlayerEngine>[],
       ),
     ).pushReplacement(context);
   }
