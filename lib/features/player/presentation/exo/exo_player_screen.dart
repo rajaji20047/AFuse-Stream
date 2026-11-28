@@ -209,6 +209,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   // The playing edge the wakelock follows (see [_syncWakelock]): only
   // a flip touches the platform lock, never a position tick.
   bool _wasPlaying = false;
+  // The playing state a side-panel pick found (quality / audio /
+  // subtitle / source), or null when no panel pick is pending. A panel
+  // change pauses the package player — the track switch, and a new
+  // controller whose autoPlay does not always fire — so the pick's
+  // completion event re-asserts the state it found: resume when the
+  // video was playing, stay paused when it was paused. Only the panel
+  // pick handlers set it; [_togglePlay] clears it, so a pause the
+  // viewer chose is never overridden.
+  bool? _panelPickWasPlaying;
   bool _isBuffering = false;
   bool _isLive = false;
   bool _inPip = false;
@@ -607,7 +616,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   /// The old controller is disposed first — one video at a time — and the
   /// open is guarded by [_openToken], so a failover that lands while an
   /// open is still in flight does not open the same source twice.
-  Future<void> _openStream(int index, {Duration start = Duration.zero}) async {
+  Future<void> _openStream(
+    int index, {
+    Duration start = Duration.zero,
+    // A panel source pick passes false when the viewer had paused, so
+    // the new source loads paused instead of auto-playing (see
+    // [_pickSource]); every other open plays.
+    bool autoPlay = true,
+  }) async {
     if (_disposed || _streams.isEmpty) return;
     if (index < 0 || index >= _streams.length) return;
     final token = ++_openToken;
@@ -628,7 +644,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _pendingSeekTargetSetAt = null;
     _disposeController();
     // Every open keeps the display on until playback decides — the
-    // config's autoPlay is always true here, so every open plays.
+    // config's autoPlay is true for every open except a panel source
+    // pick made while paused (see [_pickSource]).
     // (VLC: autoPlay ? enable : disable.)
     unawaited(WakelockPlus.enable());
     final stream = _streams[index];
@@ -671,7 +688,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _applyVegaSkipSegments(stream.url);
     final controller = BetterPlayerController(
       BetterPlayerConfiguration(
-        autoPlay: true,
+        autoPlay: autoPlay,
         // Fill: the wrapper below owns the shape (see [_fit]). The
         // package's own fit is fixed at controller creation, so a
         // runtime fit change must live in Flutter, not in the config.
@@ -918,7 +935,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   void _pickSource(int index) {
     if (_disposed || index < 0 || index >= _streams.length) return;
     if (index == _streamIndex) return;
-    unawaited(_openStream(index, start: _position));
+    // A panel pick must restore the playing state it found: a playing
+    // video resumes on the new source, a paused one stays paused.
+    // [_openStream] sets the new controller's autoPlay from it, and the
+    // initialized event re-asserts it (see
+    // [_restorePanelPickPlayingState]).
+    final wasPlaying = _isPlaying;
+    _panelPickWasPlaying = wasPlaying;
+    unawaited(_openStream(index, start: _position, autoPlay: wasPlaying));
   }
 
   // -- playback events -------------------------------------------------------
@@ -932,6 +956,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       case BetterPlayerEventType.initialized:
         _attachVideoListener();
         _applyAudioAutoSelect();
+        // A panel source pick re-opened on a new controller: resume
+        // when the video was playing, stay paused when it was paused.
+        _restorePanelPickPlayingState();
         if (mounted) setState(() {});
       case BetterPlayerEventType.play:
         if (!_isPlaying) setState(() => _isPlaying = true);
@@ -962,6 +989,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       case BetterPlayerEventType.changedSubtitles:
         // The track lists changed under the sheets: repaint them.
         if (mounted) setState(() {});
+        // A panel track pick landed: resume when the video was
+        // playing, stay paused when it was paused.
+        _restorePanelPickPlayingState();
       default:
         break;
     }
@@ -1515,9 +1545,36 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
 
   // -- transport -------------------------------------------------------------
 
+  /// Re-asserts the playing state a side-panel pick found, after the
+  /// change has landed. A panel change pauses the package player — the
+  /// track switch, and a new controller whose autoPlay does not always
+  /// fire — so the pick's completion event calls this (initialized for
+  /// a source re-open, changedTrack / changedSubtitles for a track
+  /// change). The immediate call right after the change (with
+  /// [keepPending]) covers a pause that lands before the event. A pick
+  /// made while paused never starts playback: the new source opens with
+  /// autoPlay off, and a stray play edge is stopped here. The flag is
+  /// cleared on the first non-pending attempt, so a later event cannot
+  /// restart a video the viewer has since paused.
+  void _restorePanelPickPlayingState({bool keepPending = false}) {
+    final wasPlaying = _panelPickWasPlaying;
+    if (wasPlaying == null) return;
+    if (!keepPending) _panelPickWasPlaying = null;
+    final controller = _controller;
+    if (controller == null || _disposed) return;
+    if (wasPlaying) {
+      unawaited(controller.play());
+    } else if (_isPlaying) {
+      unawaited(controller.pause());
+    }
+  }
+
   Future<void> _togglePlay({bool? force}) async {
     final controller = _controller;
     if (controller == null) return;
+    // The viewer took over: a pending panel resume must not override
+    // this play/pause.
+    _panelPickWasPlaying = null;
     final wantPlay = force ?? !_isPlaying;
     if (wantPlay) {
       _sleepTimer.noteResumed();
@@ -2004,9 +2061,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           selected: selectedHeight <= 0,
           onTap: () {
             Navigator.of(context).pop();
+            _panelPickWasPlaying = _isPlaying;
             unawaited(
               controller.setTrack(BetterPlayerAsmsTrack.defaultTrack()),
             );
+            // The track switch pauses the package player: resume when
+            // the video was playing (kept pending for the changedTrack
+            // event, which re-asserts it if the pause lands late).
+            _restorePanelPickPlayingState(keepPending: true);
           },
         ),
         for (final height in heights)
@@ -2017,7 +2079,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               Navigator.of(context).pop();
               final track = byHeight[height];
               if (track != null) {
+                _panelPickWasPlaying = _isPlaying;
                 unawaited(controller.setTrack(track));
+                _restorePanelPickPlayingState(keepPending: true);
               }
             },
           ),
@@ -2066,7 +2130,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
           onTap: () {
             Navigator.of(context).pop();
             setState(() => _selectedSubtitleName = null);
+            _panelPickWasPlaying = _isPlaying;
             controller.setupSubtitleSource(offSource);
+            _restorePanelPickPlayingState(keepPending: true);
           },
         ),
         if (named.isEmpty)
@@ -2079,7 +2145,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               onTap: () {
                 Navigator.of(context).pop();
                 setState(() => _selectedSubtitleName = source.name);
+                _panelPickWasPlaying = _isPlaying;
                 controller.setupSubtitleSource(source);
+                _restorePanelPickPlayingState(keepPending: true);
               },
             ),
         ],
@@ -2123,7 +2191,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               selected: selected?.id == track.id,
               onTap: () {
                 Navigator.of(context).pop();
+                // setAudioTrack posts no completion event, so the
+                // immediate resume is the only one: do not keep it
+                // pending.
+                _panelPickWasPlaying = _isPlaying;
                 controller.setAudioTrack(track);
+                _restorePanelPickPlayingState();
               },
             ),
         ],
