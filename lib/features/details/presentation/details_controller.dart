@@ -337,6 +337,11 @@ class DetailsController extends _$DetailsController {
       if (ref.mounted) {
         state = state.copyWith(details: AsyncError(e, st));
       }
+      // The provider's getMeta failed, but the catalog item still names
+      // the title: resolve its TMDB/IMDb ids in the background anyway, so
+      // the TMDB display metadata (poster/backdrop/overview/rating) can
+      // still load for it. The error itself stays as-is.
+      unawaited(_resolveMetadataInBackground(item));
     }
   }
 
@@ -449,6 +454,12 @@ class DetailsController extends _$DetailsController {
             details: AsyncData(updatedItem),
             item: updatedItem,
           );
+        } else {
+          // getDetails failed (details is AsyncError, so there is no
+          // fetched item to patch): the enriched ids still belong on the
+          // state item, so the screen's TMDB fill and the links sheet can
+          // use them. The error itself is left untouched.
+          state = state.copyWith(item: finalItem);
         }
       }
     } catch (e) {

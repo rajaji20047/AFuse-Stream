@@ -141,7 +141,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     final isMovie = ref.watch(
       detailsControllerProvider(widget.item.url).select((s) => s.isMovie),
     );
-    final rawItem = details ?? widget.item;
+    // When getDetails failed the controller keeps the enriched catalog
+    // item (with its resolved tmdbId) on the state item: it is the
+    // fallback the TMDB fill below reads, so TMDB metadata still loads
+    // even though the provider gave no details.
+    final stateItem = ref.watch(
+      detailsControllerProvider(widget.item.url).select((s) => s.item),
+    );
+    final rawItem = details ?? stateItem ?? widget.item;
     // TMDB details for the Cast row (photos + character roles, like Browse)
     // AND to fill the display gaps the plugin left (poster, backdrop,
     // overview, rating). The tmdbId is resolved in the background by
@@ -150,14 +157,20 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     // The TMDB details belong to the resolved title by construction, so no
     // name-matching is needed. The merge below only fills EMPTY plugin
     // fields; a plugin value is never overwritten.
+    // In the error path state.isMovie was never set (no episodes were
+    // processed), so a movie would be fetched as 'tv' and TMDB would
+    // return nothing for its id. The item's own content type is the
+    // fallback: it only changes the error path, the success path still
+    // reads isMovie.
+    final tmdbType =
+        isMovie || rawItem.contentType == MultimediaContentType.movie
+            ? 'movie'
+            : 'tv';
     final tmdb = rawItem.tmdbId != null
         ? ref
               .watch(
                 tmdbDetailsProvider(
-                  MovieDetailsParams(
-                    rawItem.tmdbId!,
-                    isMovie ? 'movie' : 'tv',
-                  ),
+                  MovieDetailsParams(rawItem.tmdbId!, tmdbType),
                 ),
               )
               .value
