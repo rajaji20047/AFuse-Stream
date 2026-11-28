@@ -300,6 +300,15 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity(), FlutterEngineCon
     }
 
 
+    /// The parent CloudStream MainActivity declares this abstract, so the
+    /// override must stay even though there is nothing to clean up now:
+    /// the WARP removal (ed19d2d) deleted it as "only warp cleanup" and
+    /// broke the build — `Class 'MainActivity' is not abstract and does
+    /// not implement abstract member: fun cleanUpFlutterEngine(...)`.
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        // No-op: no engine-lifetime resource is held here anymore.
+    }
+
     private fun flutterViewIn(view: android.view.View?): FlutterView? = when (view) {
         is FlutterView -> view
         is android.view.ViewGroup ->
