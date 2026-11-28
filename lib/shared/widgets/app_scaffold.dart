@@ -40,20 +40,15 @@ class AppScaffold extends ConsumerStatefulWidget {
 
 class _AppScaffoldState extends ConsumerState<AppScaffold>
     with TickerProviderStateMixin {
-  // The last tab branch (0-4) the shell was on. History: builds 88-90
-  // parked the pill off-screen on the Settings branch, and the package
-  // has no "no selection" state — back when the pill held only five
-  // items, passing 5 slid its highlight capsule off the bar's right
-  // edge (a gold sliver at the screen edge), so on branch 5 the pill
-  // kept highlighting the tab the user came from. Removed 2026-11-28
-  // on the user's choice ("Pill Settings pe bhi dikhe, Settings
-  // button highlight ho"): the pill now stays visible on Settings and
-  // highlights the Settings button itself when it is in the pill; this
-  // field is the fallback for Settings opened without its nav-bar
-  // button (profile dropdown while the button is off). Updated in
-  // build whenever the shell is on a tab branch (covers pill taps,
-  // the Settings gear and the back button alike); a plain field, no
-  // setState, no rebuild loop.
+  // The last tab branch (0-4) the shell was on. The pill is parked
+  // off-screen on the Settings branch (build 88), and the package has
+  // no "no selection" state: passing 5 slides its highlight capsule
+  // off the bar's right edge (a gold sliver at the screen edge). So
+  // on branch 5 the pill keeps highlighting the tab the user came
+  // from — the honest "where you were" state — and the capsule never
+  // moves while on Settings. Updated in build whenever the shell is
+  // on a tab branch (covers pill taps, the Settings gear and the
+  // back button alike); a plain field, no setState, no rebuild loop.
   int _lastTabIndex = 0;
 
   /// A hidden-tab redirect is already queued for this frame (see
@@ -504,16 +499,15 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         // appeared ~2 frames into the 360 ms slide (his recording,
         // 6cc621ab...mp4: Home visible with a black strip where the
         // pill belongs, pill back ~0.2 s later). Now the pill stays
-        // mounted on every branch. Builds 88-90 parked it off-screen
-        // on Settings (see hiddenNavPaddingBottom) and pinned the
-        // highlight to the last tab — removed 2026-11-28 on the user's
-        // choice ("Pill Settings pe bhi dikhe, Settings button
-        // highlight ho"), reversing his 2026-11-19 sink request
-        // ("upar janese accha neeche jaye"): the pill stays visible
-        // on Settings and the Settings button wears the selected
-        // bubble. MediaQuery is an InheritedWidget, so the package's
-        // root Positioned still talks directly to this Stack — no
-        // Transform/Padding wrapper (the +15..+19 freeze rule).
+        // mounted on every branch and is parked off-screen on Settings
+        // (see hiddenNavPaddingBottom): the visibility flips in the
+        // same build as the branch change, so there is no gap in
+        // either direction and nothing to re-init. MediaQuery is an
+        // InheritedWidget, so the package's root Positioned still
+        // talks directly to this Stack — no Transform/Padding wrapper
+        // (the +15..+19 freeze rule). The highlight stays on the last
+        // tab while on Settings (see _lastTabIndex): the package has
+        // no "no selection" state.
         final currentIndex = widget.navigationShell.currentIndex;
         final onSettings = currentIndex == 5;
         if (currentIndex < 5 && visibleBranches.contains(currentIndex)) {
@@ -521,38 +515,25 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
         }
         // Pill positions are visible positions, not branches: with a
         // tab hidden, position 3 is Browse, not Library.
-        //
-        // On Settings the pill highlights the Settings button itself:
-        // its position in navBranches, which carries branch 5 when
-        // the nav-bar button is on. branchToVisiblePosition only
-        // knows branches 0-4, so it can never map 5. When Settings
-        // was opened without its nav-bar button (profile dropdown
-        // while the button is off) there is no Settings button to
-        // highlight, so the highlight stays on the last tab.
-        final int pillIndex;
-        if (onSettings && navBranches.contains(5)) {
-          pillIndex = navBranches.indexOf(5);
-        } else {
-          final pillBranch = currentIndex < 5 ? currentIndex : _lastTabIndex;
-          pillIndex =
-              branchToVisiblePosition(pillBranch, hiddenNavTabs) ??
-              branchToVisiblePosition(_lastTabIndex, hiddenNavTabs) ??
-              0;
-        }
+        final pillBranch = currentIndex < 5 ? currentIndex : _lastTabIndex;
+        final pillIndex =
+            branchToVisiblePosition(pillBranch, hiddenNavTabs) ??
+            branchToVisiblePosition(_lastTabIndex, hiddenNavTabs) ??
+            0;
         // Nuvio's nav-bar settings for this frame.
         final navStyle = navSettings.navBarStyle;
         // Content must clear the pill top (see
         // [CustomBottomNavBar.contentClearance]); the real safe-area
         // padding is already in mq.padding.bottom, so only the remainder
-        // is added. The pill stays visible on Settings too (the
-        // 2026-11-28 choice reversing the Builds 88-90 park), so the
-        // Settings screens take the same clearance as every tab —
-        // before the reversal they kept just the real safe area
-        // (pre-87 behaviour) because the pill was parked off-screen.
-        final navBarTotalHeight = math.max(
-          CustomBottomNavBar.contentClearance - mq.padding.bottom,
-          0.0,
-        );
+        // is added. On Settings the pill is parked off-screen, so the
+        // content keeps just the real safe area (pre-87 behaviour) and
+        // the Settings screens take their small-value path.
+        final navBarTotalHeight = onSettings
+            ? 0.0
+            : math.max(
+                CustomBottomNavBar.contentClearance - mq.padding.bottom,
+                0.0,
+              );
 
         return PopScope(
           canPop: false,
@@ -618,17 +599,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                 // slab is wrong in light mode too. The glass itself
                 // blurs whatever scrolls under it, and the shell's
                 // bottom clearance keeps the last row above the pill,
-                // so no row header can read through it.
-                //
-                // History: builds 88-90 parked the pill off-screen on
-                // the Settings branch (hiddenNavPaddingBottom) —
-                // mounted, never destroyed, so the return showed it in
-                // the first frame. Removed 2026-11-28 on the user's
-                // choice ("Pill Settings pe bhi dikhe, Settings button
-                // highlight ho"), reversing his 2026-11-19 sink
-                // request: the pill now stays visible on Settings and
-                // the Settings button wears the selected bubble. What
-                // follows is the park's own history, kept for context.
+                // so no row header can read through it. Build 88: the
+                // pill is parked off-screen on the Settings branch
+                // (hiddenNavPaddingBottom) — mounted, never destroyed,
+                // so the return shows it in the first frame.
                 //
                 // Build 89: the park is ANIMATED, not a jump. Build 88
                 // flipped the padding in one build, so the pill popped
@@ -645,10 +619,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                 // the natural bottom-bar direction, so the pill now
                 // sinks DOWN below the bottom edge as Settings slides
                 // in and rises UP from below as it slides out (see
-                // hiddenNavPaddingBottom). That park is gone now (see
-                // the history note above): the pill stays put on
-                // Settings, and the padding tween below only tracks
-                // the normal nav padding.
+                // hiddenNavPaddingBottom). It is still hidden on
+                // settled Settings and still back with no seconds-long
+                // gap: the glide IS the 360 ms, it never waits.
                 // Reduced motion jumps instead (same rule as the
                 // branch container). A TweenAnimationBuilder builds no
                 // render object of its own — like the MediaQuery it
@@ -685,25 +658,22 @@ class _AppScaffoldState extends ConsumerState<AppScaffold>
                       builder: (context, labelFraction, _) {
                         return TweenAnimationBuilder<double>(
                           tween: Tween<double>(
-                            // The pill stays visible on every branch,
-                            // Settings included: the Builds 88-90 park
-                            // (hiddenNavPaddingBottom on Settings) was
-                            // removed on the user's 2026-11-28 choice
-                            // ("Pill Settings pe bhi dikhe"), reversing
-                            // his 2026-11-19 sink request.
-                            end: CustomBottomNavBar.navPaddingBottom(
-                              context,
-                            ),
+                            end: onSettings
+                                ? CustomBottomNavBar.hiddenNavPaddingBottom(
+                                    context,
+                                  )
+                                : CustomBottomNavBar.navPaddingBottom(
+                                    context,
+                                  ),
                           ),
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : kMotionPage,
                           curve: kMotionPageCurve,
-                          // The padding is the pill's anchor: the
-                          // package reads padding.bottom for it. (Builds
-                          // 88-90 parked it here — sinking the pill
-                          // below the screen on Settings; removed
-                          // 2026-11-28, the pill stays visible.)
+                          // The park drives the bottom edge: the pill
+                          // sinks below the screen on Settings and rises
+                          // back up on the return (build 90). The package
+                          // reads padding.bottom for its anchor.
                           builder: (context, navPadding, child) => MediaQuery(
                             data: mq.copyWith(
                               padding: mq.padding.copyWith(bottom: navPadding),
