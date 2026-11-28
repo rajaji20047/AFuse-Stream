@@ -4,6 +4,13 @@
 /// sliding out over Home) and only back seconds later, even though the
 /// branch switch itself is 360 ms.
 ///
+/// 2026-11-28 reversal: the user chose "Pill Settings pe bhi dikhe,
+/// Settings button highlight ho", reversing his 2026-11-19 sink request.
+/// The Builds 88-90 park is gone: the pill stays visible on Settings and
+/// the Settings button wears the selected bubble when it is in the pill.
+/// The history below is kept for context; the tests assert the new
+/// behaviour.
+///
 /// Build 88: the pill is hidden on the Settings branch again — the user
 /// saw build 87's always-visible pill on Settings and chose "Settings pe
 /// chhupa do" — but it NEVER leaves the tree. The gap was the
@@ -42,14 +49,17 @@ import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_bottom_nav/liquid_glass_bottom_nav.dart';
 import 'package:raja/core/providers/device_info_provider.dart';
 import 'package:raja/core/router/app_router.dart';
-import 'package:raja/core/utils/motion.dart';
 import 'package:raja/features/settings/presentation/general_settings_provider.dart';
 import 'package:raja/l10n/generated/app_localizations.dart';
 import 'package:raja/shared/widgets/app_scaffold.dart';
 import 'package:raja/shared/widgets/custom_bottom_nav.dart';
 
 void main() {
-  Future<GoRouter> pumpShell(WidgetTester tester, {Widget? homePage}) async {
+  Future<GoRouter> pumpShell(
+    WidgetTester tester, {
+    Widget? homePage,
+    GeneralSettings settings = const GeneralSettings(),
+  }) async {
     tester.view.physicalSize = const Size(720, 1568);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
@@ -100,7 +110,7 @@ void main() {
           deviceProfileProvider.overrideWithValue(
             const AsyncValue.data(DeviceProfile(isTv: false, isTablet: false)),
           ),
-          generalSettingsProvider.overrideWithValue(const GeneralSettings()),
+          generalSettingsProvider.overrideWithValue(settings),
         ],
         child: MaterialApp.router(
           routerConfig: router,
@@ -117,8 +127,9 @@ void main() {
       find.byType(CustomBottomNavBar).evaluate().isNotEmpty;
 
   /// The pill's top / bottom edge on screen. On a tab the pill hugs the
-  /// bottom edge; on Settings it is parked below the screen bottom
-  /// (build 90) — mounted, but invisible.
+  /// bottom edge; since the 2026-11-28 park removal it hugs the bottom
+  /// edge on Settings too (before that it was parked below the screen
+  /// bottom, build 90 — mounted, but invisible).
   ///
   /// Measured on the package bar itself, not on [CustomBottomNavBar]:
   /// build 102 wraps the bar in a full-screen treatment Stack (gold glow
@@ -133,20 +144,8 @@ void main() {
     return topLeft.dy + size.height;
   }
 
-  /// The pill's bottom edge after pumping [duration].
-  Future<double> pumpAndBottom(WidgetTester tester, Duration duration) async {
-    await tester.pump(duration);
-    return pillBottom(tester);
-  }
-
-  /// The pill's top edge after pumping [duration].
-  Future<double> pumpAndTop(WidgetTester tester, Duration duration) async {
-    await tester.pump(duration);
-    return pillTop(tester);
-  }
-
-  testWidgets('pill glides down out of view on Settings and up on return — '
-      'mounted throughout, no single-frame jump (build 90)', (tester) async {
+  testWidgets('pill stays visible on Settings — no glide down, no park '
+      '(2026-11-28)', (tester) async {
     final router = await pumpShell(tester);
     final screenHeight =
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
@@ -162,82 +161,44 @@ void main() {
       reason: 'pill fully on screen on Home',
     );
     final homeBottom = pillBottom(tester);
+    final homeTop = pillTop(tester);
 
+    // The Builds 88-90 park sank the pill below the screen on
+    // Settings; removed 2026-11-28 on the user's choice ("Pill
+    // Settings pe bhi dikhe"): the pill stays put through the
+    // navigation, in the same build as the branch change, and the
+    // Settings page content clears it.
     router.go('/settings');
-    // One frame: the branch has flipped and the slide-in has started,
-    // but the pill's 360 ms glide has not moved yet — it must NOT pop
-    // off-screen in a single frame (build 88 did exactly that: the
-    // padding flipped in one build while the page slid for 360 ms).
-    await tester.pump();
-    expect(
-      pillPresent(tester),
-      isTrue,
-      reason: 'pill stays mounted through the Settings slide-in',
-    );
+    await tester.pumpAndSettle();
+    expect(pillPresent(tester), isTrue, reason: 'pill on Settings');
     expect(
       pillBottom(tester),
       closeTo(homeBottom, 1.0),
-      reason: 'pill has not jumped on the first frame of the slide-in',
-    );
-    // Mid glide: sinking DOWN, bottom edge strictly increasing past
-    // the screen bottom — one motion with the page, not a pop at
-    // either end, and the wrong way (up, build 88/89) is ruled out
-    // by the direction of the increase.
-    final sink1 = await pumpAndBottom(tester, kMotionPage ~/ 4);
-    final sink2 = await pumpAndBottom(tester, kMotionPage ~/ 4);
-    final sink3 = await pumpAndBottom(tester, kMotionPage ~/ 4);
-    expect(sink1, greaterThan(homeBottom), reason: 'pill gliding down');
-    expect(sink2, greaterThan(sink1), reason: 'pill still gliding down');
-    expect(sink3, greaterThan(sink2), reason: 'pill still gliding down');
-    expect(
-      sink3,
-      greaterThan(screenHeight),
-      reason: 'pill below the bottom edge by three quarters of the glide',
-    );
-    await tester.pumpAndSettle();
-    expect(
-      pillTop(tester),
-      greaterThanOrEqualTo(screenHeight),
-      reason: 'pill parked below the screen bottom on Settings',
-    );
-    final parkedTop = pillTop(tester);
-
-    router.go('/home');
-    await tester.pump();
-    expect(
-      pillPresent(tester),
-      isTrue,
-      reason: 'pill stays mounted through the slide-out',
+      reason: 'pill has not moved on Settings',
     );
     expect(
       pillTop(tester),
-      greaterThanOrEqualTo(screenHeight),
-      reason: 'pill still parked below on the first frame of the return',
+      closeTo(homeTop, 1.0),
+      reason: 'pill has not moved on Settings',
     );
-    final rise1 = await pumpAndTop(tester, kMotionPage ~/ 4);
-    final rise2 = await pumpAndTop(tester, kMotionPage ~/ 4);
-    final rise3 = await pumpAndTop(tester, kMotionPage ~/ 4);
-    // easeInOutCubic starts slowly, so at a quarter of the glide the
-    // pill is still just below the edge — the glide is proven by the
-    // steady rise, not by an early crossing.
-    expect(rise1, lessThan(parkedTop), reason: 'pill gliding back up');
-    expect(rise2, lessThan(rise1), reason: 'pill still gliding up');
-    expect(rise3, lessThan(rise2), reason: 'pill still gliding up');
     expect(
       pillBottom(tester),
       lessThanOrEqualTo(screenHeight),
-      reason: 'pill back on screen by three quarters of the glide',
-    );
-    await tester.pumpAndSettle();
-    expect(
-      pillBottom(tester),
-      lessThanOrEqualTo(screenHeight),
-      reason: 'pill on Home',
+      reason: 'pill still on screen on Settings',
     );
     expect(
       pillTop(tester),
       greaterThan(0),
-      reason: 'pill fully on screen on Home',
+      reason: 'pill fully on screen on Settings',
+    );
+
+    router.go('/home');
+    await tester.pumpAndSettle();
+    expect(pillPresent(tester), isTrue, reason: 'pill on Home');
+    expect(
+      pillBottom(tester),
+      closeTo(homeBottom, 1.0),
+      reason: 'pill has not moved on the return',
     );
   });
 
@@ -295,7 +256,8 @@ void main() {
     expect(pillMargin(), 19.0, reason: 'pill back to full width');
   });
 
-  testWidgets('pill keeps the last tab highlighted on Settings', (
+  testWidgets('pill keeps the last tab highlighted on Settings when the '
+      'nav-bar button is off (fallback)', (
     tester,
   ) async {
     final router = await pumpShell(tester);
@@ -319,9 +281,48 @@ void main() {
           .currentIndex,
       1,
       reason:
-          'still Search highlighted on Settings — the package has '
-          'no "no selection" state, and 5 would slide its capsule off '
-          'the bar',
+          'still Search highlighted on Settings with the nav-bar button '
+          'off — there is no Settings button to highlight, so the '
+          'highlight stays on the last tab',
+    );
+
+    router.go('/home');
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<CustomBottomNavBar>(find.byType(CustomBottomNavBar))
+          .currentIndex,
+      0,
+      reason: 'Home highlighted again on Home',
+    );
+  });
+
+  testWidgets('pill highlights the Settings button on Settings when the '
+      'nav-bar button is on (2026-11-28)', (tester) async {
+    final router = await pumpShell(
+      tester,
+      settings: const GeneralSettings().copyWith(showSettingsInNavBar: true),
+    );
+
+    router.go('/search');
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<CustomBottomNavBar>(find.byType(CustomBottomNavBar))
+          .currentIndex,
+      1,
+      reason: 'Search highlighted on Search',
+    );
+
+    router.go('/settings');
+    await tester.pumpAndSettle();
+    expect(pillPresent(tester), isTrue, reason: 'pill on Settings');
+    expect(
+      tester
+          .widget<CustomBottomNavBar>(find.byType(CustomBottomNavBar))
+          .currentIndex,
+      5,
+      reason: 'Settings button highlighted on Settings',
     );
 
     router.go('/home');
