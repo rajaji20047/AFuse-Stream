@@ -488,13 +488,19 @@ class AddonClient {
     });
   }
 
-  /// Resolve a title to an IMDb id via Cinemeta search.
+  /// The best Cinemeta catalog hit for a title, or null when nothing
+  /// matches.
   ///
-  /// Scraper bridges (CNCVerse Multimovies, …) identify titles with opaque
-  /// `cnc:…` ids that often return empty `/stream` lists. Stremio and Nuvio
-  /// still show links because they also query by IMDb. We look the title up
-  /// once (cached) and feed `tt…` into the stream id-candidate list.
-  Future<String?> resolveImdbId({
+  /// Same search as [resolveImdbId] — the Cinemeta `top` catalog for the
+  /// title, preferred content type first, scored the same way (exact name
+  /// 100, substring 60, token overlap up to 50, +20 for the year) — but
+  /// returns the whole preview instead of just the IMDb id, so a caller
+  /// can use the hit's own poster, backdrop, description and rating as
+  /// display metadata. The hit is NOT validated here: its own score is
+  /// not the validation — a caller that shows it must first check it
+  /// against the title with the shared match threshold (0.6), and drop
+  /// it entirely below that.
+  Future<AddonMetaPreview?> resolveCinemetaPreview({
     required String title,
     String? type,
     int? year,
@@ -504,7 +510,7 @@ class AddonClient {
     if (cleaned.isEmpty) return null;
 
     final cacheKey =
-        'imdb:${cleaned.toLowerCase()}|${(type ?? '').toLowerCase()}|${year ?? ''}';
+        'cinemeta-preview:${cleaned.toLowerCase()}|${(type ?? '').toLowerCase()}|${year ?? ''}';
     return _cache.run(cacheKey, const Duration(hours: 12), () async {
       // Prefer the matching content type; fall back across movie/series.
       final types = <String>[];
@@ -517,7 +523,7 @@ class AddonClient {
         types.addAll(const ['movie', 'series']);
       }
 
-      String? best;
+      AddonMetaPreview? best;
       var bestScore = -1;
 
       for (final catalogType in types) {
@@ -543,7 +549,6 @@ class AddonClient {
               '';
           final match = RegExp(r'tt\d{5,}', caseSensitive: false).firstMatch(id);
           if (match == null) continue;
-          final imdb = match.group(0)!.toLowerCase();
 
           var score = 0;
           final lower = name.toLowerCase();
@@ -567,13 +572,39 @@ class AddonClient {
           }
           if (score > bestScore) {
             bestScore = score;
-            best = imdb;
+            best = AddonMetaPreview.fromJson(map);
           }
         }
         if (bestScore >= 100) break; // exact name match
       }
       return best;
     });
+  }
+
+  /// Resolve a title to an IMDb id via Cinemeta search.
+  ///
+  /// Scraper bridges (CNCVerse Multimovies, …) identify titles with opaque
+  /// `cnc:…` ids that often return empty `/stream` lists. Stremio and Nuvio
+  /// still show links because they also query by IMDb. We look the title up
+  /// once (cached) and feed `tt…` into the stream id-candidate list.
+  /// The search itself lives in [resolveCinemetaPreview]; this keeps only
+  /// the id, with the same `tt` + 5-digits rule as before.
+  Future<String?> resolveImdbId({
+    required String title,
+    String? type,
+    int? year,
+    CancelToken? cancelToken,
+  }) async {
+    final preview = await resolveCinemetaPreview(
+      title: title,
+      type: type,
+      year: year,
+      cancelToken: cancelToken,
+    );
+    if (preview == null) return null;
+    final rawId = preview.imdbIdField ?? preview.id;
+    final match = RegExp(r'tt\d{5,}', caseSensitive: false).firstMatch(rawId);
+    return match?.group(0)?.toLowerCase();
   }
 
   Future<List<AddonSubtitleTrack>> subtitles(
