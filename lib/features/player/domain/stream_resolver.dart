@@ -290,6 +290,78 @@ List<StreamResult> rotateStreamToFirst(List<StreamResult> streams, int index) {
   ];
 }
 
+/// Resolved links, remembered briefly so an episode change, a sheet reopen
+/// or a retry does not pay for the same scrape twice.
+///
+/// A cached answer is only as good as the source list it came from, so the
+/// key carries the enabled provider/addon set: switching the active
+/// provider, or enabling/disabling an add-on, misses the cache on its own
+/// and resolves fresh. Entries past [_kResolvedCacheTtl] are dropped on
+/// lookup, and the map never holds more than [_kResolvedCacheMax] titles.
+const Duration _kResolvedCacheTtl = Duration(minutes: 3);
+const int _kResolvedCacheMax = 6;
+
+class _CachedResolved {
+  const _CachedResolved(this.at, this.resolved);
+
+  final DateTime at;
+  final ResolvedPlayback resolved;
+}
+
+final Map<String, _CachedResolved> _resolvedPlaybackCache = {};
+
+/// Drops every remembered resolve. The key already carries the enabled
+/// provider/addon set, so a source-list change misses on its own; this is
+/// the explicit escape hatch for anything the key cannot see.
+void invalidateResolvedPlaybackCache() => _resolvedPlaybackCache.clear();
+
+String _resolvedCacheKey(
+  ProviderReader read,
+  MultimediaItem item,
+  String videoUrl, {
+  required bool fromNuvio,
+  required int probeCandidates,
+}) {
+  final providers = read(extensionManagerProvider.notifier)
+      .getAllProviders()
+      .map((p) => p.packageName)
+      .join(',');
+  final addons = read(addonRepositoryProvider)
+      .enabled
+      .map((a) => a.manifestUrl)
+      .join(',');
+  return '${item.url}|$videoUrl|${item.provider ?? ''}|$fromNuvio|'
+      '$probeCandidates|$providers|$addons';
+}
+
+/// Warms [_resolvedPlaybackCache] for [videoUrl] without blocking the
+/// caller: the next episode's resolve, run while the current episode plays,
+/// so advancing to it starts on the remembered answer instead of a fresh
+/// scrape.
+///
+/// Best-effort and silent — a failed prefetch just means the advance
+/// resolves live. It never shows a bot-check sheet ([personWaiting] is
+/// false: nobody is waiting on a background resolve) and never touches
+/// current playback; the resolve is network I/O, not engine work.
+Future<void> prefetchPlayback({
+  required ProviderReader read,
+  required MultimediaItem item,
+  required String videoUrl,
+  bool fromNuvio = false,
+}) async {
+  try {
+    await resolvePlayback(
+      read: read,
+      item: item,
+      videoUrl: videoUrl,
+      fromNuvio: fromNuvio,
+      personWaiting: false,
+    );
+  } catch (_) {
+    // Best-effort: the advance resolves live instead.
+  }
+}
+
 /// Resolves [videoUrl] for [item] into playable streams.
 ///
 /// [preloadedStreams] short-circuits the plugin call, for callers that have
@@ -319,6 +391,17 @@ List<StreamResult> rotateStreamToFirst(List<StreamResult> streams, int index) {
 /// [isCancelled], which abandons resolution altogether. Completing [abandon]
 /// ends a check still running, for a caller that has stopped waiting - the
 /// screen closing - so nothing it armed outlives it.
+///
+/// [personWaiting] says someone is waiting on this resolve right now, so a
+/// bot check the resolve meets may show its sheet. A background prefetch
+/// passes false: nobody is waiting, and a sheet over playing video would be
+/// worse than a prefetch that quietly finds nothing.
+///
+/// A resolve with no handed-in list is remembered briefly (see
+/// [_resolvedPlaybackCache]): an episode change, a sheet reopen or a retry
+/// for the same title and episode returns the remembered answer instead of
+/// paying for the same scrape twice. A handed-in [preloadedStreams] list is
+/// a choice the viewer already made, so it never reads or writes the cache.
 Future<ResolvedPlayback> resolvePlayback({
   required ProviderReader read,
   required MultimediaItem item,
@@ -332,6 +415,7 @@ Future<ResolvedPlayback> resolvePlayback({
   void Function(int index, ProbeOutcome outcome)? onProbe,
   Future<int>? pick,
   Future<void>? abandon,
+  bool personWaiting = true,
 }) async {
   final direct = _directStream(item, videoUrl);
   if (direct != null) {
@@ -360,11 +444,45 @@ Future<ResolvedPlayback> resolvePlayback({
   final handPicked = preloaded.isNotEmpty;
   final ranked = handPicked || addon != null;
 
+  // A remembered resolve for this exact title, episode and source list
+  // answers at once — no scrape, no probe race. A handed-in list is a
+  // choice, not a lookup, so it never reads the cache. This runs before
+  // the first await, so a pending pick cannot interleave with the hit.
+  final cacheKey = handPicked
+      ? null
+      : _resolvedCacheKey(
+          read,
+          item,
+          videoUrl,
+          fromNuvio: fromNuvio,
+          probeCandidates: probeCandidates,
+        );
+  if (cacheKey != null) {
+    final hit = _resolvedPlaybackCache[cacheKey];
+    if (hit != null) {
+      if (clock.now().difference(hit.at) < _kResolvedCacheTtl) {
+        // The list still lands through the same callbacks, and the picked
+        // index still reports as the healthy answer it was probed to be —
+        // the source list must not be left showing it as "trying".
+        onCandidates?.call(hit.resolved.streams);
+        onProbe?.call(hit.resolved.index, ProbeOutcome.healthy);
+        return hit.resolved;
+      }
+      _resolvedPlaybackCache.remove(cacheKey);
+    }
+  }
+
   List<StreamResult> raw;
   if (handPicked) {
     raw = preloaded;
   } else if (addon != null) {
-    raw = await _addonStreams(read, addon, item, videoUrl);
+    raw = await _addonStreams(
+      read,
+      addon,
+      item,
+      videoUrl,
+      personWaiting: personWaiting,
+    );
   } else if (fromNuvio) {
     // The episode that just ended played a Nuvio row: the new episode is
     // asked of Nuvio for its own season/episode, never of the active
@@ -373,7 +491,12 @@ Future<ResolvedPlayback> resolvePlayback({
     // — today's behaviour.
     List<StreamResult>? nuvio;
     try {
-      nuvio = await _nuvioStreams(read, item, videoUrl);
+      nuvio = await _nuvioStreams(
+        read,
+        item,
+        videoUrl,
+        personWaiting: personWaiting,
+      );
     } catch (e) {
       throw StreamResolutionException(
         StreamResolutionFailure.loadFailed,
@@ -454,13 +577,23 @@ Future<ResolvedPlayback> resolvePlayback({
           abandon: abandon,
         );
 
-  return ResolvedPlayback(
+  final resolved = ResolvedPlayback(
     streams: streams,
     index: index,
     qualityFilteredFallback: didFallback,
     lastUsedIndex: lastUsedIndex,
     dataSaver: dataSaver,
   );
+  // Remembered for the next episode change, sheet reopen or retry — the
+  // same title, episode and source list answers from here next time.
+  if (cacheKey != null) {
+    if (_resolvedPlaybackCache.length >= _kResolvedCacheMax) {
+      _resolvedPlaybackCache.clear();
+    }
+    _resolvedPlaybackCache[cacheKey] =
+        _CachedResolved(clock.now(), resolved);
+  }
+  return resolved;
 }
 
 /// Local files, remote casts and torrents are already playable and never go
@@ -532,8 +665,9 @@ Future<List<StreamResult>> _addonStreams(
   ProviderReader read,
   ManagedAddon addon,
   MultimediaItem item,
-  String videoUrl,
-) async {
+  String videoUrl, {
+  bool personWaiting = true,
+}) async {
   final episode = item.episodes?.firstWhereOrNull((e) => e.url == videoUrl);
   final request = AddonStreamRequest(
     type:
@@ -549,12 +683,13 @@ Future<List<StreamResult>> _addonStreams(
     year: item.year,
   );
   // The player is open: someone is waiting, so a check that wants a click
-  // may show its sheet.
+  // may show its sheet — unless this is a background prefetch, which passes
+  // personWaiting: false and must never surface UI over playing video.
   final links = await ownPlayableLinks(
     read(addonStreamServiceProvider),
     addon,
     request,
-    personWaiting: true,
+    personWaiting: personWaiting,
   );
   if (links.isEmpty) return const <StreamResult>[];
   final top = await viaDebrid(read, links.first);
@@ -611,11 +746,20 @@ bool isNuvioStream(ProviderReader read, StreamResult stream) {
 /// The ask mirrors the merged sheet's — Nuvio by TMDB id for `tv` with
 /// the episode's own season/episode — and the answers convert the same
 /// way the sheet's rows do.
+///
+/// Returns on the first progressive yield that has streams, instead of
+/// draining the whole stream: the probe race can start on those while the
+/// slowest scraper is still running. Breaking out of the `await for`
+/// cancels the subscription, which stops the remaining scrapers (see
+/// [NuvioStreamService.resolve]'s `onCancel`), so the wait saved is real.
+/// Only when no scraper yields anything does it drain to the end and
+/// return the (empty) final answer.
 Future<List<StreamResult>?> _nuvioStreams(
   ProviderReader read,
   MultimediaItem item,
-  String videoUrl,
-) async {
+  String videoUrl, {
+  bool personWaiting = true,
+}) async {
   final episode = item.episodes?.firstWhereOrNull((e) => e.url == videoUrl);
   final season = episode?.season;
   final episodeNumber = episode?.episode;
@@ -628,8 +772,11 @@ Future<List<StreamResult>?> _nuvioStreams(
     mediaType: 'tv',
     season: season,
     episode: episodeNumber,
-    personWaiting: true,
+    personWaiting: personWaiting,
   )) {
+    if (progress.streams.isNotEmpty) {
+      return [for (final result in progress.streams) result.toStreamResult()];
+    }
     last = progress;
   }
   return [for (final result in last.streams) result.toStreamResult()];
@@ -881,9 +1028,14 @@ int _savedStreamIndex(
 const Duration kProbeBudget = Duration(seconds: 10);
 
 /// Checks candidates in priority order, [limit] at a time, and resolves as
-/// soon as the highest-priority healthy one is known - with [0,1,2], a
-/// healthy 0 returns immediately rather than waiting on 1 and 2.
-///
+/// soon as a healthy one is known — the first healthy answer in priority
+/// order among the candidates that have answered, rather than the
+/// highest-priority candidate outright. A head candidate still in flight
+/// must not block a healthy lower one for the whole [budget]: with a dead
+/// #1 and a healthy #2, playback starts on #2 as soon as #2 answers.
+/// When the head answers healthy promptly it still wins, because it is
+/// first in priority order among the answers so far.
+
 /// Rolling: a candidate found dead hands its place to the next unchecked one
 /// in line, so the check keeps [limit] going until something answers - and
 /// carries on doing so after it has answered, in the background, for the ones
@@ -941,16 +1093,26 @@ Future<int> _firstHealthyStream(
 
   void decide() {
     if (completer.isCompleted) return;
-    // Dispatch follows priority, so nothing undispatched can outrank what is.
+    // The first healthy answer in priority order among the candidates that
+    // have answered wins at once. A candidate still in flight is skipped,
+    // not waited on: dispatch follows priority, so nothing undispatched can
+    // outrank what is, but a pending head must not hold a healthy lower
+    // candidate hostage until it settles or the budget expires.
     for (final c in order.take(dispatched)) {
-      final answer = results[c];
-      if (answer == null) return; // a better one is still in flight
-      if (answer) {
+      if (results[c] ?? false) {
         finish(c);
         return;
       }
     }
-    if (dispatched == order.length) finish(start); // all failed
+    // Nothing healthy yet. Only finish when the whole ring has answered and
+    // failed — while any dispatched candidate is still in flight, or any
+    // candidate is still undispatched, there is still something to wait on.
+    // (A dead answer dispatches its replacement before this runs, so a
+    // dispatched-but-unanswered set means a probe is genuinely out.)
+    if (dispatched == order.length &&
+        order.every((c) => results[c] != null)) {
+      finish(start);
+    }
   }
 
   late final void Function() dispatchNext;
@@ -1059,8 +1221,9 @@ const Duration kCheckTimeout = Duration(seconds: 3);
 /// must cost it no more than one timeout: a network error returns at once
 /// with no HEAD - a refused GET means a refused HEAD - and so do the statuses
 /// that settle a class. Only another 4xx, a server that may refuse ranged
-/// GETs, is put to the HEAD. [headAfterError] keeps the race's HEAD after any
-/// failure, which is how it finds slow hosts.
+/// GETs, is put to the HEAD. [headAfterError] keeps the race's HEAD after an
+/// HTTP failure, which is how it finds slow hosts; a network failure never
+/// gets one, whatever [headAfterError] says.
 Future<CheckResult> checkSource(
   StreamResult stream, {
   bool headAfterError = false,
@@ -1139,6 +1302,11 @@ Future<CheckResult> checkSource(
     fault: kind == CheckClass.network ? fault : null,
     retryAfter: kind == CheckClass.busy ? retryAfter : null,
   );
+  // A GET that died on the network (DNS, refused, reset, timeout) cost one
+  // timeout already, and a HEAD to the same dead host cannot succeed — the
+  // refused GET means a refused HEAD. The second request only runs when the
+  // GET returned an HTTP status a HEAD could plausibly answer differently.
+  if (fault != null) return refused();
   final headDecides =
       status != null &&
       kind == CheckClass.gone &&

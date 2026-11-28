@@ -428,8 +428,12 @@ class AddonStreamService {
       return won;
     }
 
-    /// One add-on: walk id candidates in priority order. Stops at the first
-    /// id that returns links, or when the per-add-on budget is spent.
+    /// One add-on: try id candidates in priority order, three at a time.
+    /// Stops at the first wave with links, or when the per-add-on budget is
+    /// spent. Walking them serially cost a dead id its whole timeout before
+    /// the next id was even asked; a wave asks them together, and the
+    /// highest-priority id in the wave that answers with links wins, so the
+    /// opaque-id-first ordering still decides which answer is taken.
     Future<void> runOne(ManagedAddon addon) async {
       final manifest = addon.manifest!;
       final stopwatch = Stopwatch()..start();
@@ -437,41 +441,64 @@ class AddonStreamService {
       var added = 0;
       var attempted = false;
 
+      // Candidates this add-on can actually be asked with, in priority
+      // order, with the request types each one takes.
+      final usable = <String>[];
+      final typesById = <String, List<String>>{};
       for (final id in ids) {
         if (!manifest.supportsId('stream', id)) continue;
         final types = manifest.requestTypesFor('stream', effective.type);
         if (types.isEmpty) continue;
+        usable.add(id);
+        typesById[id] = types;
+      }
 
+      Future<List<AddonStreamSource>?> tryId(String id, Duration timeout) async {
+        try {
+          return await typesForId(
+            addon: addon,
+            id: id,
+            types: typesById[id]!,
+            timeout: timeout,
+          );
+        } catch (error) {
+          lastError = error is DioException
+              ? (error.message ?? error.type.name)
+              : error.toString();
+          return null;
+        }
+      }
+
+      const maxInFlight = 3;
+      for (var start = 0; start < usable.length; start += maxInFlight) {
         final remaining = _addonBudget - stopwatch.elapsed;
         if (remaining <= Duration.zero) {
           lastError ??= 'add-on is taking too long to answer';
           break;
         }
         attempted = true;
+        // A wave's attempts share what is left of the budget, as one
+        // attempt used to: no wave may run past the per-add-on stop.
         final timeout = remaining < _requestTimeout
             ? remaining
             : _requestTimeout;
-
-        try {
-          final results = await typesForId(
-            addon: addon,
-            id: id,
-            types: types,
-            timeout: timeout,
-          );
-          if (results.isEmpty) continue;
-
+        final wave = usable.skip(start).take(maxInFlight).toList();
+        final answers = await Future.wait([
+          for (final id in wave) tryId(id, timeout),
+        ]);
+        var won = false;
+        for (var i = 0; i < wave.length; i++) {
+          final results = answers[i];
+          if (results == null || results.isEmpty) continue;
           for (final stream in results) {
             if (!seen.add(stream.dedupeKey)) continue;
             streams.add(stream);
             added++;
           }
+          won = true;
           break;
-        } catch (error) {
-          lastError = error is DioException
-              ? (error.message ?? error.type.name)
-              : error.toString();
         }
+        if (won) break;
       }
 
       statuses[addon.manifestUrl] = AddonQueryStatus(

@@ -1128,6 +1128,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
   /// credits run out.
   bool _nextEpisodeDeclined = false;
 
+  /// The episode [_maybePrefetchNextEpisode] already warmed a resolve for,
+  /// as a `title|episode` key. One prefetch per episode: without it every
+  /// play/pause flip would re-resolve the next episode.
+  String? _prefetchedNextFor;
+
   /// Why playback stopped with nothing playing after it, or null while it is
   /// still going. Non-null is what puts [EndedCard] up.
   ///
@@ -5466,6 +5471,7 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // especially: "not this time" must not silence the next episode's card.
     _nextEpisodeOffer = null;
     _nextEpisodeDeclined = false;
+    _prefetchedNextFor = null; // the new episode warms its own next one
     // A card left standing over an episode that is loading would offer Start
     // Over on media nobody is watching any more.
     _ended = null;
@@ -5586,6 +5592,11 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         value.state == VlcPlaybackState.buffering;
     if (isRunning && !_wasRunning) {
       _pauseRequestsWhenRunning = _controller.pauseRequests;
+      // First frames are flowing: warm the next episode's resolve now, so
+      // advancing to it starts on the remembered answer (see
+      // [_maybePrefetchNextEpisode]). The guard inside keeps it to once
+      // per episode.
+      _maybePrefetchNextEpisode();
     }
     _wasRunning = isRunning;
     if (isRunning) {
@@ -6048,6 +6059,41 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     if (_handedBack) return;
     _platform.flipOrientation(_form);
     setState(() {});
+  }
+
+  /// Warms the next episode's resolve while this one plays, so advancing
+  /// does not pay the scrape again (see [prefetchPlayback]). Fire-and-
+  /// forget, once per episode: the cache is keyed per episode, and a
+  /// prefetch that fails just means the advance resolves live. Never blocks
+  /// current playback — the resolve is network I/O, not engine work — and
+  /// never shows a bot-check sheet over playing video.
+  void _maybePrefetchNextEpisode() {
+    if (_disposed || _isLive || _advancing) return;
+    final next = nextEpisodeFor(
+      item: widget.item,
+      current: _currentEpisode,
+      videoUrl: _videoUrl,
+    ).next;
+    if (next == null) return;
+    final key = '${widget.item.url}|${next.url}';
+    if (_prefetchedNextFor == key) return;
+    _prefetchedNextFor = key;
+    // The stream playing now decides the next episode's source, the same
+    // way [_startEpisode] decides it (see [_advanceFromNuvio]).
+    final resolved = _resolved;
+    final fromNuvio =
+        resolved != null &&
+        _attemptIndex >= 0 &&
+        _attemptIndex < resolved.streams.length &&
+        isNuvioStream(_read, resolved.streams[_attemptIndex]);
+    unawaited(
+      prefetchPlayback(
+        read: _read,
+        item: widget.item,
+        videoUrl: next.url,
+        fromNuvio: fromNuvio,
+      ),
+    );
   }
 
   /// Raises the up-next card in the closing seconds of an episode.

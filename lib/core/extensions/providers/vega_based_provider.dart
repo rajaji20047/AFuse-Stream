@@ -30,6 +30,15 @@ const int _kVegaMaxSkipUrls = 500;
 /// [VegaBasedProvider._listingImages]).
 const int _kVegaMaxListingImages = 500;
 
+/// Cap on the getMeta answers remembered per provider session (see
+/// [VegaBasedProvider._metaCache]). A details open pays one getMeta and the
+/// Play that follows pays the same one again; the cache makes the second
+/// free.
+const int _kVegaMaxMetaCache = 8;
+
+/// How long a remembered getMeta answer stays good for.
+const Duration _kVegaMetaCacheTtl = Duration(minutes: 2);
+
 /// Cap on the catalog section filters remembered per provider session (see
 /// [VegaBasedProvider._catalogFilters]).
 const int _kVegaMaxCatalogFilters = 200;
@@ -191,6 +200,15 @@ class VegaBasedProvider extends SkyStreamProvider {
   /// section's filter from this cache so the Home "View All" page can load
   /// page 2+. Bounded (see [_kVegaMaxCatalogFilters]).
   final Map<String, String> _catalogFilters = {};
+
+  /// getMeta answers seen by [getDetails] (and [loadStreams]) this session,
+  /// keyed by the details URL, with the time they were fetched. [loadStreams]
+  /// on a details URL runs getMeta again for the same title — the second call
+  /// reuses this answer while it is fresh instead of paying for the fetch
+  /// twice. Bounded (see [_kVegaMaxMetaCache]); entries past
+  /// [_kVegaMetaCacheTtl] are dropped on lookup.
+  final Map<String, ({Map<String, dynamic> meta, DateTime at})> _metaCache =
+      {};
 
   VegaBasedProvider(
     this._jsEngine, {
@@ -733,6 +751,40 @@ globalThis[$installerKey] = function(__ssTok) {
     }
   }
 
+  /// The remembered getMeta answer for [url], or null when there is none or
+  /// it is stale. The stored map is copied by callers before use, so one
+  /// caller's reads cannot corrupt another's.
+  Map<String, dynamic>? _lookupMeta(String url) {
+    final entry = _metaCache[url];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.at) >= _kVegaMetaCacheTtl) {
+      _metaCache.remove(url);
+      return null;
+    }
+    return entry.meta;
+  }
+
+  void _rememberMeta(String url, Map<String, dynamic> meta) {
+    if (_metaCache.length >= _kVegaMaxMetaCache) _metaCache.clear();
+    _metaCache[url] = (meta: meta, at: DateTime.now());
+  }
+
+  /// getMeta for [url], reusing [getDetails]'s fresh answer when there is
+  /// one. Details-then-Play is the common path — the sheet's getDetails and
+  /// the player's loadStreams ask for the same title seconds apart — so the
+  /// second call is free instead of a second fetch through the JS engine.
+  Future<dynamic> _getMeta(String url) async {
+    final cached = _lookupMeta(url);
+    if (cached != null) return cached;
+    final result = await _jsEngine.invokeAsync(_fn('getMeta'), [
+      {'link': url},
+    ]);
+    if (result is Map) {
+      _rememberMeta(url, Map<String, dynamic>.from(result));
+    }
+    return result;
+  }
+
   @override
   Future<MultimediaItem> getDetails(String url) async {
     await _ensureReady();
@@ -745,7 +797,12 @@ globalThis[$installerKey] = function(__ssTok) {
         if (result is! Map) {
           throw Exception('Extension returned invalid detail data.');
         }
-        return await _infoToItem(Map<String, dynamic>.from(result), url);
+        // Remembered for the loadStreams that follows a Play: the same
+        // title's getMeta must not be fetched twice. A separate copy goes
+        // to [_infoToItem], so its reads cannot mutate the cached one.
+        final info = Map<String, dynamic>.from(result);
+        _rememberMeta(url, Map<String, dynamic>.from(result));
+        return await _infoToItem(info, url);
       } on JsPluginException {
         rethrow;
       } catch (e) {
@@ -784,9 +841,9 @@ globalThis[$installerKey] = function(__ssTok) {
         var streamType = 'series';
         if (!_episodeLinks.contains(url)) {
           try {
-            final meta = await _jsEngine.invokeAsync(_fn('getMeta'), [
-              {'link': url},
-            ]);
+            // Reuses getDetails' fresh answer when Play follows a details
+            // open (see [_getMeta]); a cold start still fetches it once.
+            final meta = await _getMeta(url);
             if (meta is Map) {
               final info = Map<String, dynamic>.from(meta);
               final type = (info['type'] as String?) ?? 'movie';

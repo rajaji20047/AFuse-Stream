@@ -912,6 +912,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// The viewer pressed Cancel on the up-next card.
   bool _nextEpisodeDeclined = false;
 
+  /// The episode [_maybePrefetchNextEpisode] already warmed a resolve for,
+  /// as a `title|episode` key. One prefetch per episode: without it every
+  /// play/pause flip would re-resolve the next episode.
+  String? _prefetchedNextFor;
+
   /// The up-next card on screen was raised while the episode was still
   /// playing (its outro started, or Skip outro was tapped) rather than by
   /// the episode ending (v7). Cancel then just puts the card away — there
@@ -3327,6 +3332,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         if (playing) {
           final firstPlay = !_startedPlaying;
           _startedPlaying = true;
+          // First frames are flowing: warm the next episode's resolve now,
+          // so advancing to it starts on the remembered answer (see
+          // [_maybePrefetchNextEpisode]). The guard inside keeps it to
+          // once per episode.
+          if (firstPlay) _maybePrefetchNextEpisode();
           if (firstPlay) {
             // An engine switch can leave the system bars showing: the old
             // screen's dispose restores them after this screen's initState
@@ -6360,6 +6370,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _resumeStallPosition = Duration.zero;
     _nextEpisodeOffer = null;
     _nextEpisodeDeclined = false;
+    _prefetchedNextFor = null; // the new episode warms its own next one
     _offerBeforeEnd = false;
     _outroOffered = false;
     _ended = null;
@@ -6731,6 +6742,39 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     if (temp != null) await temp.cancel();
     _downloadedFraction.value = 0;
     if (!_disposed && mounted) setState(() {});
+  }
+
+  /// Warms the next episode's resolve while this one plays, so advancing
+  /// does not pay the scrape again (see [prefetchPlayback]). Fire-and-
+  /// forget, once per episode: the cache is keyed per episode, and a
+  /// prefetch that fails just means the advance resolves live. Never blocks
+  /// current playback — the resolve is network I/O, not engine work — and
+  /// never shows a bot-check sheet over playing video.
+  void _maybePrefetchNextEpisode() {
+    if (_disposed || _isLive || _advancing) return;
+    final next = nextEpisodeFor(
+      item: widget.item,
+      current: _currentEpisode,
+      videoUrl: _currentVideoUrl,
+    ).next;
+    if (next == null) return;
+    final key = '${widget.item.url}|${next.url}';
+    if (_prefetchedNextFor == key) return;
+    _prefetchedNextFor = key;
+    // The stream playing now decides the next episode's source, the same
+    // way [_startEpisode] decides it (see [_advanceFromNuvio]).
+    final fromNuvio =
+        _streamIndex >= 0 &&
+        _streamIndex < _streams.length &&
+        isNuvioStream(_read, _streams[_streamIndex]);
+    unawaited(
+      prefetchPlayback(
+        read: _read,
+        item: widget.item,
+        videoUrl: next.url,
+        fromNuvio: fromNuvio,
+      ),
+    );
   }
 
   /// Raises the up-next countdown card for the following episode.
