@@ -113,6 +113,64 @@ class SettingsRepository {
   String getWetrakrClientId() =>
       _storageService.getString(kWetrakrClientId) ?? '';
 
+  /// User-supplied Simkl AUTH V2 client id, entered in Accounts. Empty
+  /// string means "not set" — callers fall back to the compile-time
+  /// `--dart-define=SIMKL_V2_CLIENT_ID` value. V2 is the only sign-in
+  /// path offered in Accounts (V1 PIN ends about April 2027).
+  static const String kSimklV2ClientId = 'simkl_v2_client_id';
+
+  Future<void> setSimklV2ClientId(String value) =>
+      _storageService.setString(kSimklV2ClientId, value.isEmpty ? null : value);
+
+  String getSimklV2ClientId() =>
+      _storageService.getString(kSimklV2ClientId) ?? '';
+
+  /// User-supplied Trakt client id, entered in Accounts. Empty string
+  /// means "not set" — callers fall back to the compile-time
+  /// `--dart-define=TRAKT_CLIENT_ID` value.
+  static const String kTraktClientId = 'trakt_client_id';
+
+  Future<void> setTraktClientId(String value) =>
+      _storageService.setString(kTraktClientId, value.isEmpty ? null : value);
+
+  String getTraktClientId() =>
+      _storageService.getString(kTraktClientId) ?? '';
+
+  /// User-supplied Trakt client secret, entered in Accounts alongside the
+  /// id: Trakt needs it at token exchange. Empty string means "not set" —
+  /// callers fall back to the compile-time `--dart-define=TRAKT_CLIENT_SECRET`
+  /// value.
+  static const String kTraktClientSecret = 'trakt_client_secret';
+
+  Future<void> setTraktClientSecret(String value) => _storageService
+      .setString(kTraktClientSecret, value.isEmpty ? null : value);
+
+  String getTraktClientSecret() =>
+      _storageService.getString(kTraktClientSecret) ?? '';
+
+  /// User-supplied MyAnimeList client id, entered in Accounts. Empty
+  /// string means "not set" — callers fall back to the compile-time
+  /// `--dart-define=MAL_CLIENT_ID` value.
+  static const String kMalClientId = 'mal_client_id';
+
+  Future<void> setMalClientId(String value) =>
+      _storageService.setString(kMalClientId, value.isEmpty ? null : value);
+
+  String getMalClientId() => _storageService.getString(kMalClientId) ?? '';
+
+  /// User-supplied AniList client id, entered in Accounts. Empty string
+  /// means "not set" — callers fall back to the compile-time
+  /// `--dart-define=ANILIST_CLIENT_ID` value.
+  static const String kAnilistClientId = 'anilist_client_id';
+
+  Future<void> setAnilistClientId(String value) => _storageService.setString(
+    kAnilistClientId,
+    value.isEmpty ? null : value,
+  );
+
+  String getAnilistClientId() =>
+      _storageService.getString(kAnilistClientId) ?? '';
+
   /// Home rows customise (v7): one JSON object, source key -> {order, hidden}.
   /// See `home_row_prefs.dart` for the shape. Null/absent = nothing saved.
   static const String kHomeRowPrefs = 'home_row_prefs';

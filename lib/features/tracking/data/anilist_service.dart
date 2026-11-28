@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'tracking_service.dart';
@@ -8,6 +9,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
+import '../../../settings/presentation/general_settings_provider.dart';
 
 part 'anilist_service.g.dart';
 
@@ -15,13 +17,19 @@ class AniListService implements TrackingService {
   final Dio _dio;
   final SecureTokenStorage _storage;
 
-  static const String _clientId = SyncConfig.anilistClientId;
+  /// The app's client id: a user-entered one from Accounts wins, else the
+  /// build-time `--dart-define=ANILIST_CLIENT_ID` value.
+  final String _clientId;
   static const String _kAccessTokenKey = 'anilist_access_token';
 
   String? _accessToken;
   Future<void>? _initFuture;
 
-  AniListService(this._dio, this._storage) {
+  AniListService(
+    this._dio,
+    this._storage, {
+    String clientId = SyncConfig.anilistClientId,
+  }) : _clientId = clientId {
     _initFuture = _initToken();
   }
 
@@ -300,10 +308,21 @@ class AniListService implements TrackingService {
   }
 }
 
+/// Whether AniList can be used: a client id from the build, or one the
+/// user entered in Accounts. The row is always shown; without an id it
+/// offers to set one up instead of connecting.
+final anilistConfiguredProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(generalSettingsProvider).anilistClientId.isNotEmpty ||
+      SyncConfig.anilistClientId.isNotEmpty,
+);
+
 @riverpod
 AniListService aniListService(Ref ref) {
+  final userId = ref.watch(generalSettingsProvider).anilistClientId;
   return AniListService(
     ref.watch(dioClientProvider),
     ref.watch(secureTokenStorageProvider),
+    clientId: userId.isNotEmpty ? userId : SyncConfig.anilistClientId,
   );
 }

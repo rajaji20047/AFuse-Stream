@@ -41,6 +41,11 @@ void main() {
           trackingAuthProvider.overrideWith(SignedOutTrackers.new),
           if (simkl != null) simklServiceProvider.overrideWithValue(simkl),
           if (trakt != null) traktServiceProvider.overrideWithValue(trakt),
+          // These tests are about the login failure branch, not the
+          // client-id gate: the rows must reach the login, not the setup
+          // dialog.
+          simklConfiguredProvider.overrideWithValue(true),
+          traktConfiguredProvider.overrideWithValue(true),
         ],
         child: const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -282,6 +287,55 @@ class QuietSettings extends SettingsRepository {
   @override
   Future<void> setWetrakrClientId(String value) async {
     _wetrakrClientId = value;
+  }
+
+  String _simklV2ClientId = '';
+
+  @override
+  String getSimklV2ClientId() => _simklV2ClientId;
+
+  @override
+  Future<void> setSimklV2ClientId(String value) async {
+    _simklV2ClientId = value;
+  }
+
+  String _traktClientId = '';
+  String _traktClientSecret = '';
+
+  @override
+  String getTraktClientId() => _traktClientId;
+
+  @override
+  Future<void> setTraktClientId(String value) async {
+    _traktClientId = value;
+  }
+
+  @override
+  String getTraktClientSecret() => _traktClientSecret;
+
+  @override
+  Future<void> setTraktClientSecret(String value) async {
+    _traktClientSecret = value;
+  }
+
+  String _malClientId = '';
+
+  @override
+  String getMalClientId() => _malClientId;
+
+  @override
+  Future<void> setMalClientId(String value) async {
+    _malClientId = value;
+  }
+
+  String _anilistClientId = '';
+
+  @override
+  String getAnilistClientId() => _anilistClientId;
+
+  @override
+  Future<void> setAnilistClientId(String value) async {
+    _anilistClientId = value;
   }
 
   @override

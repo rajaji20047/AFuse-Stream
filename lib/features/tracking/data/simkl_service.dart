@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -9,6 +10,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
+import '../../../settings/presentation/general_settings_provider.dart';
 
 part 'simkl_service.g.dart';
 
@@ -785,10 +787,23 @@ class SimklService implements TrackingService {
   }
 }
 
+/// Whether Simkl can be used: an AUTH V2 client id from the build, or one
+/// the user entered in Accounts. A V1-only build can still sign in on the
+/// PIN flow, so its id counts too. The row is always shown; without an id
+/// it offers to set one up instead of connecting.
+final simklConfiguredProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(generalSettingsProvider).simklV2ClientId.isNotEmpty ||
+      SyncConfig.simklV2ClientId.isNotEmpty ||
+      SyncConfig.simklClientId.isNotEmpty,
+);
+
 @riverpod
 SimklService simklService(Ref ref) {
+  final userV2Id = ref.watch(generalSettingsProvider).simklV2ClientId;
   return SimklService(
     ref.watch(dioClientProvider),
     ref.watch(secureTokenStorageProvider),
+    v2ClientId: userV2Id.isNotEmpty ? userV2Id : SyncConfig.simklV2ClientId,
   );
 }

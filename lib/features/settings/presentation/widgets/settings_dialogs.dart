@@ -3910,6 +3910,15 @@ class _WetrakrClientIdDialogState
               'WeTrakr needs a client ID to connect. Paste yours below '
               'to enable it.',
             ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse('https://wetrakr.com'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('Get a client ID at wetrakr.com'),
+            ),
             const SizedBox(height: 12),
             CustomTextField(
               controller: _controller,
@@ -3933,4 +3942,280 @@ class _WetrakrClientIdDialogState
       ],
     );
   }
+}
+
+/// One client-id field, shared by the tracking services that need only an
+/// id (Simkl V2, MyAnimeList, AniList). Trakt has its own dialog below: it
+/// needs a secret too. The portal button tells the viewer where the id
+/// comes from, so the dialog never leaves them guessing.
+class _ClientIdDialog extends StatefulWidget {
+  const _ClientIdDialog({
+    required this.title,
+    required this.intro,
+    required this.portalLabel,
+    required this.portalUrl,
+    required this.labelText,
+    required this.hintText,
+    required this.initialValue,
+    required this.onSave,
+  });
+
+  final String title;
+  final String intro;
+  final String portalLabel;
+  final String portalUrl;
+  final String labelText;
+  final String hintText;
+  final String initialValue;
+  final Future<void> Function(String value) onSave;
+
+  @override
+  State<_ClientIdDialog> createState() => _ClientIdDialogState();
+}
+
+class _ClientIdDialogState extends State<_ClientIdDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialValue);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final id = _controller.text.replaceAll(RegExp(r'\s'), '');
+    // Empty is a legitimate input: it clears the override and falls back
+    // to the build-time id.
+    await widget.onSave(id);
+    if (mounted) Navigator.pop<void>(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      surfaceTintColor: Colors.transparent,
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.intro),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(widget.portalUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: Text(widget.portalLabel),
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: widget.labelText,
+                hintText: widget.hintText,
+                prefixIcon: const Icon(Icons.vpn_key_rounded, size: 20),
+              ),
+              keyboardType: TextInputType.text,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop<void>(context),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(onPressed: _save, child: Text(l10n.save)),
+      ],
+    );
+  }
+}
+
+/// Lets the user paste their own Simkl AUTH V2 client id, the way the
+/// WeTrakr dialog does. V2 is the only sign-in path offered in Accounts.
+void showSimklClientIdDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _ClientIdDialog(
+      title: 'Simkl client ID',
+      intro:
+          'Simkl needs a client ID (AUTH V2 app) to connect. Paste yours '
+          'below to enable it.',
+      portalLabel: 'Get a client ID at simkl.com',
+      portalUrl: 'https://simkl.com/settings/developer',
+      labelText: 'Client ID',
+      hintText: 'Your Simkl client ID',
+      initialValue: ref.read(generalSettingsProvider).simklV2ClientId,
+      onSave: (id) => ref
+          .read(generalSettingsProvider.notifier)
+          .setSimklV2ClientId(id),
+    ),
+  );
+}
+
+/// Lets the user paste their own MyAnimeList client id, the way the
+/// WeTrakr dialog does.
+void showMalClientIdDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _ClientIdDialog(
+      title: 'MyAnimeList client ID',
+      intro:
+          'MyAnimeList needs a client ID to connect. Paste yours below '
+          'to enable it.',
+      portalLabel: 'Get a client ID at myanimelist.net',
+      portalUrl: 'https://myanimelist.net/apiconfig',
+      labelText: 'Client ID',
+      hintText: 'Your MyAnimeList client ID',
+      initialValue: ref.read(generalSettingsProvider).malClientId,
+      onSave: (id) =>
+          ref.read(generalSettingsProvider.notifier).setMalClientId(id),
+    ),
+  );
+}
+
+/// Lets the user paste their own AniList client id, the way the WeTrakr
+/// dialog does.
+void showAnilistClientIdDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _ClientIdDialog(
+      title: 'AniList client ID',
+      intro:
+          'AniList needs a client ID to connect. Paste yours below to '
+          'enable it.',
+      portalLabel: 'Get a client ID at anilist.co',
+      portalUrl: 'https://anilist.co/settings/developer',
+      labelText: 'Client ID',
+      hintText: 'Your AniList client ID',
+      initialValue: ref.read(generalSettingsProvider).anilistClientId,
+      onSave: (id) => ref
+          .read(generalSettingsProvider.notifier)
+          .setAnilistClientId(id),
+    ),
+  );
+}
+
+/// Trakt needs an id and a secret: two fields, the secret hidden.
+/// Otherwise the same shape as [_ClientIdDialog] above.
+class _TraktClientIdDialog extends StatefulWidget {
+  const _TraktClientIdDialog({
+    required this.initialId,
+    required this.initialSecret,
+    required this.onSave,
+  });
+
+  final String initialId;
+  final String initialSecret;
+  final Future<void> Function(String id, String secret) onSave;
+
+  @override
+  State<_TraktClientIdDialog> createState() => _TraktClientIdDialogState();
+}
+
+class _TraktClientIdDialogState extends State<_TraktClientIdDialog> {
+  late final TextEditingController _idController =
+      TextEditingController(text: widget.initialId);
+  late final TextEditingController _secretController =
+      TextEditingController(text: widget.initialSecret);
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _secretController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final id = _idController.text.replaceAll(RegExp(r'\s'), '');
+    final secret = _secretController.text.replaceAll(RegExp(r'\s'), '');
+    // Empty is a legitimate input: it clears the override and falls back
+    // to the build-time id and secret.
+    await widget.onSave(id, secret);
+    if (mounted) Navigator.pop<void>(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      surfaceTintColor: Colors.transparent,
+      title: const Text('Trakt client ID'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Trakt needs a client ID and secret to connect. Paste yours '
+              'below to enable it.',
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse('https://trakt.tv/oauth/applications'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text('Get a client ID at trakt.tv'),
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _idController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Client ID',
+                hintText: 'Your Trakt client ID',
+                prefixIcon: Icon(Icons.vpn_key_rounded, size: 20),
+              ),
+              keyboardType: TextInputType.text,
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _secretController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Client secret',
+                hintText: 'Your Trakt client secret',
+                prefixIcon: Icon(Icons.vpn_key_rounded, size: 20),
+              ),
+              keyboardType: TextInputType.text,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop<void>(context),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(onPressed: _save, child: Text(l10n.save)),
+      ],
+    );
+  }
+}
+
+/// Lets the user paste their own Trakt client id and secret, the way the
+/// WeTrakr dialog does for its id.
+void showTraktClientIdDialog(BuildContext context, WidgetRef ref) {
+  showDialog<void>(
+    context: context,
+    builder: (_) => _TraktClientIdDialog(
+      initialId: ref.read(generalSettingsProvider).traktClientId,
+      initialSecret: ref.read(generalSettingsProvider).traktClientSecret,
+      onSave: (id, secret) async {
+        final notifier = ref.read(generalSettingsProvider.notifier);
+        await notifier.setTraktClientId(id);
+        await notifier.setTraktClientSecret(secret);
+      },
+    ),
+  );
 }

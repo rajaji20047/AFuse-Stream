@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'tracking_service.dart';
@@ -8,6 +9,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
+import '../../../settings/presentation/general_settings_provider.dart';
 
 part 'trakt_service.g.dart';
 
@@ -16,7 +18,10 @@ class TraktService implements TrackingService {
   final SecureTokenStorage _storage;
   final DateTime Function() _clock;
 
-  static const String _clientId = SyncConfig.traktClientId;
+  /// The app's client id and secret: a user-entered pair from Accounts
+  /// wins, else the build-time `--dart-define` values.
+  final String _clientId;
+  final String _clientSecret;
   static const String _kAccessTokenKey = 'trakt_access_token';
   static const String _kRefreshTokenKey = 'trakt_refresh_token';
   static const String _kExpiresAtKey = 'trakt_token_expires_at';
@@ -48,8 +53,15 @@ class TraktService implements TrackingService {
   /// refresh burns the single-use refresh token and logs the user out.
   Future<bool>? _refreshInFlight;
 
-  TraktService(this._dio, this._storage, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now {
+  TraktService(
+    this._dio,
+    this._storage, {
+    DateTime Function()? clock,
+    String clientId = SyncConfig.traktClientId,
+    String clientSecret = SyncConfig.traktClientSecret,
+  }) : _clock = clock ?? DateTime.now,
+       _clientId = clientId,
+       _clientSecret = clientSecret {
     _initFuture = _initToken();
   }
 
@@ -123,7 +135,7 @@ class TraktService implements TrackingService {
             data: {
               'code': deviceCode,
               'client_id': _clientId,
-              'client_secret': SyncConfig.traktClientSecret,
+              'client_secret': _clientSecret,
             },
           );
 
@@ -257,7 +269,7 @@ class TraktService implements TrackingService {
         data: {
           'refresh_token': refresh,
           'client_id': _clientId,
-          'client_secret': SyncConfig.traktClientSecret,
+          'client_secret': _clientSecret,
           'redirect_uri': _oobRedirectUri,
           'grant_type': 'refresh_token',
         },
@@ -564,10 +576,26 @@ class TraktService implements TrackingService {
   }
 }
 
+/// Whether Trakt can be used: a client id from the build, or one the user
+/// entered in Accounts. The row is always shown; without an id it offers
+/// to set one up instead of connecting.
+final traktConfiguredProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(generalSettingsProvider).traktClientId.isNotEmpty ||
+      SyncConfig.traktClientId.isNotEmpty,
+);
+
 @riverpod
 TraktService traktService(Ref ref) {
+  final settings = ref.watch(generalSettingsProvider);
+  final userId = settings.traktClientId;
+  final userSecret = settings.traktClientSecret;
   return TraktService(
     ref.watch(dioClientProvider),
     ref.watch(secureTokenStorageProvider),
+    clientId: userId.isNotEmpty ? userId : SyncConfig.traktClientId,
+    clientSecret: userSecret.isNotEmpty
+        ? userSecret
+        : SyncConfig.traktClientSecret,
   );
 }

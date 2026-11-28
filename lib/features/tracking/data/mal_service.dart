@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'tracking_service.dart';
@@ -11,6 +12,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
+import '../../../settings/presentation/general_settings_provider.dart';
 
 part 'mal_service.g.dart';
 
@@ -18,7 +20,9 @@ class MalService implements TrackingService {
   final Dio _dio;
   final SecureTokenStorage _storage;
 
-  static const String _clientId = SyncConfig.malClientId;
+  /// The app's client id: a user-entered one from Accounts wins, else the
+  /// build-time `--dart-define=MAL_CLIENT_ID` value.
+  final String _clientId;
   // The client's registered redirect, which the sign-in sheet catches.
   static const String _redirectUri = SyncConfig.signInRedirect;
 
@@ -34,7 +38,11 @@ class MalService implements TrackingService {
   // invalid_grant and burns the refresh token).
   Future<bool>? _refreshInFlight;
 
-  MalService(this._dio, this._storage) {
+  MalService(
+    this._dio,
+    this._storage, {
+    String clientId = SyncConfig.malClientId,
+  }) : _clientId = clientId {
     _initFuture = _initToken();
   }
 
@@ -384,10 +392,21 @@ class MalService implements TrackingService {
   }
 }
 
+/// Whether MyAnimeList can be used: a client id from the build, or one the
+/// user entered in Accounts. The row is always shown; without an id it
+/// offers to set one up instead of connecting.
+final malConfiguredProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(generalSettingsProvider).malClientId.isNotEmpty ||
+      SyncConfig.malClientId.isNotEmpty,
+);
+
 @riverpod
 MalService malService(Ref ref) {
+  final userId = ref.watch(generalSettingsProvider).malClientId;
   return MalService(
     ref.watch(dioClientProvider),
     ref.watch(secureTokenStorageProvider),
+    clientId: userId.isNotEmpty ? userId : SyncConfig.malClientId,
   );
 }

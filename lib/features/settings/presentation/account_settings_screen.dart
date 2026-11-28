@@ -16,6 +16,7 @@ import 'general_settings_provider.dart';
 import '../../../core/network/doh_service.dart';
 
 import '../../../core/logger/app_logger.dart';
+import '../../../core/config/sync_config.dart';
 import '../../../core/config/tmdb_config.dart';
 import '../../tracking/presentation/tracking_auth_provider.dart';
 import '../../tracking/data/simkl_service.dart';
@@ -58,17 +59,23 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   }
 
   /// Signs in to [provider] in Raja's own browser, in the check sheet.
-  /// See lib/features/tracking/sign_in/.
+  /// See lib/features/tracking/sign_in/. The caller passes the client id
+  /// the sign-in must use — the one the user entered in Accounts, else the
+  /// build-time one — so the authorize URL and the token exchange agree.
   Future<SignInResult> _signIn(
     BuildContext context,
     String provider,
-    Future<SignInResult> Function(TrackerSignIn signIn) start,
-  ) async {
+    Future<SignInResult> Function(TrackerSignIn signIn) start, {
+    String? malClientId,
+    String? anilistClientId,
+  }) async {
     final tv = ref.read(deviceProfileProvider).value?.isTv ?? false;
     try {
       return await start(
         TrackerSignIn(
           run: SignInRunner(context, provider: provider, tv: tv).call,
+          malClientId: malClientId ?? SyncConfig.malClientId,
+          anilistClientId: anilistClientId ?? SyncConfig.anilistClientId,
         ),
       );
     } catch (e, stack) {
@@ -192,20 +199,30 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SettingsTile(
+                            key: const ValueKey('account-simkl'),
                             focusNode: _simklFocusNode,
                             reicon: Reicon.chart,
                             title: 'Simkl',
-                            subtitle: trackingAuthAsync.when(
-                              data: (state) => state['simkl'] == true
-                                  ? 'Connected · sync on'
-                                  : l10n.notLoggedIn,
-                              loading: () => l10n.loading,
-                              error: (_, _) => l10n.unknown,
-                            ),
-                            value: trackingAuthAsync.value?['simkl'] == true
+                            subtitle: !ref.watch(simklConfiguredProvider)
+                                ? 'Client ID not set'
+                                : trackingAuthAsync.when(
+                                    data: (state) => state['simkl'] == true
+                                        ? 'Connected · sync on'
+                                        : l10n.notLoggedIn,
+                                    loading: () => l10n.loading,
+                                    error: (_, _) => l10n.unknown,
+                                  ),
+                            value: !ref.watch(simklConfiguredProvider)
+                                ? 'Set up'
+                                : trackingAuthAsync.value?['simkl'] == true
                                 ? 'Active'
                                 : 'Connect',
                             onTap: () async {
+                              // No id yet: the row is the way to add one.
+                              if (!ref.read(simklConfiguredProvider)) {
+                                showSimklClientIdDialog(context, ref);
+                                return;
+                              }
                               final state = trackingAuthAsync.value ?? {};
                               if (state['simkl'] == true) {
                                 final confirm = await _confirmDisconnect(
@@ -297,20 +314,30 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                             },
                           ),
                           SettingsTile(
+                            key: const ValueKey('account-trakt'),
                             focusNode: _traktFocusNode,
                             reicon: Reicon.tv,
                             title: 'Trakt',
-                            subtitle: trackingAuthAsync.when(
-                              data: (state) => state['trakt'] == true
-                                  ? 'Connected · sync on'
-                                  : l10n.notLoggedIn,
-                              loading: () => l10n.loading,
-                              error: (_, _) => l10n.unknown,
-                            ),
-                            value: trackingAuthAsync.value?['trakt'] == true
+                            subtitle: !ref.watch(traktConfiguredProvider)
+                                ? 'Client ID not set'
+                                : trackingAuthAsync.when(
+                                    data: (state) => state['trakt'] == true
+                                        ? 'Connected · sync on'
+                                        : l10n.notLoggedIn,
+                                    loading: () => l10n.loading,
+                                    error: (_, _) => l10n.unknown,
+                                  ),
+                            value: !ref.watch(traktConfiguredProvider)
+                                ? 'Set up'
+                                : trackingAuthAsync.value?['trakt'] == true
                                 ? 'Active'
                                 : 'Connect',
                             onTap: () async {
+                              // No id yet: the row is the way to add one.
+                              if (!ref.read(traktConfiguredProvider)) {
+                                showTraktClientIdDialog(context, ref);
+                                return;
+                              }
                               final state = trackingAuthAsync.value ?? {};
                               if (state['trakt'] == true) {
                                 final confirm = await _confirmDisconnect(
@@ -518,20 +545,30 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                             },
                             ),
                           SettingsTile(
+                            key: const ValueKey('account-mal'),
                             focusNode: _malFocusNode,
                             reicon: Reicon.listCheck,
                             title: 'MyAnimeList',
-                            subtitle: trackingAuthAsync.when(
-                              data: (state) => state['mal'] == true
-                                  ? 'Connected · sync on'
-                                  : l10n.notLoggedIn,
-                              loading: () => l10n.loading,
-                              error: (_, _) => l10n.unknown,
-                            ),
-                            value: trackingAuthAsync.value?['mal'] == true
+                            subtitle: !ref.watch(malConfiguredProvider)
+                                ? 'Client ID not set'
+                                : trackingAuthAsync.when(
+                                    data: (state) => state['mal'] == true
+                                        ? 'Connected · sync on'
+                                        : l10n.notLoggedIn,
+                                    loading: () => l10n.loading,
+                                    error: (_, _) => l10n.unknown,
+                                  ),
+                            value: !ref.watch(malConfiguredProvider)
+                                ? 'Set up'
+                                : trackingAuthAsync.value?['mal'] == true
                                 ? 'Active'
                                 : 'Connect',
                             onTap: () async {
+                              // No id yet: the row is the way to add one.
+                              if (!ref.read(malConfiguredProvider)) {
+                                showMalClientIdDialog(context, ref);
+                                return;
+                              }
                               final state = trackingAuthAsync.value ?? {};
                               if (state['mal'] == true) {
                                 final confirm = await _confirmDisconnect(
@@ -546,12 +583,18 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                                   }
                                 }
                               } else {
+                                final storedId = ref
+                                    .read(generalSettingsProvider)
+                                    .malClientId;
                                 final result = await _signIn(
                                   context,
                                   'MyAnimeList',
                                   (signIn) => signIn.myAnimeList(
                                     ref.read(malServiceProvider),
                                   ),
+                                  malClientId: storedId.isNotEmpty
+                                      ? storedId
+                                      : SyncConfig.malClientId,
                                 );
                                 if (context.mounted) {
                                   if (result == SignInResult.signedIn) {
@@ -578,21 +621,31 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                             },
                           ),
                           SettingsTile(
+                            key: const ValueKey('account-anilist'),
                             focusNode: _anilistFocusNode,
                             reicon: Reicon.bookOpen,
                             title: 'AniList',
-                            subtitle: trackingAuthAsync.when(
-                              data: (state) => state['anilist'] == true
-                                  ? 'Connected · sync on'
-                                  : l10n.notLoggedIn,
-                              loading: () => l10n.loading,
-                              error: (_, _) => l10n.unknown,
-                            ),
-                            value: trackingAuthAsync.value?['anilist'] == true
+                            subtitle: !ref.watch(anilistConfiguredProvider)
+                                ? 'Client ID not set'
+                                : trackingAuthAsync.when(
+                                    data: (state) => state['anilist'] == true
+                                        ? 'Connected · sync on'
+                                        : l10n.notLoggedIn,
+                                    loading: () => l10n.loading,
+                                    error: (_, _) => l10n.unknown,
+                                  ),
+                            value: !ref.watch(anilistConfiguredProvider)
+                                ? 'Set up'
+                                : trackingAuthAsync.value?['anilist'] == true
                                 ? 'Active'
                                 : 'Connect',
                             isLast: true,
                             onTap: () async {
+                              // No id yet: the row is the way to add one.
+                              if (!ref.read(anilistConfiguredProvider)) {
+                                showAnilistClientIdDialog(context, ref);
+                                return;
+                              }
                               final state = trackingAuthAsync.value ?? {};
                               if (state['anilist'] == true) {
                                 final confirm = await _confirmDisconnect(
@@ -609,12 +662,18 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                                   }
                                 }
                               } else {
+                                final storedId = ref
+                                    .read(generalSettingsProvider)
+                                    .anilistClientId;
                                 final result = await _signIn(
                                   context,
                                   'AniList',
                                   (signIn) => signIn.aniList(
                                     ref.read(aniListServiceProvider),
                                   ),
+                                  anilistClientId: storedId.isNotEmpty
+                                      ? storedId
+                                      : SyncConfig.anilistClientId,
                                 );
                                 if (context.mounted) {
                                   if (result == SignInResult.signedIn) {

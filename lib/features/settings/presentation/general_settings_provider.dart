@@ -100,6 +100,32 @@ class GeneralSettings {
   /// be empty, in which case the WeTrakr row offers to set one up).
   final String wetrakrClientId;
 
+  /// User-supplied Simkl AUTH V2 client id. Empty means "fall back to the
+  /// build-time `--dart-define=SIMKL_V2_CLIENT_ID` value" (which may itself
+  /// be empty, in which case the Simkl row offers to set one up). V2 is
+  /// the only sign-in path offered in Accounts.
+  final String simklV2ClientId;
+
+  /// User-supplied Trakt client id. Empty means "fall back to the
+  /// build-time `--dart-define=TRAKT_CLIENT_ID` value" (which may itself
+  /// be empty, in which case the Trakt row offers to set one up).
+  final String traktClientId;
+
+  /// User-supplied Trakt client secret, entered alongside the id: Trakt
+  /// needs it at token exchange. Empty means "fall back to the build-time
+  /// `--dart-define=TRAKT_CLIENT_SECRET` value".
+  final String traktClientSecret;
+
+  /// User-supplied MyAnimeList client id. Empty means "fall back to the
+  /// build-time `--dart-define=MAL_CLIENT_ID` value" (which may itself be
+  /// empty, in which case the MyAnimeList row offers to set one up).
+  final String malClientId;
+
+  /// User-supplied AniList client id. Empty means "fall back to the
+  /// build-time `--dart-define=ANILIST_CLIENT_ID` value" (which may itself
+  /// be empty, in which case the AniList row offers to set one up).
+  final String anilistClientId;
+
   const GeneralSettings({
     this.watchHistoryEnabled = true,
     this.defaultHomeScreen = '/home',
@@ -113,6 +139,11 @@ class GeneralSettings {
     this.nuvioConcurrency = 8,
     this.tmdbApiKey = '',
     this.wetrakrClientId = '',
+    this.simklV2ClientId = '',
+    this.traktClientId = '',
+    this.traktClientSecret = '',
+    this.malClientId = '',
+    this.anilistClientId = '',
     this.navBarStyle = NavBarStyle.adaptive,
     this.navBarGlowEnabled = true,
     this.navBarGlassEnabled = true,
@@ -135,6 +166,11 @@ class GeneralSettings {
     int? nuvioConcurrency,
     String? tmdbApiKey,
     String? wetrakrClientId,
+    String? simklV2ClientId,
+    String? traktClientId,
+    String? traktClientSecret,
+    String? malClientId,
+    String? anilistClientId,
     NavBarStyle? navBarStyle,
     bool? navBarGlowEnabled,
     bool? navBarGlassEnabled,
@@ -163,6 +199,11 @@ class GeneralSettings {
       nuvioConcurrency: nuvioConcurrency ?? this.nuvioConcurrency,
       tmdbApiKey: tmdbApiKey ?? this.tmdbApiKey,
       wetrakrClientId: wetrakrClientId ?? this.wetrakrClientId,
+      simklV2ClientId: simklV2ClientId ?? this.simklV2ClientId,
+      traktClientId: traktClientId ?? this.traktClientId,
+      traktClientSecret: traktClientSecret ?? this.traktClientSecret,
+      malClientId: malClientId ?? this.malClientId,
+      anilistClientId: anilistClientId ?? this.anilistClientId,
       navBarStyle: navBarStyle ?? this.navBarStyle,
       navBarGlowEnabled: navBarGlowEnabled ?? this.navBarGlowEnabled,
       navBarGlassEnabled: navBarGlassEnabled ?? this.navBarGlassEnabled,
@@ -223,6 +264,11 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       nuvioConcurrency: repository.getNuvioConcurrency(),
       tmdbApiKey: repository.getTmdbApiKey(),
       wetrakrClientId: repository.getWetrakrClientId(),
+      simklV2ClientId: repository.getSimklV2ClientId(),
+      traktClientId: repository.getTraktClientId(),
+      traktClientSecret: repository.getTraktClientSecret(),
+      malClientId: repository.getMalClientId(),
+      anilistClientId: repository.getAnilistClientId(),
       // An unrecognised stored name — written by a newer build, or a
       // corrupted box — reads as the default, the safe side (same shape
       // as the GitHub proxy choice above).
@@ -430,6 +476,68 @@ class GeneralSettingsNotifier extends _$GeneralSettingsNotifier {
       final repository = ref.read(settingsRepositoryProvider);
       await repository.setWetrakrClientId(trimmed);
       state = state.copyWith(wetrakrClientId: trimmed);
+    });
+  }
+
+  /// Persists a user-supplied Simkl AUTH V2 client id. Passing an empty
+  /// string clears it and reverts to the build-time id. The Accounts row
+  /// and the service both read this state, so they pick it up without a
+  /// restart.
+  Future<void> setSimklV2ClientId(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setSimklV2ClientId(trimmed);
+      state = state.copyWith(simklV2ClientId: trimmed);
+    });
+  }
+
+  /// Persists a user-supplied Trakt client id. Passing an empty string
+  /// clears it and reverts to the build-time id. The Accounts row and the
+  /// service both read this state, so they pick it up without a restart.
+  Future<void> setTraktClientId(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setTraktClientId(trimmed);
+      state = state.copyWith(traktClientId: trimmed);
+    });
+  }
+
+  /// Persists a user-supplied Trakt client secret. Passing an empty string
+  /// clears it and reverts to the build-time secret. Same shape as the id
+  /// setter above.
+  Future<void> setTraktClientSecret(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setTraktClientSecret(trimmed);
+      state = state.copyWith(traktClientSecret: trimmed);
+    });
+  }
+
+  /// Persists a user-supplied MyAnimeList client id. Passing an empty
+  /// string clears it and reverts to the build-time id. The Accounts row
+  /// and the sign-in both read this state, so they pick it up without a
+  /// restart.
+  Future<void> setMalClientId(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setMalClientId(trimmed);
+      state = state.copyWith(malClientId: trimmed);
+    });
+  }
+
+  /// Persists a user-supplied AniList client id. Passing an empty string
+  /// clears it and reverts to the build-time id. The Accounts row and the
+  /// sign-in both read this state, so they pick it up without a restart.
+  Future<void> setAnilistClientId(String value) {
+    return _enqueue(() async {
+      final trimmed = value.trim();
+      final repository = ref.read(settingsRepositoryProvider);
+      await repository.setAnilistClientId(trimmed);
+      state = state.copyWith(anilistClientId: trimmed);
     });
   }
 
