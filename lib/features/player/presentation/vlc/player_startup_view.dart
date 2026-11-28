@@ -990,21 +990,29 @@ class _SourceRow extends StatelessWidget {
     );
   }
 
+  static Widget _spinner({required Color colour, String? semanticLabel}) =>
+      SizedBox.square(
+        dimension: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          semanticsLabel: semanticLabel,
+          valueColor: AlwaysStoppedAnimation<Color>(colour),
+        ),
+      );
+
   /// The check's icon, built with or without a label for a screen reader,
   /// and the colour its word is drawn in - or null when there is nothing to
-  /// show, which is a source nobody has checked. No spinner ring anywhere:
-  /// checking shows a static hourglass beside its "Checking…" word.
+  /// show, which is a source nobody has checked. The row keeps its spin
+  /// ring while checking (user 2026-11-28: this row's rings stay); only
+  /// the big ring above the title was removed.
   static (Widget Function({required String? semanticLabel}), Color)?
   _reachabilityLook(SourceReachability reachability) {
     Widget icon(IconData data, Color colour, String? label) =>
         Icon(data, size: 14, color: colour, semanticLabel: label);
     return switch (reachability) {
       SourceReachability.checking => (
-        ({required semanticLabel}) => icon(
-          Icons.hourglass_top_rounded,
-          Colors.white70,
-          semanticLabel,
-        ),
+        ({required semanticLabel}) =>
+            _spinner(colour: Colors.white70, semanticLabel: semanticLabel),
         Colors.white70,
       ),
       SourceReachability.reachable => (
@@ -1040,17 +1048,15 @@ class _SourceRow extends StatelessWidget {
 
   /// How playing went, as an icon, for the narrow layout's second column.
   /// Nothing for a source nobody has opened, as the wide layout says nothing.
-  /// Opening shows a static hourglass, not a spinner ring; the wide layout
-  /// already says "Opening…" in words.
+  /// Opening keeps its spin ring (user 2026-11-28: this row's rings stay);
+  /// the wide layout already says "Opening…" in words.
   static Widget? _playStateIcon(
     SourcePlayState state, {
     String? semanticLabel,
   }) => switch (state) {
     SourcePlayState.untried => null,
-    SourcePlayState.opening => Icon(
-      Icons.hourglass_top_rounded,
-      size: 16,
-      color: Colors.white,
+    SourcePlayState.opening => _spinner(
+      colour: Colors.white,
       semanticLabel: semanticLabel,
     ),
     SourcePlayState.playing => Icon(
