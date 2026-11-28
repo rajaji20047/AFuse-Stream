@@ -164,16 +164,87 @@ const double kSourceSheetChipRadius = 8;
 /// list at 14. Nothing lined up with anything above or below it.
 const double kSourceSheetGutter = 16;
 
-/// Glyph size both sheets give the icon buttons in their headers.
-const double kSourceSheetHeaderIcon = 20;
+/// Glyph size both sheets give the icon buttons in their headers. 22 dp
+/// against the 40 dp disc below: the glyph reads at Material 3's ratio
+/// instead of floating small inside a 48 dp coin.
+const double kSourceSheetHeaderIcon = 22;
 
-/// Side of a header's trailing buttons - the touch target, and with a filled
-/// background also the circle that gets drawn.
+/// Side of a header's trailing buttons - the touch target. The painted disc
+/// is smaller ([SourceSheetHeaderButton.visualSize]); the target stays 48 dp.
 const double kSourceSheetHeaderButton = kMinInteractiveDimension;
 
-/// Gap between two of those buttons. They each carry a filled circle, so
-/// without it the two circles meet and read as one lozenge.
+/// Gap between two of those buttons. The discs are 40 dp inside 48 dp
+/// targets, so the discs themselves sit 16 dp apart.
 const double kSourceSheetHeaderGap = 8;
+
+/// Gap between the back arrow and the title in the full-screen header. The
+/// disc's own slack adds 4 dp, so the title's ink sits 16 dp off the disc -
+/// the same breathing room the trailing discs have between each other.
+const double kSourceSheetHeaderTitleGap = 12;
+
+/// One header icon button, shared by the scaffold's back and close buttons
+/// and by both sheets' action buttons, so the four read as one set.
+///
+/// The old treatment was four heavy 48 dp filled circles - blue for search,
+/// refresh and back, red for close - which read as dated coins and made the
+/// close button a lone red outlier. This one paints a 40 dp disc inside the
+/// 48 dp touch target: a faint ink fill with a hairline edge, and the glyph
+/// in `onSurfaceVariant` whatever the button does. Same size, same neutral
+/// treatment, same icon colour family for all four; the close button is no
+/// longer red, because dismissing a sheet is not a destructive action.
+class SourceSheetHeaderButton extends StatelessWidget {
+  const SourceSheetHeaderButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  /// The painted disc. The touch target stays [kSourceSheetHeaderButton];
+  /// the disc is smaller so the glyph reads larger against it.
+  static const double visualSize = 40;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final palette = GlassPalette.of(context);
+    return IconButton(
+      tooltip: tooltip,
+      // Compact density would make this a 40 dp target, and desktop picks
+      // compact by default; pinning standard keeps 48 dp on every platform.
+      visualDensity: VisualDensity.standard,
+      // The 40 dp disc centres inside the 48 dp target; the default 8 dp
+      // padding would push the target to 56 dp.
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(
+        minWidth: kSourceSheetHeaderButton,
+        minHeight: kSourceSheetHeaderButton,
+      ),
+      hoverColor: palette.tint(0.08),
+      highlightColor: palette.tint(0.12),
+      splashColor: palette.tint(0.10),
+      icon: Container(
+        width: visualSize,
+        height: visualSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: palette.tint(0.06),
+          border: Border.all(color: palette.edge, width: 0.5),
+        ),
+        child: Icon(
+          icon,
+          size: kSourceSheetHeaderIcon,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
+      onPressed: onPressed,
+    );
+  }
+}
 
 /// The floating glass panel both source sheets are drawn in.
 ///
@@ -387,16 +458,20 @@ class GlassSheetScaffold extends StatelessWidget {
   Widget _header(BuildContext context, ThemeData theme, GlassPalette palette) {
     final cs = theme.colorScheme;
 
-    // Title + subtitle. The buttons beside them are 48 dp targets against
-    // a 24 dp title line, so the text sits down by half the overhang and
-    // shares their centre line. [endPadding] reserves room for the trailing
-    // buttons in the dialog's Stack; the full-screen Row lays them out in
-    // flow, so it passes 0.
-    Widget titleBlock({required double endPadding}) {
+    // Title + subtitle. In the dialog the buttons beside them are 48 dp
+    // targets against a 24 dp title line, so the text sits down by half the
+    // overhang and shares their centre line; the full-screen Row centres
+    // the whole block instead, so it passes [topPadding] 0. [endPadding]
+    // reserves room for the trailing buttons in the dialog's Stack; the
+    // full-screen Row lays them out in flow, so it passes 0.
+    Widget titleBlock({
+      required double endPadding,
+      double topPadding = _closeOverhang,
+    }) {
       return Padding(
         padding: EdgeInsetsDirectional.fromSTEB(
           0,
-          _closeOverhang,
+          topPadding,
           endPadding,
           0,
         ),
@@ -431,9 +506,9 @@ class GlassSheetScaffold extends StatelessWidget {
       );
     }
 
-    // The action buttons and the close button. The close button is circled
-    // like the action buttons beside it: a bare glyph next to a filled one
-    // reads as two different kinds of control rather than two of the same.
+    // The action buttons and the close button, all one treatment
+    // ([SourceSheetHeaderButton]): same size, same neutral disc, same icon
+    // colour. The close button used to be a red circle beside blue ones.
     Widget trailingButtons() {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -442,26 +517,10 @@ class GlassSheetScaffold extends StatelessWidget {
             action,
             const SizedBox(width: kSourceSheetHeaderGap),
           ],
-          DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: cs.error.withValues(alpha: 0.12),
-            ),
-            child: IconButton(
-              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-              // Compact density would make this a 40 dp target, and
-              // desktop picks compact by default; pinning standard keeps
-              // 48 dp on every platform.
-              visualDensity: VisualDensity.standard,
-              icon: Icon(
-                Icons.close_rounded,
-                size: kSourceSheetHeaderIcon,
-                color: cs.error,
-              ),
-              hoverColor: cs.error.withValues(alpha: 0.12),
-              highlightColor: cs.error.withValues(alpha: 0.16),
-              onPressed: onClose ?? () => Navigator.of(context).maybePop(),
-            ),
+          SourceSheetHeaderButton(
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            icon: Icons.close_rounded,
+            onPressed: onClose ?? () => Navigator.of(context).maybePop(),
           ),
         ],
       );
@@ -469,11 +528,13 @@ class GlassSheetScaffold extends StatelessWidget {
 
     if (fullScreen) {
       // Full-screen page: a back arrow leads the header, then the title,
-      // then the action buttons and the close button — all in one row.
+      // then the action buttons and the close button — all in one row,
+      // vertically centred, so the two-line title block no longer floats
+      // high or low against the buttons.
       return Padding(
-        // The full gutter on both sides. The trailing buttons are drawn as
-        // filled circles, so the circle IS their visible box and lines up
-        // like any other.
+        // The full gutter on both sides. The title gets the wider
+        // [kSourceSheetHeaderTitleGap] off the back arrow; the trailing
+        // buttons keep [kSourceSheetHeaderGap] between them.
         padding: const EdgeInsets.fromLTRB(
           kSourceSheetGutter,
           kSourceSheetGutter,
@@ -481,26 +542,15 @@ class GlassSheetScaffold extends StatelessWidget {
           4,
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cs.primary.withValues(alpha: 0.15),
-              ),
-              child: IconButton(
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                visualDensity: VisualDensity.standard,
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  size: kSourceSheetHeaderIcon,
-                  color: cs.primary,
-                ),
-                onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-              ),
+            SourceSheetHeaderButton(
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              icon: Icons.arrow_back_rounded,
+              onPressed: onBack ?? () => Navigator.of(context).maybePop(),
             ),
-            const SizedBox(width: kSourceSheetHeaderGap),
-            Expanded(child: titleBlock(endPadding: 0)),
+            const SizedBox(width: kSourceSheetHeaderTitleGap),
+            Expanded(child: titleBlock(endPadding: 0, topPadding: 0)),
             trailingButtons(),
           ],
         ),
@@ -508,12 +558,9 @@ class GlassSheetScaffold extends StatelessWidget {
     }
 
     return Padding(
-      // The full gutter on both sides. The trailing buttons are drawn as
-      // filled circles, so the circle IS their visible box and lines up like
-      // any other. This used to pull the end inset back by the slack a BARE
-      // glyph leaves inside its touch target - right while they were bare
-      // glyphs, wrong the moment they got a background: at 2 dp the circle ran
-      // into the panel's 28 dp corner and was clipped.
+      // The full gutter on both sides. The trailing buttons' 48 dp targets
+      // line the circles up with the panel edge; the 40 dp discs sit 4 dp
+      // inside them, clear of the panel's 28 dp corner.
       padding: const EdgeInsets.fromLTRB(
         kSourceSheetGutter,
         kSourceSheetGutter,

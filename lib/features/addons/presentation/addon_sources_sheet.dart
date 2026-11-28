@@ -237,19 +237,11 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
     required String tooltip,
     required IconData icon,
     required VoidCallback onPressed,
-    required Color color,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withValues(alpha: 0.15),
-      ),
-      child: IconButton(
-        tooltip: tooltip,
-        visualDensity: VisualDensity.standard,
-        icon: Icon(icon, size: kSourceSheetHeaderIcon, color: color),
-        onPressed: onPressed,
-      ),
+    return SourceSheetHeaderButton(
+      tooltip: tooltip,
+      icon: icon,
+      onPressed: onPressed,
     );
   }
 
@@ -832,13 +824,11 @@ class _AddonSourcesSheetState extends ConsumerState<AddonSourcesSheet> {
               : l10n.addonSourcesSearchTooltip,
           icon: _searchOpen ? Icons.search_off_rounded : Icons.search_rounded,
           onPressed: _toggleSearch,
-          color: cs.primary,
         ),
         _headerAction(
           tooltip: 'Refresh',
           icon: Icons.refresh_rounded,
           onPressed: () => unawaited(_start(forceRefresh: true)),
-          color: cs.primary,
         ),
       ],
       child: Column(

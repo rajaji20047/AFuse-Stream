@@ -915,23 +915,10 @@ class _PluginSourcesSheetState extends ConsumerState<PluginSourcesSheet> {
       subtitle: subtitleText,
       actions: [
         // Manual search, for a title whose name the scrapers did not match.
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: cs.primary.withValues(alpha: 0.15),
-          ),
-          child: IconButton(
-            tooltip: 'Search manually',
-            // Standard density, like the close button beside it: compact is
-            // the desktop default and gives a 40 dp target.
-            visualDensity: VisualDensity.standard,
-            icon: Icon(
-              Icons.search_rounded,
-              size: kSourceSheetHeaderIcon,
-              color: cs.primary,
-            ),
-            onPressed: () => unawaited(_searchManually()),
-          ),
+        SourceSheetHeaderButton(
+          tooltip: 'Search manually',
+          icon: Icons.search_rounded,
+          onPressed: () => unawaited(_searchManually()),
         ),
       ],
       child: Column(
