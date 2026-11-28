@@ -235,6 +235,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   bool _isLive = false;
   bool _inPip = false;
   int _openToken = 0;
+  /// Which open the live controller belongs to (set in [_openStream]
+  /// when the controller is assigned): the first-frame flip in
+  /// [_onVideoValue] only fires for the current open, so a tick from a
+  /// superseded open can never lift the startup view.
+  int _controllerOpenToken = 0;
+  /// The last position [_onVideoValue] saw, and the position the current
+  /// open was seeded at: the first-frame flip needs the playhead to have
+  /// moved past the seed, not merely to report it (see [_onVideoValue]).
+  Duration _lastSeenPosition = Duration.zero;
+  Duration _firstFrameSeed = Duration.zero;
   // The startup watchdog (see [_armStartupWatchdog]): an open that shows
   // no playback inside its window is a dead source. Cancelled the moment
   // playback starts, on every new open, and on dispose.
@@ -676,6 +686,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _sessionToken++;
     _streamIndex = index;
     _position = start;
+    // The first-frame proof is seeded here: the playhead must move past
+    // `start`, not merely report it (a resume at 25:00 reporting 25:00
+    // is not a frame — see [_onVideoValue]).
+    _lastSeenPosition = start;
+    _firstFrameSeed = start;
     _duration = Duration.zero;
     _buffered = Duration.zero;
     _isPlaying = false;
@@ -785,14 +800,21 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // disposed: one video at a time, from here on.
     final outgoingController = previousController;
     _controller = controller;
+    _controllerOpenToken = token;
     _videoListenerAttached = false;
     if (outgoingController != null) {
       _disposeControllerInstance(outgoingController);
     }
-    _chrome.poke();
-    setState(() {
-      _stage = _Stage.playing;
-    });
+    // A paused open shows the paused player at once — exactly today's
+    // behaviour (the viewer chose pause). An auto-playing open keeps the
+    // startup view until the first frame proves itself in
+    // [_onVideoValue]; the stage is left at resolving here.
+    if (!autoPlay) {
+      _chrome.poke();
+      setState(() {
+        _stage = _Stage.playing;
+      });
+    }
   }
 
   /// The data source for [stream]: the same headers the probe and the
@@ -1180,6 +1202,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     if (value == null) return;
     final wasPlaying = _isPlaying;
     _position = value.position;
+    // Advancing position is the only trustworthy sign of playback (VLC's
+    // `_onProgress`, same rule): ExoPlayer reports `isPlaying` before the
+    // first frame renders, so the play edge alone would lift the startup
+    // view over black. Zero is never progress, and merely reporting the
+    // resume seed is not progress either — the playhead must move past
+    // it. Updated on every tick, so a 0-then-seed jump on a resume reads
+    // as reporting the seed, not as movement.
+    final advanced = _position != _lastSeenPosition &&
+        _position > Duration.zero &&
+        _position != _firstFrameSeed;
+    _lastSeenPosition = _position;
     if (value.duration != null) _duration = value.duration!;
     _buffered = value.buffered.isEmpty
         ? Duration.zero
@@ -1218,6 +1251,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       // screen's dispose restores them after this screen's initState hid
       // them. Playback has started, so hide them again.
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+    // First frame, proven — the startup view lifts only now, in the
+    // unthrottled part of the tick (never behind the 200 ms UI gate
+    // below). A live stream flips on the first playing tick, because its
+    // position never advances; anything else flips on the playhead
+    // actually moving (see `advanced` above), never on the play edge.
+    // Once per open (the stage is no longer resolving after the flip),
+    // and only for the open the live controller belongs to.
+    if (_stage == _Stage.resolving && _controllerOpenToken == _openToken) {
+      final firstFrame = _isLive ? _startedPlaying : advanced;
+      if (firstFrame) {
+        // The chrome appears with the picture, not over the resolving
+        // view (it is only built once the stage is playing).
+        _chrome.poke();
+        setState(() {
+          _stage = _Stage.playing;
+        });
+      }
     }
     _syncWakelock();
     if (_isPlaying) {
