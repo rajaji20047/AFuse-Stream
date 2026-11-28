@@ -249,28 +249,22 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
         // leaves black, not the video surface underneath.
         const ColoredBox(color: Colors.black),
         if (showBackdrop)
-          // The breathing artwork: only the image scales, the dim below
-          // stays steady, and there is no blur layer (see the comment on
-          // the dim). Scaling up only, so no edge ever shows.
-          AnimatedBuilder(
-            animation: _breatheScale,
-            builder: (context, child) => Transform.scale(
-              scale: _breatheScale.value,
-              child: child,
+          // Static: the backdrop never moves (user 2026-11-28: the whole
+          // background backdrop does not breathe — only the movie's title
+          // logo does, in place of the spinner). Scaling up only, so no
+          // edge ever shows.
+          CachedNetworkImage(
+            imageUrl: backdrop,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            memCacheWidth: ImageUtils.coverDecodeWidth(
+              context,
+              width: size.width,
+              height: size.height,
+              sourceAspectRatio: ImageUtils.backdropAspectRatio,
             ),
-            child: CachedNetworkImage(
-              imageUrl: backdrop,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              memCacheWidth: ImageUtils.coverDecodeWidth(
-                context,
-                width: size.width,
-                height: size.height,
-                sourceAspectRatio: ImageUtils.backdropAspectRatio,
-              ),
-              placeholder: (_, _) => const SizedBox.shrink(),
-              errorWidget: (_, _, _) => const SizedBox.shrink(),
-            ),
+            placeholder: (_, _) => const SizedBox.shrink(),
+            errorWidget: (_, _, _) => const SizedBox.shrink(),
           ),
         // A paint, not a layer. No blur either: this sits over a platform
         // view on Android, and a window-sized filter layer there is the cost
@@ -370,7 +364,9 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
         mainAxisSize: MainAxisSize.min,
         children: [
           if (logo != null && logo.isNotEmpty && logoHeight > 0) ...[
-            // The logo breathes with the backdrop while loading.
+            // The movie's title logo breathes while loading, in place of
+            // the spinner (user 2026-11-28: the logo beats, not the whole
+            // background backdrop).
             AnimatedBuilder(
               animation: _breatheScale,
               builder: (context, child) => Transform.scale(
@@ -381,8 +377,8 @@ class _PlayerStartupViewState extends State<PlayerStartupView>
             ),
             const SizedBox(height: 20),
           ],
-          // No spinner ring any more: while loading the artwork breathes
-          // instead. Only the failed state shows an icon here.
+          // No spinner ring any more: while loading the title logo
+          // breathes instead. Only the failed state shows an icon here.
           if (widget.failed)
             Icon(
               Icons.error_outline_rounded,
