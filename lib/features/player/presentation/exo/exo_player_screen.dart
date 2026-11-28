@@ -1017,6 +1017,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       case BetterPlayerEventType.changedSubtitles:
         // The track lists changed under the sheets: repaint them.
         if (mounted) setState(() {});
+        // No playing-height check here on purpose: this event only
+        // echoes the requested track, and the package reports no
+        // playing rendition — its video size is the opening rendition
+        // only — so there is nothing to compare the pick against. A
+        // pick whose call itself throws is surfaced by
+        // _applyQualityTrack instead.
         // A panel track pick landed: resume when the video was
         // playing, stay paused when it was paused.
         _restorePanelPickPlayingState();
@@ -2063,6 +2069,28 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     );
   }
 
+  /// Issues a Quality pick and says so when the package call itself
+  /// fails. The tick is only recorded by the package on success, so a
+  /// throw here would otherwise leave the viewer believing the pick
+  /// landed. This cannot verify the rendition itself — the package
+  /// reports no playing rendition (see the changedTrack note) — it
+  /// only catches a call that actually threw.
+  Future<void> _applyQualityTrack(
+    BetterPlayerController controller,
+    BetterPlayerAsmsTrack track,
+    String label,
+  ) async {
+    try {
+      await controller.setTrack(track);
+    } catch (error) {
+      debugPrint('exo quality pick failed: $error');
+      if (_disposed || !mounted) return;
+      // Hardcoded English: a new l10n key needs `flutter gen-l10n`
+      // and the generated files are checked in.
+      _showToast("Couldn't switch to $label");
+    }
+  }
+
   /// The Quality panel's body: Auto on top, then each height tallest first.
   Widget _qualityPanelContent() {
     final l10n = AppLocalizations.of(context)!;
@@ -2076,9 +2104,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // One row per rendition height, tallest first; Auto is the
     // package's default track (a 0-size track).
     final byHeight = <int, BetterPlayerAsmsTrack>{};
+    // Highest bitrate wins per height: the pick reaches the engine as
+    // a max-size + max-bitrate cap, so a low-bitrate first track would
+    // cap playback below the picked height.
     for (final track in tracks) {
       final height = track.height ?? 0;
-      if (height > 0) byHeight.putIfAbsent(height, () => track);
+      if (height <= 0) continue;
+      final existing = byHeight[height];
+      if (existing == null ||
+          (track.bitrate ?? 0) > (existing.bitrate ?? 0)) {
+        byHeight[height] = track;
+      }
     }
     final heights = byHeight.keys.toList()
       ..sort((a, b) => b.compareTo(a));
@@ -2101,7 +2137,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
             Navigator.of(context).pop();
             _panelPickWasPlaying = _isPlaying;
             unawaited(
-              controller.setTrack(BetterPlayerAsmsTrack.defaultTrack()),
+              _applyQualityTrack(
+                controller,
+                BetterPlayerAsmsTrack.defaultTrack(),
+                l10n.playerQualityAuto,
+              ),
             );
             // The track switch pauses the package player: resume when
             // the video was playing (kept pending for the changedTrack
@@ -2118,7 +2158,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
               final track = byHeight[height];
               if (track != null) {
                 _panelPickWasPlaying = _isPlaying;
-                unawaited(controller.setTrack(track));
+                unawaited(
+                  _applyQualityTrack(
+                    controller,
+                    track,
+                    resolutionLabelFor(height),
+                  ),
+                );
                 _restorePanelPickPlayingState(keepPending: true);
               }
             },
