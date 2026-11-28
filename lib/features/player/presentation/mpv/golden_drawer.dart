@@ -84,33 +84,44 @@ class GoldenDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A Material ancestor for the drawer's text. This shell is also opened
+    // as a PopupRoute (Exo's side panels), where no Material sits above the
+    // route — and a Text without a Material ancestor inherits MaterialApp's
+    // _errorTextStyle: red monospace with a double yellow underline (the
+    // framework's "consider putting your text in a Material" fallback).
+    // A transparent Material hands the drawer the theme's DefaultTextStyle
+    // instead, the same way VLC's PlayerPanelShell does. It paints nothing:
+    // the Container below is the surface.
     return Align(
       alignment: Alignment.centerRight,
-      child: Container(
-        width: width,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          color: GoldenPlayerColors.backgroundSecondary,
-          border: Border(
-            left: GoldenPlayerColors.drawerBorder,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Container(
+          width: width,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            color: GoldenPlayerColors.backgroundSecondary,
+            border: Border(
+              left: GoldenPlayerColors.drawerBorder,
+            ),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(GoldenPlayerRadii.drawer),
+              bottomLeft: Radius.circular(GoldenPlayerRadii.drawer),
+            ),
           ),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(GoldenPlayerRadii.drawer),
-            bottomLeft: Radius.circular(GoldenPlayerRadii.drawer),
-          ),
-        ),
-        child: SafeArea(
-          left: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _DrawerHeader(title: title, onClose: onClose),
-              const Divider(
-                height: 1,
-                color: GoldenPlayerColors.divider,
-              ),
-              Expanded(child: child),
-            ],
+          child: SafeArea(
+            left: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _DrawerHeader(title: title, onClose: onClose),
+                const Divider(
+                  height: 1,
+                  color: GoldenPlayerColors.divider,
+                ),
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       ),
