@@ -3943,21 +3943,35 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     }
     // The Quality drawer's ladder is one source's. Another source's open
     // takes it down and reads its own; the pick holds for the session and
-    // follows the new ladder (see [_pickQuality]).
+    // follows the new ladder (see [_pickQuality]). The cap goes with it:
+    // it was computed from the old source's ladder, and the engine still
+    // holds it — so the record is forgotten and the cap is lifted off
+    // the engine here, or the new source opens under the old source's
+    // cap until its own ladder lands (or forever, when it has none).
     if (stream.url != _qualityLadderOf) {
       _qualityLadderOf = null;
       _qualityLadder = const <int>[];
       _qualityVariants = const <HlsVariant>[];
       _qualityMedia = null;
+      if (_appliedQualityCap != null) {
+        _appliedQualityCap = null;
+        unawaited(_clearQualityCap());
+      }
     }
     // A local temp file has no playlist behind it: the remote ladder
     // must not survive the takeover, or the Quality button offers a
-    // pick that reopens the remote stream.
+    // pick that reopens the remote stream. The cap goes with it, for
+    // the same reason as above — the engine's stale cap must not be
+    // the record the next remote open reads.
     if (localFileUrl != null) {
       _qualityLadderOf = null;
       _qualityLadder = const <int>[];
       _qualityVariants = const <HlsVariant>[];
       _qualityMedia = null;
+      if (_appliedQualityCap != null) {
+        _appliedQualityCap = null;
+        unawaited(_clearQualityCap());
+      }
       _publishPanelData();
     }
     // Build 119: a different film's temp download is STOPPED when a
@@ -4148,13 +4162,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         await _applyHlsProxyHwdec(useSoftwareDecode);
       }
       // What the Quality drawer's ladder is read from: the address mpv
-      // is about to be given, with its headers — the same condition VLC
-      // uses (an HLS address, or a source with no parsed quality). Never
-      // a local temp file: there is no playlist to read behind it.
+      // is about to be given, with its headers. Never a local temp file:
+      // there is no playlist to read behind it. Any other address is
+      // tried: a master playlist does not always end in .m3u8, and a
+      // source labelled with one height (a parsed `stream.quality`)
+      // can still be a multi-variant master — the playlist fetch is
+      // the arbiter, and it bails on the first 64 bytes when the
+      // answer is not a playlist (see [_fetchQualityPlaylist]).
       final mediaUri = Uri.tryParse(mediaUrl);
-      if (localFileUrl == null &&
-          mediaUri != null &&
-          (looksLikeHls(mediaUri) || stream.quality == 0)) {
+      if (localFileUrl == null && mediaUri != null) {
         _qualityMedia = (
           uri: mediaUri,
           headers: stream.headers ?? const <String, String>{},
@@ -5464,15 +5480,25 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// the next segment), so a pick needs no reopen — no black gap, no
   /// rebuffer, no restart from the top. If the live set fails, the pick
   /// falls back to the reopen, which sets the cap before the open (and
-  /// keeps the viewer's pause and the local temp file).
+  /// keeps the viewer's pause and the local temp file). A pick the
+  /// playlist gives no bandwidth for applies nothing and is not ticked:
+  /// the viewer is told instead, so the drawer never claims a picture
+  /// that never arrives.
   void _pickQuality(int? height) {
     if (_disposed || _stage != _Stage.playing) return;
     if (height == _qualityPick) return;
     final cap = bitrateCapForPick(height, _qualityLadder, _qualityVariants);
+    if (cap == null) {
+      ref.read(notificationServiceProvider).showInfo(
+        'This source lists no bitrate for that quality, so the picture stays as it is.',
+        title: 'Quality',
+      );
+      return;
+    }
     final currentCap = _appliedQualityCap ?? 0;
     _qualityPick = height;
     _publishPanelData();
-    if (cap == null || cap == currentCap) return;
+    if (cap == currentCap) return;
     unawaited(_applyQualityCap().then((applied) {
       if (_disposed || applied) return;
       unawaited(_openStream(
@@ -5484,13 +5510,32 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     }));
   }
 
+  /// Lifts the `hls-bitrate` cap off the engine, back to mpv's no-limit
+  /// default. Best-effort: a failed lift leaves the old cap until the
+  /// next apply re-sets it, and the open goes on. The source-change
+  /// clears call this so a cap from the old source's ladder never
+  /// governs the new one (see [_openStream]).
+  Future<void> _clearQualityCap() async {
+    try {
+      final platform = _player.platform;
+      if (platform is NativePlayer) {
+        await platform.setProperty('hls-bitrate', '0');
+      }
+    } catch (_) {
+      // Best-effort: the open goes on, and the next apply re-sets.
+    }
+  }
+
   /// Sets mpv's `hls-bitrate` cap for this open from the viewer's Quality
   /// pick (see [bitrateCapForPick]): the picked rendition's bandwidth, or
   /// 0 for Auto (no limit — mpv's default). Only when the cap moved, so
-  /// an ordinary open costs no extra property set; a pick of nothing to
-  /// cap on (no ladder, no bandwidth) leaves the property alone.
-  /// Best-effort: a failed set never breaks the open. Returns whether
-  /// the cap is now in force, so a live pick can fall back to a reopen.
+  /// an ordinary open costs no extra property set — except Auto on a
+  /// fresh engine, which still sets 0: the engine may hold a cap from
+  /// the old source, and only a set lifts it, so Auto returns to the
+  /// top rendition. A pick of nothing to cap on (no ladder, no
+  /// bandwidth) leaves the property alone. Best-effort: a failed set
+  /// never breaks the open. Returns whether the cap is now in force, so
+  /// a live pick can fall back to a reopen.
   Future<bool> _applyQualityCap() async {
     final cap = bitrateCapForPick(
       _qualityPick,
@@ -5499,13 +5544,18 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     );
     if (cap == null) return false;
     if (cap == _appliedQualityCap) return true;
-    // Auto before any pick: the engine already runs uncapped, so there
-    // is nothing to set.
-    if (_appliedQualityCap == null && cap == 0) return true;
     final platform = _player.platform;
     if (platform is! NativePlayer) return false;
     try {
       await platform.setProperty('hls-bitrate', cap.toString());
+      // The set only counts once the engine reads it back: an
+      // `hls-bitrate` the bridge will not take must not read as
+      // applied, or the pick falls back to no reopen and the viewer
+      // watches the wrong rendition.
+      final back = _parseVideoParam(
+        await platform.getProperty('hls-bitrate'),
+      );
+      if (back != cap) return false;
       _appliedQualityCap = cap;
       return true;
     } catch (_) {
