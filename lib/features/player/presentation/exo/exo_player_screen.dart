@@ -210,6 +210,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   // playback starts, on every new open, and on dispose.
   Timer? _startupWatchdogTimer;
 
+  // Last position-update setState, so the video controller's frequent
+  // ticks do not rebuild the whole screen at full rate (MPV's
+  // `_lastPositionUi`, same 200 ms gate — the bar only needs ~5 updates
+  // a second). The displayed time only changes once per second, so a
+  // tick that only moves the position within the same second does not
+  // rebuild on its own.
+  DateTime _lastPositionUi = DateTime.fromMicrosecondsSinceEpoch(0);
+  int _lastUiSecond = -1;
+
   // -- the chrome (the same pieces the VLC screen uses) ----------------------
   // The chrome clock: visible on entry, gone 3 s into playback, back on
   // any poke. A sheet holds it up while it is open.
@@ -620,7 +629,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // fail over through every source to "No working source found".
     String playableUrl = stream.url;
     if (isTorrentSource(stream)) {
-      final converted = await playableUrlFor(read: _read, stream: stream);
+      // Bound the conversion: the torrent service can poll metadata for
+      // up to ~120 s, and an open that waits that long sits on the
+      // resolving spinner. 60 s is enough for a healthy magnet; past it
+      // the conversion answers null and the source fails over like any
+      // dead one (the 3-minute torrent watchdog is the outer backstop,
+      // not the wait).
+      final converted =
+          await playableUrlFor(read: _read, stream: stream).timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => null,
+      );
       if (_disposed || token != _openToken) return;
       if (converted == null) {
         // VLC's conversion-failure behaviour: the source is dead, so it
@@ -960,7 +979,21 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // The up-next card's last-15-seconds lead-in (see
     // [_maybeOfferNextEpisode]).
     if (_isPlaying) _maybeOfferNextEpisode();
-    if (mounted) setState(() {});
+    // Throttle UI rebuilds the MPV way: the bar only needs ~5 updates a
+    // second, and the displayed time only changes once per second — so a
+    // tick that only moves the position within the same second does not
+    // rebuild unless the 200 ms gate has elapsed and the thumb needs its
+    // step. (Before this, every video-value tick rebuilt the whole
+    // screen, which is the lag.)
+    final now = DateTime.now();
+    final secondChanged = _position.inSeconds != _lastUiSecond;
+    if (secondChanged ||
+        now.difference(_lastPositionUi) >=
+            const Duration(milliseconds: 200)) {
+      _lastPositionUi = now;
+      _lastUiSecond = _position.inSeconds;
+      if (mounted) setState(() {});
+    }
   }
 
   /// Fans the playing/not-playing edge out to the wakelock — VLC's
@@ -1289,6 +1322,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _pickedIndex = null;
     _resolveDone = false;
     _startedPlaying = false;
+    // The old episode's watchdog belongs to the old episode: a new
+    // episode opens on the same stream index, so its timer would kill
+    // the new episode's first source (MPV cancels its watchdog on
+    // episode switch the same way).
+    _startupWatchdogTimer?.cancel();
+    _startupWatchdogTimer = null;
     _position = Duration.zero;
     _duration = Duration.zero;
     _buffered = Duration.zero;
