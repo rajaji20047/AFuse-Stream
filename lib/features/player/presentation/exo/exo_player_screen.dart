@@ -240,6 +240,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   // playback starts, on every new open, and on dispose.
   Timer? _startupWatchdogTimer;
 
+  // The mid-playback stall watchdog (see [_onStallTick]): a tick every 2 s
+  // while the screen lives, asking whether the playhead has moved. The
+  // startup watchdog above stands down the moment playback starts, so
+  // without this a source that dies mid-film spins the spinner for ever.
+  // The clock measures how long the playhead has stood still, the ladder
+  // rung already fired for this stall window, and the buffered edge the
+  // last tick saw (a growing edge means bytes are still arriving, so the
+  // source is refilling, not dead — see [stallActionFor]).
+  Timer? _stallWatchdogTimer;
+  final StallClock _stallClock = StallClock();
+  StallAction _stallLastAction = StallAction.none;
+  Duration _stallBufferedAt = Duration.zero;
+
   // Last position-update setState, so the video controller's frequent
   // ticks do not rebuild the whole screen at full rate (MPV's
   // `_lastPositionUi`, same 200 ms gate — the bar only needs ~5 updates
@@ -442,6 +455,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _attachPip();
     _chrome = ChromeVisibilityController(isPlaying: () => _isPlaying);
     _sleepTimer = SleepTimer()..onFire = _onSleepTimerFired;
+    // The mid-playback stall watchdog: a tick every 2 s that asks whether
+    // the playhead has moved, and fails over when it has not (see
+    // [_onStallTick]). It stands down while the screen is gone.
+    _stallWatchdogTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _onStallTick(),
+    );
     unawaited(_resolveAndOpen());
   }
 
@@ -449,6 +469,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
   void dispose() {
     _disposed = true;
     _startupWatchdogTimer?.cancel();
+    _stallWatchdogTimer?.cancel();
     _chrome.dispose();
     _sleepTimer.dispose();
     _locked.dispose();
@@ -487,6 +508,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _controller = null;
     _videoListenerAttached = false;
     if (controller == null) return;
+    _disposeControllerInstance(controller);
+  }
+
+  /// Disposes a controller that is no longer the live one (see
+  /// [_openStream]): its listener comes off first, so no tick can land
+  /// after the dispose.
+  void _disposeControllerInstance(BetterPlayerController controller) {
     try {
       controller.videoPlayerController?.removeListener(_onVideoValue);
     } catch (_) {}
@@ -626,9 +654,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
 
   /// Opens [index] in a fresh controller, at [start].
   ///
-  /// The old controller is disposed first — one video at a time — and the
+  /// The old controller is kept alive — picture and all — until the new
+  /// controller is ready, and only then disposed (VLC keeps the old media
+  /// playing through setup the same way): disposing it here left the
+  /// screen on the spinner for the whole torrent conversion below. The
   /// open is guarded by [_openToken], so a failover that lands while an
-  /// open is still in flight does not open the same source twice.
+  /// open is still in flight does not open the same source twice, and a
+  /// stale open cannot resurrect a disposed controller.
   Future<void> _openStream(
     int index, {
     Duration start = Duration.zero,
@@ -656,7 +688,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     _startedPlaying = false;
     _pendingSeekTarget = null;
     _pendingSeekTargetSetAt = null;
-    _disposeController();
+    // A new source earns a fresh stall budget (see [_onStallTick]).
+    _stallClock.reset();
+    _stallLastAction = StallAction.none;
+    _stallBufferedAt = Duration.zero;
+    // The old controller stays the live one until the new controller is
+    // built below: its picture stays on screen through the torrent
+    // conversion instead of a spinner on black. Its listener is detached
+    // now, so its ticks stop driving [_onVideoValue] — which would
+    // re-assert [_startedPlaying] and cancel the new source's startup
+    // watchdog — and it is disposed once the new controller takes over.
+    final previousController = _controller;
+    if (previousController != null) {
+      try {
+        previousController.videoPlayerController
+            ?.removeListener(_onVideoValue);
+      } catch (_) {}
+      _videoListenerAttached = false;
+    }
     // Every open keeps the display on until playback decides — the
     // config's autoPlay is true for every open except a panel source
     // pick made while paused (see [_pickSource]).
@@ -727,10 +776,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       ),
     );
     if (_disposed || token != _openToken) {
+      // A stale open: the new controller goes, and the old one — still
+      // the live one, still showing its picture — is left alone.
       controller.dispose();
       return;
     }
+    // The new controller takes over, and only now is the old one
+    // disposed: one video at a time, from here on.
+    final outgoingController = previousController;
     _controller = controller;
+    _videoListenerAttached = false;
+    if (outgoingController != null) {
+      _disposeControllerInstance(outgoingController);
+    }
     _chrome.poke();
     setState(() {
       _stage = _Stage.playing;
@@ -798,6 +856,82 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       _failedStreams.add(_streamIndex);
       _tryNextStream();
     });
+  }
+
+  /// One tick of the mid-playback stall watchdog (MPV's [_onStallTick]
+  /// shape, same shared ladder): a playhead that has not moved while
+  /// playback is expected is a dead source, and the failover moves on.
+  ///
+  /// The trigger is the ground truth from [stallActionFor] — a playhead
+  /// that has not moved — not the engine's buffering flag, which is true
+  /// through healthy playback while the cache refills. The ladder's
+  /// sustained window is what rides out an ordinary rebuffer: nothing
+  /// happens before [kStallRecoverAfter] (25 s, longer while bytes are
+  /// still arriving), so this is not a single short threshold.
+  ///
+  /// Only the ladder's recover rung acts here. Its nudge rung — a seek
+  /// back to the frozen position — is left unfired on purpose: the
+  /// ladder's `adaptive` exemption is written for exactly this engine
+  /// shape, where a seek restarts every stream at the playhead's
+  /// segment and throws the read-ahead away. A stalled Exo source is
+  /// failed over, not nudged.
+  ///
+  /// Playback is expected when the engine says playing, or when a stall
+  /// already paused it: the package posts a pause when ExoPlayer flips
+  /// to buffering, and [_bufferingWasPlaying] remembers the stall found
+  /// it playing — so a stall that pauses the engine still counts, while
+  /// a pause the viewer chose (which clears both, see [_togglePlay])
+  /// stands the clock down. A seek in flight, a live stream, the ended
+  /// card, the up-next offer, and a playhead at the end are all restarts
+  /// too: none of them is a stall.
+  void _onStallTick() {
+    if (_disposed || !_startedPlaying || _isLive) return;
+    if (_controller == null || _ended != null || _nextEpisodeOffer != null) {
+      _stallClock.restart();
+      _stallLastAction = StallAction.none;
+      return;
+    }
+    if (!_isPlaying && _bufferingWasPlaying != true) {
+      _stallClock.restart();
+      _stallLastAction = StallAction.none;
+      return;
+    }
+    if (_pendingSeekTarget != null) {
+      _stallClock.restart();
+      _stallLastAction = StallAction.none;
+      return;
+    }
+    if (_duration > Duration.zero &&
+        _duration - _position <= const Duration(seconds: 2)) {
+      _stallClock.restart();
+      _stallLastAction = StallAction.none;
+      return;
+    }
+    final moved = _stallClock.tick(_position);
+    if (moved) {
+      // The picture is moving again: the stall is over and the source
+      // has earned a fresh recovery budget.
+      _stallLastAction = StallAction.none;
+      _stallBufferedAt = _buffered;
+      return;
+    }
+    final arriving = _buffered > _stallBufferedAt;
+    _stallBufferedAt = _buffered;
+    final action = stallActionFor(
+      stalledFor: _stallClock.stalledFor,
+      hadFrames: _startedPlaying,
+      lastAction: _stallLastAction,
+      arriving: arriving,
+    );
+    if (action != StallAction.recover) return;
+    final stalledFor = _stallClock.stalledFor;
+    _stallLastAction = StallAction.recover;
+    _stallClock.reset();
+    if (kDebugMode) {
+      debugPrint('exo stall watchdog: no progress in $stalledFor');
+    }
+    _failedStreams.add(_streamIndex);
+    _tryNextStream();
   }
 
   /// The format hint, from the URL's own extension — the package detects

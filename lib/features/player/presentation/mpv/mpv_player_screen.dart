@@ -171,14 +171,6 @@ const Duration _kResolveTimeout = Duration(seconds: 30);
 /// and the failover moves to the next candidate.
 const Duration _kStartupWatchdog = Duration(seconds: 12);
 
-/// How long the pre-play source list stays up with its rows painted before
-/// the first source auto-plays. The streams are preloaded, so resolution is
-/// fast and the list would otherwise flash past unseen — the viewer must see
-/// the list (and get a chance to tap a row) before the video starts. This is
-/// a floor on visibility, not a forced wait: a tap still opens at once.
-/// 1s is enough to see the list; 3s made every open feel slow.
-const Duration _kMinListVisible = Duration(milliseconds: 1000);
-
 /// Pre-buffer before the first play: how much must be buffered ahead of
 /// the playhead before the video starts, and the longest the start may be
 /// held for it.
@@ -599,6 +591,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
   /// startup watchdog).
   bool _startedPlaying = false;
   Timer? _watchdogTimer;
+
+  /// The open generation (see [_openStream]): a watchdog failover or a
+  /// source pick that starts a newer open retires the older one's
+  /// pre-open chain, so a torrent conversion or proxy wait that returns
+  /// late cannot open a source the viewer has already left. The resolve
+  /// generation ([_resolveToken]) cannot do this — it only changes on a
+  /// new resolve, not on a failover or a pick.
+  int _openGeneration = 0;
 
   /// Pre-buffer state (see _kPrebufferTarget): while true, an opened stream
   /// is held paused until enough is buffered ahead of the playhead. The
@@ -3828,16 +3828,15 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       // mpv reads the playlist, and _canSeek stays off until then.
       _isLive = widget.item.contentType == MultimediaContentType.livestream;
       _publishPanelData();
-      // The list must be SEEN, not flashed: the streams are preloaded, so
-      // resolution is fast, and until now nothing rebuilt the screen with
-      // the rows — the first rebuild came from _openStream's trailing
-      // setState, by which time the first frame was imminent and the list
-      // was skipped entirely. Rebuild now, wait for the populated list to
-      // paint, then hold it for a beat before the first source auto-plays.
+      // The list was already visible while resolving — the candidates
+      // land live through onCandidates, and each probe answer rebuilds
+      // it — so there is no hold before the first source auto-plays:
+      // the old 1 s floor only delayed the first frame on every
+      // auto-open. One frame is still let through so the populated list
+      // paints before the open's trailing setState.
       if (mounted) setState(() {});
       await WidgetsBinding.instance.endOfFrame;
       if (_disposed || token != _resolveToken) return;
-      final listPaintedAt = DateTime.now();
       unawaited(_loadSkipSegments(_currentEpisode));
       _tracker = PlaybackTracker(
         read: _read,
@@ -3853,12 +3852,8 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         videoUrl: _currentVideoUrl,
         token: _sessionToken,
       );
-      final listVisibleFor = DateTime.now().difference(listPaintedAt);
-      if (listVisibleFor < _kMinListVisible) {
-        await Future<void>.delayed(_kMinListVisible - listVisibleFor);
-      }
       if (_disposed || token != _resolveToken) return;
-      // A row tapped during the hold already opened its source; do not
+      // A row tapped while resolving already opened its source; do not
       // overrule the viewer's pick with the auto-pick.
       if (_streamIndex != resolved.index) return;
       await _openStream(_streamIndex, start: _resumePosition);
@@ -3896,6 +3891,9 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     // replacement must not be killed by it (see [_armWatchdog]).
     _watchdogTimer?.cancel();
     _watchdogTimer = null;
+    // The open generation this open belongs to: a newer open retires
+    // this one's pre-open chain (see [_openGeneration]).
+    final openGeneration = ++_openGeneration;
     // The resolve generation this open belongs to: an episode switch
     // that starts a new resolve invalidates this one (see [_resolveToken]).
     final resolveToken = _resolveToken;
@@ -4031,6 +4029,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       _sample = null;
     }
     _publishPanelData();
+    // The watchdog is armed BEFORE the pre-open chain below (VLC arms
+    // its first-frame watch before its serial chain the same way), so
+    // the torrent conversion, the fMP4 probe and the quality cap run
+    // covered: a chain that never answers is a dead source, not minutes
+    // of spinner. A torrent gets the 3-minute budget — a cold magnet
+    // seeds in minutes, and the 12 s window would abandon it
+    // mid-conversion — an ordinary stream 12 s (see [_armWatchdog]).
+    _armWatchdog(torrent: isTorrentSource(stream));
     try {
       // Opened PAUSED: the first frame shows as soon as it is decoded, but
       // the playhead does not move until _waitForPrebuffer has a cushion
@@ -4051,7 +4057,11 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       final clearKey = localFileUrl == null
           ? await fetchClearKey(stream)
           : null;
-      if (_disposed || resolveToken != _resolveToken) return;
+      if (_disposed ||
+          openGeneration != _openGeneration ||
+          resolveToken != _resolveToken) {
+        return;
+      }
       // A torrent has to be prepared and seeded before anything can
       // open it: the torrent service serves it over loopback HTTP,
       // the same conversion VLC makes through [playableUrlFor]. A
@@ -4062,8 +4072,22 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       // A local temp file already holds the film, so it skips this.
       var mediaUrl = stream.url;
       if (localFileUrl == null && isTorrentSource(stream)) {
-        final playable = await playableUrlFor(read: _read, stream: stream);
-        if (_disposed || resolveToken != _resolveToken) return;
+        // Bound the conversion at Exo's 60 s cap: the service can poll
+        // metadata for up to ~120 s, and past 60 s the magnet is a dead
+        // source — null fails it over like any dead one (the watchdog
+        // above is the outer backstop, not the wait).
+        final playable = await playableUrlFor(
+          read: _read,
+          stream: stream,
+        ).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => null,
+        );
+        if (_disposed ||
+            openGeneration != _openGeneration ||
+            resolveToken != _resolveToken) {
+          return;
+        }
         if (playable == null) {
           throw StateError('torrent could not be prepared');
         }
@@ -4098,6 +4122,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
           final openToken = ++_proxyOpenToken;
           proxied = await StreamCacheService.instance.open(stream.url);
           if (_disposed ||
+              openGeneration != _openGeneration ||
               openToken != _proxyOpenToken ||
               resolveToken != _resolveToken) {
             // Left, a newer open overtook this one while waiting, or a
@@ -4213,7 +4238,14 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       }
       // The pick's cap governs the file being opened (mpv reads
       // `hls-bitrate` when it loads the playlist), so it is set before
-      // the open, like the hwdec mode below.
+      // the open, like the hwdec mode below. A newer open retired this
+      // one while the proxy and HLS awaits ran: it never reaches the
+      // engine.
+      if (_disposed ||
+          openGeneration != _openGeneration ||
+          resolveToken != _resolveToken) {
+        return;
+      }
       await _applyQualityCap();
       try {
         await _player.open(
@@ -4239,14 +4271,25 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         }
       }
     } catch (e) {
+      // Retired by a newer open while it was in flight: the failure
+      // belongs to a source nobody is opening any more, so it must not
+      // fail over the replacement.
+      if (openGeneration != _openGeneration) return;
       if (kDebugMode) debugPrint('mpv open failed: $e');
       _failedStreams.add(index);
       _publishPanelData();
       _tryNextStream();
       return;
     }
+    // A newer open retired this one while it was opening: the watchdog
+    // is already the replacement's (armed before its own chain), and the
+    // pre-buffer wait below belongs to it too.
+    if (_disposed ||
+        openGeneration != _openGeneration ||
+        resolveToken != _resolveToken) {
+      return;
+    }
     _maybeReadQualityLadder();
-    _armWatchdog();
     if (skipPrebuffer) {
       _prebufferToken++;
       _awaitingPrebuffer = false;
@@ -5311,10 +5354,20 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     return quality != null && quality > 0 ? '${quality}p' : 'a lower quality';
   }
 
-  void _armWatchdog() {
+  /// Arms the startup watchdog for the source being opened (see
+  /// [_openStream], which arms it before the pre-open chain): if
+  /// playback has not started when it fires, the source is dead and the
+  /// failover moves on. A torrent gets the 3-minute budget
+  /// ([kTorrentStallRecoverAfter]) — a cold magnet seeds in minutes, and
+  /// the ordinary window would abandon it mid-conversion — an ordinary
+  /// stream 12 s ([_kStartupWatchdog], unchanged). The timer belongs to
+  /// the source it was armed for, and it stands down the moment playback
+  /// starts. A new open retires the previous source's timer.
+  void _armWatchdog({required bool torrent}) {
     _watchdogTimer?.cancel();
     final index = _streamIndex;
-    _watchdogTimer = Timer(_kStartupWatchdog, () {
+    final window = torrent ? kTorrentStallRecoverAfter : _kStartupWatchdog;
+    _watchdogTimer = Timer(window, () {
       if (_disposed || _startedPlaying) return;
       // The timer belongs to the source it was armed for: a failover or
       // an episode switch that started a new open must not let this one
@@ -5322,7 +5375,7 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
       if (index != _streamIndex) return;
       // Nothing is playing after the budget: this source is dead.
       if (kDebugMode) {
-        debugPrint('mpv watchdog: no playback in $_kStartupWatchdog');
+        debugPrint('mpv watchdog: no playback in $window');
       }
       _failedStreams.add(_streamIndex);
       _publishPanelData();
