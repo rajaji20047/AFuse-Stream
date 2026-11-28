@@ -44,6 +44,24 @@ import '../../../shared/focus/app_focus.dart';
 import '../../../shared/widgets/check_line.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
+/// Pick the hero backdrop: the add-on's own background, else the TMDB
+/// backdrop, else the add-on poster. A real backdrop beats a poster
+/// stretched as one; nothing is overwritten when the add-on already has a
+/// background.
+String _heroBackdrop(String? background, String? tmdbBanner, String? poster) {
+  if ((background ?? '').isNotEmpty) return background!;
+  if ((tmdbBanner ?? '').isNotEmpty) return tmdbBanner!;
+  return poster ?? '';
+}
+
+/// Pick the synopsis: the add-on's own description, else TMDB's overview.
+/// Fill-gaps only: a non-empty add-on description is never overwritten.
+String _heroOverview(String? description, String? tmdbOverview) {
+  final own = (description ?? '').trim();
+  if (own.isNotEmpty) return own;
+  return (tmdbOverview ?? '').trim();
+}
+
 /// Detail page for an add-on catalog entry, styled to match the TMDB Details Screen.
 /// Metadata comes from a `meta` add-on, playback from `stream` add-ons.
 class AddonDetailScreen extends ConsumerStatefulWidget {
@@ -349,9 +367,13 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
         : meta.trailers;
 
     final title = meta.name;
-    final overview = meta.description ?? '';
-    final logoUrl = meta.logo;
-    final backdropImageUrl = meta.background ?? meta.poster ?? '';
+    // Fill the display gaps the add-on left from the already-fetched TMDB
+    // details (backdrop, overview, logo). Fill-gaps only — see _heroBackdrop.
+    final overview = _heroOverview(meta.description, tmdb?.description);
+    final logoUrl =
+        (meta.logo ?? '').isNotEmpty ? meta.logo : tmdb?.logoUrl;
+    final backdropImageUrl =
+        _heroBackdrop(meta.background, tmdb?.bannerUrl, meta.poster);
     final year = meta.releaseInfo ?? '';
     final rating = meta.imdbRating ?? '';
     final runtime = meta.runtime ?? '';
@@ -603,9 +625,7 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
   /// the sources card, a short synopsis and the episodes as a row.
   Widget _buildMobileLayout(BuildContext context, AddonMeta meta) {
     final theme = Theme.of(context);
-    final backdropImageUrl = meta.background ?? meta.poster ?? '';
     final title = meta.name;
-    final overview = (meta.description ?? '').trim();
     final year = meta.releaseInfo ?? '';
     final rating = meta.imdbRating ?? '';
     final runtime = meta.runtime ?? '';
@@ -653,6 +673,13 @@ class _AddonDetailScreenState extends ConsumerState<AddonDetailScreen> {
     final trailers = (tmdb?.tmdbTrailers.isNotEmpty == true)
         ? tmdb!.tmdbTrailers
         : meta.trailers;
+
+    // Fill the display gaps the add-on left from the already-fetched TMDB
+    // details (backdrop, overview). Fill-gaps only — see _heroBackdrop.
+    // Declared here, not at the top, because tmdb only resolves above.
+    final backdropImageUrl =
+        _heroBackdrop(meta.background, tmdb?.bannerUrl, meta.poster);
+    final overview = _heroOverview(meta.description, tmdb?.description);
 
     final mq = MediaQuery.sizeOf(context);
     final bannerHeight = detailsHeroBannerHeight(mq);

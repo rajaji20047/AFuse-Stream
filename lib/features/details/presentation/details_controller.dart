@@ -349,11 +349,15 @@ class DetailsController extends _$DetailsController {
       }
       MultimediaItem enrichedItem = withProvider;
 
-      final hasAnyWesternId =
-          withProvider.tmdbId != null || withProvider.imdbId != null;
+      // Resolve when EITHER id is missing: enrichWithIds fills only the
+      // missing one (fast path for a missing imdbId, title search for a
+      // missing tmdbId). Skipping when only one id existed left the other
+      // unresolved, so TMDB display metadata never loaded for those titles.
+      final hasBothWesternIds =
+          withProvider.tmdbId != null && withProvider.imdbId != null;
 
       try {
-        if (!hasAnyWesternId) {
+        if (!hasBothWesternIds) {
           enrichedItem = await ref
               .read(metadataResolutionServiceProvider)
               .enrichWithIds(withProvider);
@@ -365,7 +369,7 @@ class DetailsController extends _$DetailsController {
         } else {
           if (kDebugMode) {
             debugPrint(
-              'DetailsController: Bypassed TMDB resolution (tmdbId or imdbId already provided by scraper)',
+              'DetailsController: Bypassed TMDB resolution (both tmdbId and imdbId already provided by scraper)',
             );
           }
         }

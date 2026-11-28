@@ -141,22 +141,29 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
     final isMovie = ref.watch(
       detailsControllerProvider(widget.item.url).select((s) => s.isMovie),
     );
-    final item = details ?? widget.item;
-    // TMDB cast for the Cast row (photos + character roles, like Browse).
-    // The tmdbId is resolved in the background by DetailsController; until
-    // it lands — or when TMDB has no credits — the plugin's own cast is the
-    // fallback (CastCarousel's text line). The TMDB credits belong to the
-    // resolved title by construction, so no name-matching is needed.
-    final tmdbCast = item.tmdbId != null
+    final rawItem = details ?? widget.item;
+    // TMDB details for the Cast row (photos + character roles, like Browse)
+    // AND to fill the display gaps the plugin left (poster, backdrop,
+    // overview, rating). The tmdbId is resolved in the background by
+    // DetailsController; until it lands — or when TMDB has no credits —
+    // the plugin's own cast is the fallback (CastCarousel's text line).
+    // The TMDB details belong to the resolved title by construction, so no
+    // name-matching is needed. The merge below only fills EMPTY plugin
+    // fields; a plugin value is never overwritten.
+    final tmdb = rawItem.tmdbId != null
         ? ref
               .watch(
                 tmdbDetailsProvider(
-                  MovieDetailsParams(item.tmdbId!, isMovie ? 'movie' : 'tv'),
+                  MovieDetailsParams(
+                    rawItem.tmdbId!,
+                    isMovie ? 'movie' : 'tv',
+                  ),
                 ),
               )
               .value
-              ?.tmdbCast
         : null;
+    final tmdbCast = tmdb?.tmdbCast;
+    final item = _withTmdbDisplayGapsFilled(rawItem, tmdb);
     final selectedEpisodeCount = ref.watch(
       detailsControllerProvider(widget.item.url)
           .select((state) => state.selectedEpisodeKeys.length),
@@ -785,4 +792,46 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen> {
       ),
     ];
   }
+}
+
+/// Fill the display gaps a plugin left (poster, backdrop, overview, rating)
+/// from the already-fetched TMDB details. Fill-gaps only: a non-empty plugin
+/// value is never overwritten, and an empty TMDB value never overwrites
+/// anything. The plugin item's url/provider/episodes/streams are untouched,
+/// so playback and the source sheets keep working on plugin data. The page
+/// is never blocked on TMDB: while the details are still loading (or TMDB
+/// has no match) the item is returned unchanged and the plugin data renders.
+MultimediaItem _withTmdbDisplayGapsFilled(
+  MultimediaItem item,
+  TmdbDetails? tmdb,
+) {
+  if (tmdb == null) return item;
+  final posterUrl = item.posterUrl.isEmpty && tmdb.posterUrl.isNotEmpty
+      ? tmdb.posterUrl
+      : null;
+  final bannerUrl =
+      (item.bannerUrl == null || item.bannerUrl!.isEmpty) &&
+              tmdb.bannerUrl != null &&
+              tmdb.bannerUrl!.isNotEmpty
+          ? tmdb.bannerUrl
+          : null;
+  final description =
+      (item.description == null || item.description!.trim().isEmpty) &&
+              (tmdb.description ?? '').trim().isNotEmpty
+          ? tmdb.description
+          : null;
+  final score =
+      item.score == null && (tmdb.score ?? 0) > 0 ? tmdb.score : null;
+  if (posterUrl == null &&
+      bannerUrl == null &&
+      description == null &&
+      score == null) {
+    return item;
+  }
+  return item.copyWith(
+    posterUrl: posterUrl,
+    bannerUrl: bannerUrl,
+    description: description,
+    score: score,
+  );
 }
