@@ -12,7 +12,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
-import '../../../settings/presentation/general_settings_provider.dart';
+import '../../settings/presentation/general_settings_provider.dart';
 
 part 'mal_service.g.dart';
 

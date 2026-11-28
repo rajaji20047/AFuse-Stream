@@ -9,7 +9,7 @@ import '../../../../core/logger/app_logger.dart';
 import '../../../../core/network/dio_client_provider.dart';
 import '../../../../core/storage/secure_token_storage.dart';
 import '../../../../core/config/sync_config.dart';
-import '../../../settings/presentation/general_settings_provider.dart';
+import '../../settings/presentation/general_settings_provider.dart';
 
 part 'anilist_service.g.dart';
 
@@ -66,7 +66,7 @@ class AniListService implements TrackingService {
   }) async {
     try {
       talker.debug('AniListService: Initiating OAuth Implicit Grant Flow..."');
-      const authUrl =
+      final authUrl =
           'https://anilist.co/api/v2/oauth/authorize'
           '?client_id=$_clientId'
           '&response_type=token';
