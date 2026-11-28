@@ -5858,6 +5858,13 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
     // A frame on any attempt counts for the whole screen: the Auto-mode
     // gate reads this, never the per-attempt [_sawFrames].
     if (value) _everPlayed = true;
+    // A picture is up, so playback has started: an engine switch can
+    // leave the system bars showing (the old screen's dispose restores
+    // them after this screen's initState hid them), so hide them again.
+    // Runs only on the false -> true transition, like the flag above.
+    if (value && mounted && !_disposed) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
     if (mounted && !_disposed) setState(() {});
   }
 
@@ -6859,10 +6866,17 @@ class _VlcPlayerScreenState extends ConsumerState<VlcPlayerScreen>
         });
       }
     }
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
+    // The UI hand-back, like the orientation one above, is skipped on an
+    // engine switch: the new screen's initState already hid the bars, and
+    // this dispose runs after it, so restoring here would show the status
+    // bar and nav bar over the new player's video. The new screen also
+    // re-asserts immersive on its first frame.
+    if (!_leavingForEngineSwitch) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+    }
   }
 
   /// The read-ahead for [stream], opening as [media] on a network that is

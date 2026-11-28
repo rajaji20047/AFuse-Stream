@@ -449,7 +449,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
     // An engine switch hands the new player the landscape pin (see
     // [_restoreOrientation]): only a real exit gives the pin back.
     if (!_leavingForEngineSwitch) _restoreOrientation();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Skipped on an engine switch, like the orientation hand-back above:
+    // the new screen's initState already hid the bars, and this dispose
+    // runs after it, so restoring edge-to-edge here would show the status
+    // bar and nav bar over the new player's video. The new screen also
+    // re-asserts immersive on its first play.
+    if (!_leavingForEngineSwitch) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     super.dispose();
   }
 
@@ -1003,6 +1010,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen> {
       // Playback started: the startup watchdog stands down (MPV cancels
       // its timer on first play the same way).
       _startupWatchdogTimer?.cancel();
+      // An engine switch can leave the system bars showing: the old
+      // screen's dispose restores them after this screen's initState hid
+      // them. Playback has started, so hide them again.
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
     _syncWakelock();
     if (_isPlaying) {

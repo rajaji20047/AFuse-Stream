@@ -1203,8 +1203,13 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
     _restoreOrientation();
     // Hands the status + navigation bars back: without this the app stays
     // in immersive mode after the player closes, and Home has no status
-    // bar. Mirrors the hide in initState (Android only).
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    // bar. Mirrors the hide in initState (Android only). Skipped on an
+    // engine switch: the new screen's initState already hid the bars, and
+    // this dispose runs after it, so restoring here would show the status
+    // bar and nav bar over the new player's video. The new screen also
+    // re-asserts immersive on its first play.
+    if (!_leavingForEngineSwitch &&
+        defaultTargetPlatform == TargetPlatform.android) {
       SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,
         overlays: SystemUiOverlay.values,
@@ -3322,6 +3327,17 @@ class _MpvPlayerScreenState extends ConsumerState<MpvPlayerScreen>
         if (playing) {
           final firstPlay = !_startedPlaying;
           _startedPlaying = true;
+          if (firstPlay) {
+            // An engine switch can leave the system bars showing: the old
+            // screen's dispose restores them after this screen's initState
+            // hid them. Playback has started, so hide them again.
+            // Android only, mirroring initState.
+            if (defaultTargetPlatform == TargetPlatform.android) {
+              SystemChrome.setEnabledSystemUIMode(
+                SystemUiMode.immersiveSticky,
+              );
+            }
+          }
           // Build 70: the decoder baseline, read once frames are
           // flowing (see [_hwdecSeenAlive]). Build 71: after every
           // play, not only the first — the baseline must come from
