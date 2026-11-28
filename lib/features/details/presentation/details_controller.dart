@@ -308,6 +308,14 @@ class DetailsController extends _$DetailsController {
       provider ??= active;
 
       if (provider != null) {
+        // Start the TMDB enrichment now, in parallel with getDetails: the
+        // title is already known from the catalog item, and the enrichment
+        // used to wait for the (slow) provider fetch first. It patches the
+        // ids onto whatever is on screen when it lands, and the post-fetch
+        // call below still runs — its searches hit the TMDB/metadata
+        // caches, so nothing is fetched twice.
+        unawaited(_resolveMetadataInBackground(item));
+
         final fetchedItem = await provider.getDetails(item.url);
         if (!ref.mounted) return;
 

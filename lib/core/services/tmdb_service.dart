@@ -12,12 +12,20 @@ class TmdbService {
   static final _yearRegex = RegExp(r'\b(19|20)\d{2}\b');
   static const _suggestionsCacheTtl = Duration(days: 1);
   static const _detailsCacheTtl = Duration(hours: 1);
+  // Search results go stale faster than a title's details, and a failed
+  // search must never poison the cache (only non-empty results are stored).
+  static const _searchCacheTtl = Duration(minutes: 15);
   final Dio _dio;
   final Map<String, _SuggestionCacheEntry> _suggestionsCache = {};
   final Map<String, _CacheEntry<Map<String, dynamic>>> _seasonDetailsCache = {};
   final Map<String, _CacheEntry<Map<String, dynamic>>> _tvExtraCache = {};
   final Map<String, _CacheEntry<Map<String, dynamic>>> _movieExtraCache = {};
+  final Map<String, _CacheEntry<Map<String, dynamic>>> _movieDetailsCache =
+      {};
+  final Map<String, _CacheEntry<Map<String, dynamic>>> _tvDetailsCache = {};
+  final Map<String, _CacheEntry<List<MultimediaItem>>> _multiSearchCache = {};
   final Map<String, Future<Map<String, dynamic>?>> _inFlightRequests = {};
+  final Map<String, Future<List<MultimediaItem>>> _inFlightSearches = {};
 
   TmdbService(Dio baseDio)
     : _dio = Dio(baseDio.options.copyWith(baseUrl: TmdbConfig.baseUrl)) {
@@ -413,6 +421,45 @@ class TmdbService {
 
     if (TmdbConfig.apiKey.isEmpty) return [];
 
+    // Same shape as getMovieExtra/getTvExtra: a short cache and one
+    // in-flight request per query, so a details revisit and a search
+    // retype do not re-hit /search/multi.
+    final searchCacheKey =
+        '$cleanQuery|$filterYear|$filterLanguageCode|$language|$page';
+    final cachedSearch = _multiSearchCache[searchCacheKey];
+    if (cachedSearch != null &&
+        DateTime.now().difference(cachedSearch.cachedAt) < _searchCacheTtl) {
+      return cachedSearch.data;
+    }
+
+    if (_inFlightSearches.containsKey(searchCacheKey)) {
+      return await _inFlightSearches[searchCacheKey]!;
+    }
+
+    final searchFuture = _fetchMultiSearch(
+      cleanQuery: cleanQuery,
+      filterYear: filterYear,
+      filterLanguageCode: filterLanguageCode,
+      language: language,
+      page: page,
+      cacheKey: searchCacheKey,
+    );
+    _inFlightSearches[searchCacheKey] = searchFuture;
+    try {
+      return await searchFuture;
+    } finally {
+      unawaited(_inFlightSearches.remove(searchCacheKey));
+    }
+  }
+
+  Future<List<MultimediaItem>> _fetchMultiSearch({
+    required String cleanQuery,
+    required int? filterYear,
+    required String? filterLanguageCode,
+    required String language,
+    required int page,
+    required String cacheKey,
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/search/multi',
@@ -498,9 +545,15 @@ class TmdbService {
           }
         }
 
-        return uniqueResults
+        final results = uniqueResults
             .map((i) => MultimediaItem.fromTmdbJson(i))
             .toList();
+        // An empty answer is never cached: a failed search (network down,
+        // transient TMDB error) must not pin the title to nothing.
+        if (results.isNotEmpty) {
+          _multiSearchCache[cacheKey] = _CacheEntry(results, DateTime.now());
+        }
+        return results;
       }
       talker.warning('TmdbService.multiSearch: status ${response.statusCode}');
     } catch (e, st) {
@@ -791,23 +844,70 @@ class TmdbService {
   }) async {
     if (TmdbConfig.apiKey.isEmpty) return null;
 
+    // Same shape as getMovieExtra: a 1h cache, one in-flight request per
+    // key, and up to 3 attempts on a transient failure. The in-flight key
+    // is prefixed so it can never collide with getMovieExtra's — the two
+    // ask for different append_to_response payloads.
+    final cacheKey = 'movie-details:$movieId:$language';
+    final cached = _movieDetailsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.cachedAt) < _detailsCacheTtl) {
+      return cached.data;
+    }
+
+    if (_inFlightRequests.containsKey(cacheKey)) {
+      return await _inFlightRequests[cacheKey];
+    }
+
+    final future = _fetchMovieDetails(
+      movieId,
+      language: language,
+      cacheKey: cacheKey,
+    );
+    _inFlightRequests[cacheKey] = future;
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/movie/$movieId',
-        queryParameters: {
-          'api_key': TmdbConfig.apiKey,
-          'language': language,
-          'append_to_response': 'credits,release_dates',
-        },
-      );
-      if (response.statusCode == 200) {
-        return response.data;
+      return await future;
+    } finally {
+      unawaited(_inFlightRequests.remove(cacheKey));
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchMovieDetails(
+    int movieId, {
+    required String language,
+    required String cacheKey,
+  }) async {
+    int attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/movie/$movieId',
+          queryParameters: {
+            'api_key': TmdbConfig.apiKey,
+            'language': language,
+            'append_to_response': 'credits,release_dates',
+          },
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          _movieDetailsCache[cacheKey] = _CacheEntry(
+            response.data!,
+            DateTime.now(),
+          );
+          return response.data;
+        }
+        talker.warning(
+          'TmdbService.getMovieDetails: status ${response.statusCode} for $movieId',
+        );
+        return null;
+      } catch (e, st) {
+        if (attempts < 3 && _isTransientError(e)) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempts));
+          continue;
+        }
+        talker.error('TmdbService.getMovieDetails failed for $movieId', e, st);
+        break;
       }
-      talker.warning(
-        'TmdbService.getMovieDetails: status ${response.statusCode} for $movieId',
-      );
-    } catch (e, st) {
-      talker.error('TmdbService.getMovieDetails failed for $movieId', e, st);
     }
     return null;
   }
@@ -973,23 +1073,68 @@ class TmdbService {
   }) async {
     if (TmdbConfig.apiKey.isEmpty) return null;
 
+    // Same shape as getTvExtra — see getMovieDetails for why the
+    // in-flight key is prefixed.
+    final cacheKey = 'tv-details:$tvId:$language';
+    final cached = _tvDetailsCache[cacheKey];
+    if (cached != null &&
+        DateTime.now().difference(cached.cachedAt) < _detailsCacheTtl) {
+      return cached.data;
+    }
+
+    if (_inFlightRequests.containsKey(cacheKey)) {
+      return await _inFlightRequests[cacheKey];
+    }
+
+    final future = _fetchTvDetails(
+      tvId,
+      language: language,
+      cacheKey: cacheKey,
+    );
+    _inFlightRequests[cacheKey] = future;
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/tv/$tvId',
-        queryParameters: {
-          'api_key': TmdbConfig.apiKey,
-          'language': language,
-          'append_to_response': 'credits,content_ratings',
-        },
-      );
-      if (response.statusCode == 200) {
-        return response.data;
+      return await future;
+    } finally {
+      unawaited(_inFlightRequests.remove(cacheKey));
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchTvDetails(
+    int tvId, {
+    required String language,
+    required String cacheKey,
+  }) async {
+    int attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/tv/$tvId',
+          queryParameters: {
+            'api_key': TmdbConfig.apiKey,
+            'language': language,
+            'append_to_response': 'credits,content_ratings',
+          },
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          _tvDetailsCache[cacheKey] = _CacheEntry(
+            response.data!,
+            DateTime.now(),
+          );
+          return response.data;
+        }
+        talker.warning(
+          'TmdbService.getTvDetails: status ${response.statusCode} for $tvId',
+        );
+        return null;
+      } catch (e, st) {
+        if (attempts < 3 && _isTransientError(e)) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempts));
+          continue;
+        }
+        talker.error('TmdbService.getTvDetails failed for $tvId', e, st);
+        break;
       }
-      talker.warning(
-        'TmdbService.getTvDetails: status ${response.statusCode} for $tvId',
-      );
-    } catch (e, st) {
-      talker.error('TmdbService.getTvDetails failed for $tvId', e, st);
     }
     return null;
   }

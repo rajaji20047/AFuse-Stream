@@ -162,9 +162,14 @@ void main() async {
   // before the first player is created - libVLC's freetype reads a path,
   // not the app's font families. A failure leaves the engine on its own
   // default face; it never stops startup (see `subtitle_fonts.dart`).
-  BootTrace.mark('FONTS before');
-  await prepareBundledSubtitleFonts();
-  BootTrace.mark('FONTS after');
+  //
+  // Not awaited: the copy is a Roboto asset read plus a disk write, and it
+  // used to sit on the startup path ahead of the first paint. Only libVLC
+  // subtitle rendering reads the path (null until the copy lands, and the
+  // engine falls back meanwhile), so the copy runs unawaited and the first
+  // frame is never held up for it.
+  BootTrace.mark('FONTS deferred');
+  unawaited(prepareBundledSubtitleFonts());
 
   // Before anything keeps the screen awake: Linux's wakelock leaked an
   // inhibitor on each repeated enable (see linux_wakelock.dart).

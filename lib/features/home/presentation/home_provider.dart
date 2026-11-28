@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/domain/entity/multimedia_item.dart';
 import '../../../../core/extensions/extension_manager.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/extensions/base_provider.dart';
@@ -30,6 +31,16 @@ class HomeData extends _$HomeData {
   /// Home for a value nothing on screen shows.
   DateTime? fetchStartedAt;
 
+  /// Last successful home, reused for a brief window when Home is
+  /// revisited — a rebuild or tab switch used to re-fetch every time.
+  /// Keyed by provider, so a provider switch always fetches fresh, and
+  /// only successful fetches are stored (an error never pins Home to
+  /// stale rows). Explicit refreshes bypass it via [fetch].
+  static const _homeCacheTtl = Duration(minutes: 2);
+  Map<String, List<MultimediaItem>>? _cachedHomeItems;
+  String? _cachedHomeProvider;
+  DateTime? _cachedHomeAt;
+
   StreamSubscription<void>? _checks;
 
   @override
@@ -52,10 +63,12 @@ class HomeData extends _$HomeData {
     return const HomeLoading();
   }
 
-  Future<void> fetch() async {
+  /// Fetches Home from the active provider. A revisit inside the cache
+  /// window reuses the last successful result and paints at once;
+  /// [forceRefresh] (pull-to-refresh, refresh button) always re-fetches.
+  Future<void> fetch({bool forceRefresh = false}) async {
     final token = ++_fetchToken;
     fetchStartedAt = _now();
-    state = const HomeLoading();
 
     final activeProvider = ref.read(activeProviderProvider);
     if (activeProvider == null) {
@@ -63,6 +76,14 @@ class HomeData extends _$HomeData {
       state = const HomeSuccess({});
       return;
     }
+
+    if (!forceRefresh && _isHomeCacheFresh(activeProvider)) {
+      if (!_isCurrent(token)) return;
+      state = HomeSuccess(_cachedHomeItems!);
+      return;
+    }
+
+    state = const HomeLoading();
 
     // No reachability probe runs ahead of this: the request is the only honest
     // signal, it reports its own failure a moment later, and a hardcoded public
@@ -83,9 +104,11 @@ class HomeData extends _$HomeData {
       // Sections that came back empty are still that plugin's own home —
       // a provider returning sections, even empty ones, is a success.
       if (items.isEmpty) {
+        _cacheHome(activeProvider, items);
         state = const HomeSuccess({});
         return;
       }
+      _cacheHome(activeProvider, items);
       state = HomeSuccess(items);
     } catch (e) {
       if (!_isCurrent(token)) return;
@@ -141,6 +164,27 @@ class HomeData extends _$HomeData {
       if (check?.state == CheckState.cleared) unawaited(fetch());
     });
     ref.onDispose(() => unawaited(_checks?.cancel()));
+  }
+
+  /// Remembers a successful home under its provider, for the revisit
+  /// window. Only called on success — never on an error or a check gate.
+  void _cacheHome(
+    SkyStreamProvider provider,
+    Map<String, List<MultimediaItem>> items,
+  ) {
+    _cachedHomeItems = items;
+    _cachedHomeProvider = provider.packageName;
+    _cachedHomeAt = DateTime.now();
+  }
+
+  /// True when the stored home is for this provider and still inside the
+  /// revisit window.
+  bool _isHomeCacheFresh(SkyStreamProvider provider) {
+    final cachedAt = _cachedHomeAt;
+    final cachedItems = _cachedHomeItems;
+    if (cachedAt == null || cachedItems == null) return false;
+    if (_cachedHomeProvider != provider.packageName) return false;
+    return DateTime.now().difference(cachedAt) < _homeCacheTtl;
   }
 
   /// False once this fetch has been superseded, or once the provider has been

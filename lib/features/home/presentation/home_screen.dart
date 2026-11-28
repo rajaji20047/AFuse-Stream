@@ -416,7 +416,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
       HomeSuccess(:final data) => _withGradientEdgeHint(
         RefreshIndicator(
-          onRefresh: () async => ref.read(homeDataProvider.notifier).fetch(),
+          onRefresh: () async => ref
+              .read(homeDataProvider.notifier)
+              .fetch(forceRefresh: true),
           child: CustomScrollView(
             controller: _scrollController,
             slivers: [

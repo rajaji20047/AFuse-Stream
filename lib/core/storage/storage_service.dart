@@ -108,13 +108,23 @@ class StorageService {
     // Open into locals first: a failure part-way must not leave some
     // `late` boxes assigned and the rest not (M2) — the launch then fails
     // cleanly (LaunchErrorApp) instead of crashing on first build.
-    final libraryBox = await _safeOpenBox(kLibraryBox);
-    final settingsBox = await _safeOpenBox(kSettingsBox);
-    final extensionsBox = await _safeOpenBox(kExtensionsBox);
-    await _safeOpenBox(
-      kDownloadMetadataBox,
-    ); // Opened here; later reads go through Hive.box().
-    final historyBox = await _safeOpenBox(kHistoryBox);
+    //
+    // The five boxes are independent — each opens its own files, and a
+    // corrupt one is quarantined by name inside [_safeOpenBox] — so they
+    // open in parallel instead of one at a time: startup used to pay five
+    // sequential disk opens before the first frame.
+    final openedBoxes = await Future.wait([
+      _safeOpenBox(kLibraryBox),
+      _safeOpenBox(kSettingsBox),
+      _safeOpenBox(kExtensionsBox),
+      _safeOpenBox(kDownloadMetadataBox),
+      _safeOpenBox(kHistoryBox),
+    ]);
+    final libraryBox = openedBoxes[0];
+    final settingsBox = openedBoxes[1];
+    final extensionsBox = openedBoxes[2];
+    // Opened here; later reads go through Hive.box().
+    final historyBox = openedBoxes[4];
     _libraryBox = libraryBox;
     _settingsBox = settingsBox;
     _extensionsBox = extensionsBox;

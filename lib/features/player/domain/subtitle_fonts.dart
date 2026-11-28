@@ -41,9 +41,10 @@ String? get netflixSubtitleFontPath => _netflixSubtitleFontPath;
 /// Copy the bundled subtitle fonts to readable files, once per install.
 ///
 /// Writes only when the file is missing or its size moved, so a warm start
-/// costs one stat. Awaited in `main()` before the first player can be
-/// created, so the engine always finds the path; failures are swallowed and
-/// leave [_netflixSubtitleFontPath] null.
+/// costs one stat. Started unawaited in `main()` so it never holds up the
+/// first frame; the engine reads [netflixSubtitleFontPath] when a player is
+/// created and falls back to its own default face until the copy lands.
+/// Failures are swallowed and leave [_netflixSubtitleFontPath] null.
 Future<void> prepareBundledSubtitleFonts() async {
   try {
     final Directory dir = await getApplicationDocumentsDirectory();

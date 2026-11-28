@@ -19,6 +19,14 @@ const double kTitleMatchThreshold = 0.6;
 class MetadataResolutionService {
   final TmdbService _tmdbService;
 
+  /// Resolved ids by title, so a details revisit does not re-run the same
+  /// title search. Only the ids are cached, never the item: two catalog
+  /// items can share a title and a year and still be different streams,
+  /// so the cached ids are always applied to the caller's own item.
+  /// Bounded at 200 entries, oldest first out.
+  static const _resolvedIdsCacheCap = 200;
+  final Map<String, _ResolvedIds> _resolvedIdsCache = {};
+
   MetadataResolutionService(this._tmdbService);
 
   Future<MultimediaItem> enrichWithIds(MultimediaItem item) async {
@@ -48,6 +56,22 @@ class MetadataResolutionService {
       );
     }
 
+    // A revisit of the same title: the ids were already resolved once, so
+    // return them without another search. Only short-circuits when the
+    // cached ids complete the pair — a partial hit still goes through the
+    // fast path / search below (whose own calls are cached in TmdbService).
+    final idsCacheKey =
+        '${item.contentType.name}|${item.title.toLowerCase().trim()}|${item.year ?? ''}';
+    final cachedIds = _resolvedIdsCache[idsCacheKey];
+    if (cachedIds != null &&
+        (item.tmdbId ?? cachedIds.tmdbId) != null &&
+        (item.imdbId ?? cachedIds.imdbId) != null) {
+      return item.copyWith(
+        tmdbId: item.tmdbId ?? cachedIds.tmdbId,
+        imdbId: item.imdbId ?? cachedIds.imdbId,
+      );
+    }
+
     // Fast path: If we already have tmdbId, just fetch the extra details to get imdbId
     if (item.tmdbId != null && item.imdbId == null) {
       if (kDebugMode) {
@@ -69,6 +93,7 @@ class MetadataResolutionService {
       }
 
       final enriched = item.copyWith(imdbId: imdbId ?? item.imdbId);
+      _storeResolvedIds(idsCacheKey, enriched.tmdbId, enriched.imdbId);
       if (kDebugMode) {
         debugPrint(
           'MetadataResolutionService: Fast path resolution complete. Final item: tmdbId: ${enriched.tmdbId}, imdbId: ${enriched.imdbId}',
@@ -159,6 +184,7 @@ class MetadataResolutionService {
         tmdbId: tmdbId ?? item.tmdbId,
         imdbId: imdbId ?? item.imdbId,
       );
+      _storeResolvedIds(idsCacheKey, enriched.tmdbId, enriched.imdbId);
       if (kDebugMode) {
         debugPrint(
           'MetadataResolutionService: Resolution complete. Final item: tmdbId: ${enriched.tmdbId}, imdbId: ${enriched.imdbId}',
@@ -176,6 +202,17 @@ class MetadataResolutionService {
     }
 
     return item;
+  }
+
+  /// Remembers a resolved id pair under its title key, dropping the oldest
+  /// entry once the cap is reached. Nothing is stored when neither id was
+  /// resolved — a miss must not pin the title to nothing.
+  void _storeResolvedIds(String cacheKey, int? tmdbId, String? imdbId) {
+    if (tmdbId == null && imdbId == null) return;
+    if (_resolvedIdsCache.length >= _resolvedIdsCacheCap) {
+      _resolvedIdsCache.remove(_resolvedIdsCache.keys.first);
+    }
+    _resolvedIdsCache[cacheKey] = _ResolvedIds(tmdbId, imdbId);
   }
 
   String? _extractImdbId(Map<String, dynamic> json) {
@@ -461,6 +498,14 @@ class MetadataResolutionService {
     'mb',
     'gb',
   };
+}
+
+/// A resolved id pair, cached by title in [MetadataResolutionService].
+class _ResolvedIds {
+  final int? tmdbId;
+  final String? imdbId;
+
+  const _ResolvedIds(this.tmdbId, this.imdbId);
 }
 
 @riverpod
