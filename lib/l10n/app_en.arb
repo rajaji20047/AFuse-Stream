@@ -131,7 +131,7 @@
   },
   "defaultPlayer": "Default Player",
   "playerEngine": "Player Engine",
-  "playerEngineMpv": "libmpv Golden",
+  "playerEngineMpv": "libMPV Golden",
   "@playerEngineMpv": {
     "description": "Label of the libmpv engine segment in Player settings."
   },

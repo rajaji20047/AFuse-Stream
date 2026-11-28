@@ -161,7 +161,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get playerEngine => 'Player Engine';
 
   @override
-  String get playerEngineMpv => 'libmpv Golden';
+  String get playerEngineMpv => 'libMPV Golden';
 
   @override
   String get playerEngineVlc => 'libVLC';

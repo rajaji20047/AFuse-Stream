@@ -1617,7 +1617,7 @@ void showPlayerEngineDialog(
                 isCurrent: current == PlayerEngine.mpv,
                 child: ListTile(
                   autofocus: current == PlayerEngine.mpv,
-                  title: const Text('libmpv'),
+                  title: const Text('libMPV'),
                   subtitle: Text(l10n.playerEngineMpvDetail),
                   leading: const Radio<PlayerEngine>(value: PlayerEngine.mpv),
                   onTap: () => unawaited(choose(ctx, PlayerEngine.mpv)),

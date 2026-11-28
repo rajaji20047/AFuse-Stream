@@ -474,7 +474,7 @@ abstract class AppLocalizations {
   /// Label of the libmpv engine segment in Player settings.
   ///
   /// In en, this message translates to:
-  /// **'libmpv Golden'**
+  /// **'libMPV Golden'**
   String get playerEngineMpv;
 
   /// Label of the libVLC engine segment in Player settings.

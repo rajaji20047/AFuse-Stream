@@ -130,7 +130,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
                         Text(
                           switch (playerSettings.playerEngine) {
                             PlayerEngine.mpv =>
-                              'libmpv · ${l10n.playerEngineMpvDetail}',
+                              'libMPV · ${l10n.playerEngineMpvDetail}',
                             PlayerEngine.vlc =>
                               'libVLC · ${l10n.playerEngineVlcDetail}',
                             PlayerEngine.exo =>
